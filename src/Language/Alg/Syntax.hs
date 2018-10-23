@@ -1,43 +1,41 @@
 module Language.Alg.Syntax
   ( Poly(..)
+  , Func
   , Alg(..)
   , Type(..)
   ) where
 
-import qualified Prelude
-import Prelude hiding ( (.), id )
+import Language.Internal.Id
 
 data Poly a
   = PK a
+  | PV Id
   | PI
   | PPrd [Poly a]
   | PSum [Poly a]
-
-pcomp :: Poly a -> Poly a -> Poly a
-pcomp f@PK{}    g = f
-pcomp PI        g = g
-pcomp (PPrd fs) g = PPrd $ fmap (`pcomp` g) fs
-pcomp (PSum fs) g = PSum $ fmap (`pcomp` g) fs
 
 type Func a = Poly (Type a)
 
 data Type a
   = TPrim a
   | TUnit
-  | TFun (Type a) (Type a)
+  | TFun [Type a]
   | TSum [Type a]
   | TPrd [Type a]
+  | TApp Id (Type a)
   | TRec (Func a)
 
-data Alg t a
-  = Atom a
+data Alg t v
+  = Var  Id
+  | Val v
+  | Const (Alg t v)
   | Unit
-  | Comp (Alg t a) (Alg t a)
+  | Comp [Alg t v]
   | Id
   | Proj Int
-  | Split [Alg t a]
+  | Split [Alg t v]
   | Inj Int
-  | Case [Alg t a]
-  | In (Func t)
-  | Out (Func t)
-  | Rec (Func t) (Alg t a) (Alg t a)
+  | Case [Alg t v]
+  | In  (Maybe (Func t))
+  | Out (Maybe (Func t))
+  | Rec (Func t) (Alg t v) (Alg t v)
