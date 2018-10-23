@@ -1,14 +1,16 @@
 module Language.Alg.Internal.Parser
   ( polyParser
   , typeParser
+  , idParser
+  , identifier
+  , initialSt
   ) where
 
 import Control.Monad.Identity
-import Data.Text
+import Data.Text ( Text )
 import Data.Map ( Map )
 import qualified Data.Map as Map
 import Text.Parsec
-import Text.Parsec.Expr
 import Text.Parsec.Token ( GenTokenParser
                          , GenLanguageDef(..)
                          , makeTokenParser
@@ -38,6 +40,11 @@ polyDef = LanguageDef
 data St = St { freshId  :: Int
              , foundIds :: Map String Id
              }
+
+initialSt :: St
+initialSt = St { freshId = 1
+               , foundIds = Map.empty }
+
 
 polyLexer :: GenTokenParser Text St Identity
 polyLexer = makeTokenParser polyDef
@@ -78,10 +85,16 @@ parens         = Token.parens         polyLexer
 -- commaSep       = Token.commaSep       polyLexer
 -- commaSep1      = Token.commaSep1      polyLexer
 
-polyParser :: AlgParser a -> AlgParser (Func a)
-polyParser = buildExpressionParser polyTable . simplePoly
+polyParser :: Show a => AlgParser a -> AlgParser (Func a)
+polyParser p = pSum1 <$> try (sepBy1 pprodParser (reservedOp "+"))
+  where
+    pprodParser = pPrd1 <$> try (sepBy1 (simplePoly p) (reservedOp "*"))
+    pSum1 [x] = x
+    pSum1 x   = PSum x
+    pPrd1 [x] = x
+    pPrd1 x   = PPrd x
 
-simplePoly :: AlgParser a -> AlgParser (Func a)
+simplePoly :: Show a => AlgParser a -> AlgParser (Func a)
 simplePoly p
   =   pI
   <|> pK
@@ -90,20 +103,6 @@ simplePoly p
   where
     pI = reserved "I" *> pure PI
     pK = reserved "K" *> pure PK <*> (simpleType p)
-
-polyTable :: [[Operator Text St Identity (Poly a)]]
-polyTable = [ [ binary "*" pPrd AssocLeft ]
-            , [ binary "+" pSum AssocLeft ]
-            ]
-
-binary :: String -> (a -> a -> a) -> Assoc -> Operator Text St Identity a
-binary  name fun assoc = Infix   (reservedOp name *> pure fun) assoc
-
---prefix :: String -> (a -> a) -> Operator Text Int Identity a
---prefix  name fun       = Prefix  (reservedOp name *> pure fun)
---
---postfix :: String -> (a -> a) -> Operator Text Int Identity a
---postfix name fun       = Postfix (reservedOp name *> pure fun)
 
 fresh :: AlgParser Int
 fresh = do
@@ -124,25 +123,32 @@ getId s = do
       return x
     Just i  -> return i
 
-typeParser :: AlgParser a -> AlgParser (Type a)
-typeParser = buildExpressionParser typeTable . simpleType
+idParser :: AlgParser Id
+idParser = identifier >>= getId
 
-simpleType :: AlgParser a -> AlgParser (Type a)
+typeParser :: Show a => AlgParser a -> AlgParser (Type a)
+typeParser p = tFun1 <$> try (sepBy1 tsumParser $ reservedOp "->")
+  where
+    tsumParser = tSum1 <$> try (sepBy1 tprodParser $ reservedOp "+")
+    tprodParser = tPrd1 <$> try (sepBy1 (simpleType p) $ reservedOp "*")
+    tFun1 [x] = x
+    tFun1 x   = TFun x
+    tSum1 [x] = x
+    tSum1 x   = TSum x
+    tPrd1 [x] = x
+    tPrd1 x   = TPrd x
+
+
+simpleType :: Show a => AlgParser a -> AlgParser (Type a)
 simpleType p
-  =   pPrim
-  <|> pUnit
-  <|> pRec
+  =   try pPrim
+  <|> try pUnit
+  <|> try pRec
+  <|> try pApp
   <|> parens (typeParser p)
   <?> "Atomic type"
   where
-    pPrim = pure TPrim <*> try p
-    pUnit = try (parens (return TUnit))
-    pRec  = pure TRec <*> try (simplePoly p)
-
-
-typeTable :: [[Operator Text St Identity (Type a)]]
-typeTable = [ [ Prefix (pure TApp <*> (try identifier >>= getId)) ]
-            , [ binary "*"  tPrd AssocLeft ]
-            , [ binary "+"  tSum AssocLeft ]
-            , [ binary "->" tFun AssocLeft ]
-            ]
+    pPrim = TPrim <$> p
+    pUnit = parens (return TUnit)
+    pRec  = reserved "Rec" *> (TRec <$> idParser)
+    pApp  = TApp <$> idParser <*> simpleType p

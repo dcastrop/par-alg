@@ -87,7 +87,7 @@ instance (IsCompound a, Pretty a) => Pretty (Poly a) where
 
 instance Pretty a => Pretty (Type a) where
   pretty (TPrim x)   = pretty x
-  pretty TUnit       = pretty (1::Int)
+  pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
     = hsep $ punctuate (pretty " ->") $ fmap (prettyLvl (prefLvl t)) ts
   pretty t@(TSum ts)
@@ -97,8 +97,8 @@ instance Pretty a => Pretty (Type a) where
   pretty (TApp f t)
     = hsep [pretty f, aux]
     where aux = if isCompound t then parens (pretty t) else pretty t
-  pretty t@(TRec t')
-    = hsep [pretty "Rec", prettyLvl (prefLvl t) t']
+  pretty (TRec t)
+    = hsep [pretty "Rec", pretty t]
 
 maybePpr :: Pretty a => Maybe a -> Doc ann
 maybePpr = maybe emptyDoc pretty

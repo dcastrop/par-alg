@@ -16,5 +16,8 @@ instance Eq Id where
 instance Ord Id where
   i `compare` j = getId i `compare` getId j
 
+instance Show Id where
+  show = getLbl
+
 instance Pretty Id where
   pretty = pretty . getLbl

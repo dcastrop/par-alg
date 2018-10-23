@@ -20,7 +20,7 @@ testPoly = TestLabel "Poly" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "K 1 + K a * I"
+        expected = "K () + K a * I"
         actual = helper $ (PSum [ PK TUnit
                                 , PPrd [ PK (TPrim "a")
                                        , PI
@@ -28,7 +28,7 @@ testPoly = TestLabel "Poly" $
                                 ] :: Func String)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "(K a + K 1) + I * I"
+        expected = "(K a + K ()) + I * I"
         actual = helper $ (PSum [ PSum [ PK (TPrim "a")
                                        , PK TUnit
                                        ]
@@ -36,7 +36,7 @@ testPoly = TestLabel "Poly" $
                                 ] :: Func String)
     test3 = TestCase $ assertEqual expected expected actual
       where
-        expected = "K a + (K 1 + I) * I"
+        expected = "K a + (K () + I) * I"
         actual = helper $ (PSum [ PK (TPrim "a")
                                 , PPrd [ PSum [ PK TUnit
                                               , PI
@@ -54,18 +54,18 @@ testType = TestLabel "Type" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "1 + a * Rec F"
+        expected = "() + a * Rec F"
         actual = helper $ (TSum [ TUnit
                                 , TPrd [ TPrim "a"
-                                       , TRec (PV $ mkId 1 "F")
+                                       , TRec (mkId 1 "F")
                                        ]
                                 ] :: Type String)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "b * (a + 1) * (Rec F -> a) -> c"
+        expected = "b * (a + ()) * (Rec F -> a) -> c"
         actual = helper $ (TFun [ TPrd [TPrim "b"
                                        , TSum [TPrim "a", TUnit]
-                                       , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
+                                       , TFun [TRec (mkId 1 "F") , TPrim "a"]
                                        ]
                                 , TPrim "c"
                                 ] :: Type String)

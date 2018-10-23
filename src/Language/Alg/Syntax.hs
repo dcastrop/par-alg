@@ -18,8 +18,9 @@ data Poly a
   | PI
   | PPrd [Poly a]
   | PSum [Poly a]
+  deriving (Eq, Show)
 
-pSum, pPrd :: Poly a -> Poly a -> Poly a
+pSum, pPrd :: Show a => Poly a -> Poly a -> Poly a
 pSum (PSum xs) y = PSum $ xs ++ [y]
 pSum l r = PSum [l,r]
 pPrd (PPrd xs) y = PPrd $ xs ++ [y]
@@ -34,7 +35,8 @@ data Type a
   | TSum [Type a]
   | TPrd [Type a]
   | TApp Id (Type a)
-  | TRec (Func a)
+  | TRec Id
+  deriving (Eq, Show)
 
 tSum, tPrd, tFun :: Type a -> Type a -> Type a
 tSum (TSum xs) y = TSum $ xs ++ [y]
@@ -58,3 +60,4 @@ data Alg t v
   | In  (Maybe (Func t))
   | Out (Maybe (Func t))
   | Rec (Func t) (Alg t v) (Alg t v)
+  deriving (Eq, Show)
