@@ -1,0 +1,52 @@
+name:                par-lang
+version:             0.1.0.0
+github:              "dcastrop/par-lang"
+license:             BSD3
+author:              "David Castro-Perez"
+maintainer:          "david.castro.dcp@gmail.com"
+copyright:           "2017 David Castro-Perez"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/dcastrop/par-lang#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - prettyprinter >= 1.2 && < 1.3
+
+executables:
+  par-lang:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    dependencies:
+    - par-lang
+
+tests:
+  par-lang-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    dependencies:
+    - par-lang
