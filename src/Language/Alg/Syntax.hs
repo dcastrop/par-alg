@@ -1,8 +1,13 @@
 module Language.Alg.Syntax
   ( Poly(..)
+  , pSum
+  , pPrd
   , Func
   , Alg(..)
   , Type(..)
+  , tSum
+  , tPrd
+  , tFun
   ) where
 
 import Language.Internal.Id
@@ -14,6 +19,12 @@ data Poly a
   | PPrd [Poly a]
   | PSum [Poly a]
 
+pSum, pPrd :: Poly a -> Poly a -> Poly a
+pSum (PSum xs) y = PSum $ xs ++ [y]
+pSum l r = PSum [l,r]
+pPrd (PPrd xs) y = PPrd $ xs ++ [y]
+pPrd l r = PPrd [l,r]
+
 type Func a = Poly (Type a)
 
 data Type a
@@ -24,6 +35,14 @@ data Type a
   | TPrd [Type a]
   | TApp Id (Type a)
   | TRec (Func a)
+
+tSum, tPrd, tFun :: Type a -> Type a -> Type a
+tSum (TSum xs) y = TSum $ xs ++ [y]
+tSum l r = TSum [l,r]
+tPrd (TPrd xs) y = TPrd $ xs ++ [y]
+tPrd l r = TPrd [l,r]
+tFun x (TFun ys) = TFun $ x : ys
+tFun l r = TFun [l,r]
 
 data Alg t v
   = Var  Id
