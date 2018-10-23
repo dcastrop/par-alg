@@ -7,14 +7,11 @@ module Language.Alg.Syntax
 import qualified Prelude
 import Prelude hiding ( (.), id )
 
-import
-
 data Poly a
   = PK a
   | PI
   | PPrd [Poly a]
   | PSum [Poly a]
-  | PVar Id
 
 pcomp :: Poly a -> Poly a -> Poly a
 pcomp f@PK{}    g = f

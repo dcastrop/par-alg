@@ -14,13 +14,12 @@ instance IsCompound (Poly a) where
   isCompound _        = False
 
 instance IsCompound a => IsCompound (Type a) where
-  isCompound TPrim{}
-  isCompound TUnit{}
-  isCompound TFun{}
-  isCompound TSum{}
-  isCompound TPrd{}
-  isCompound TRec (Func a)
-
+  isCompound (TPrim x) = isCompound x
+  isCompound TUnit{}   = False
+  isCompound TFun{}    = True
+  isCompound TSum{}    = True
+  isCompound TPrd{}    = True
+  isCompound TRec{}    = True
 
 instance Pretty a => Pretty (Poly a) where
   pretty (PK x)    = hsep [pretty "K", pretty x]
