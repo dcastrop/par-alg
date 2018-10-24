@@ -1,5 +1,5 @@
-module Test.Alg.Ppr
-  ( tests
+module Test.Alg.Internal.Ppr
+  ( suite
   )where
 
 import Test.HUnit
@@ -7,6 +7,13 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 
 import Language.Alg
+
+suite :: Test
+suite = TestLabel "Ppr" $
+        TestList [ testPoly
+                 , testType
+                 , testAlg
+                 ]
 
 helper :: Pretty a => a -> String
 helper = renderString . layoutCompact . pretty
@@ -20,7 +27,7 @@ testPoly = TestLabel "Poly" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "K 1 + K a * I"
+        expected = "K () + K a * I"
         actual = helper $ (PSum [ PK TUnit
                                 , PPrd [ PK (TPrim "a")
                                        , PI
@@ -28,7 +35,7 @@ testPoly = TestLabel "Poly" $
                                 ] :: Func String)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "(K a + K 1) + I * I"
+        expected = "(K a + K ()) + I * I"
         actual = helper $ (PSum [ PSum [ PK (TPrim "a")
                                        , PK TUnit
                                        ]
@@ -36,7 +43,7 @@ testPoly = TestLabel "Poly" $
                                 ] :: Func String)
     test3 = TestCase $ assertEqual expected expected actual
       where
-        expected = "K a + (K 1 + I) * I"
+        expected = "K a + (K () + I) * I"
         actual = helper $ (PSum [ PK (TPrim "a")
                                 , PPrd [ PSum [ PK TUnit
                                               , PI
@@ -54,7 +61,7 @@ testType = TestLabel "Type" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "1 + a * Rec F"
+        expected = "() + a * Rec F"
         actual = helper $ (TSum [ TUnit
                                 , TPrd [ TPrim "a"
                                        , TRec (PV $ mkId 1 "F")
@@ -62,7 +69,7 @@ testType = TestLabel "Type" $
                                 ] :: Type String)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "b * (a + 1) * (Rec F -> a) -> c"
+        expected = "b * (a + ()) * (Rec F -> a) -> c"
         actual = helper $ (TFun [ TPrd [TPrim "b"
                                        , TSum [TPrim "a", TUnit]
                                        , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
@@ -86,7 +93,7 @@ testAlg = TestLabel "Alg" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "f &&& (rec [F] j k . id) ||| (h . i)"
+        expected = "(f &&& (rec [F] j k . id)) ||| (h . i)"
         actual = helper $
           ( Case [ Split [ Var $ mkId 1 "f"
                          , Comp [ Rec (PV $ mkId 1 "F")
@@ -102,7 +109,7 @@ testAlg = TestLabel "Alg" $
           :: Alg String Int)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "const (f &&& rec [F] j k) . id ||| (h . i)"
+        expected = "const (f &&& rec [F] j k) . (id ||| (h . i))"
         actual = helper $
           (Comp [ Const $ Split [ Var $ mkId 1 "f"
                                 , Rec (PV $ mkId 1 "F")
@@ -116,10 +123,3 @@ testAlg = TestLabel "Alg" $
                         ]
                 ]
           :: Alg String Int)
-
-tests :: Test
-tests = TestLabel "Ppr" $
-        TestList [ testPoly
-                 , testType
-                 , testAlg
-                 ]

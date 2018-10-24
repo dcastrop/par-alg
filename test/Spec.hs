@@ -4,12 +4,12 @@ import System.Exit
 
 import Test.HUnit
 
-import qualified Test.Alg.Ppr
+import qualified Test.Alg
 
 main :: IO ()
 main = do
   c <- runTestTT $
-      TestList [ Test.Alg.Ppr.tests
+      TestList [ Test.Alg.suite
                ]
 
   print c
