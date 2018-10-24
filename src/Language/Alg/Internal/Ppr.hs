@@ -1,8 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
-module Language.Alg.Internal.Ppr () where
+module Language.Alg.Internal.Ppr
+  ( printProg
+  ) where
 
 import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String
 
 import Language.Alg.Syntax
 
@@ -18,6 +21,7 @@ instance IsCompound (Poly a) where
 
 instance IsCompound (Type a) where
   isCompound TPrim{}   = False
+  isCompound TVar{}    = False
   isCompound TUnit{}   = False
   isCompound TFun{}    = True
   isCompound TSum{}    = True
@@ -54,6 +58,7 @@ instance Preference (Poly a) where
 
 instance Preference (Type a) where
   prefLvl TPrim{} = Lvl $ -1
+  prefLvl TVar{}  = Lvl $ -1
   prefLvl TUnit   = Lvl $ -1
   prefLvl TRec{}  = Lvl 1
   prefLvl TApp{}  = Lvl 2
@@ -82,9 +87,6 @@ prettyLvl l x
   | prefLvl x < l = pretty x
   | otherwise     = parens (pretty x)
 
-maybePpr :: Pretty a => Maybe a -> Doc ann
-maybePpr = maybe emptyDoc pretty
-
 instance (IsCompound a, Pretty a) => Pretty (Poly a) where
   pretty (PK x)      = hsep [pretty "K", aux]
     where aux = if isCompound x then parens (pretty x) else pretty x
@@ -97,6 +99,7 @@ instance (IsCompound a, Pretty a) => Pretty (Poly a) where
 
 instance Pretty a => Pretty (Type a) where
   pretty (TPrim x)   = pretty x
+  pretty (TVar x)    = pretty x
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
     = hsep $ punctuate (pretty " ->") $ fmap (prettyLvl (prefLvl t)) ts
@@ -125,7 +128,40 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Case es)
     = hsep $ punctuate (pretty " |||") $ fmap pprParens es
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
-  pretty (In f)     = hcat [pretty "in", maybePpr f]
-  pretty (Out f)    = hcat [pretty "in", maybePpr f]
+  pretty (In f)     = hcat [pretty "in", maybe emptyDoc (brackets . pretty) f]
+  pretty (Out f)    = hcat [pretty "out", maybe emptyDoc (brackets . pretty) f]
   pretty (Rec f e1 e2)
-    = hsep [pretty "rec", brackets (pretty f), pretty e1, pretty e2]
+    = hsep [pretty "rec", brackets (pretty f), pprParens e1, pprParens e2]
+
+instance (Pretty t, Pretty v) => Pretty (Def t v) where
+  pretty (FDef f x)   = hsep [ pretty "poly"
+                             , pretty f
+                             , pretty "="
+                             , pretty x
+                             , pretty ";"]
+  pretty (TDef f x)   = hsep [ pretty "type"
+                             , pretty f
+                             , pretty "="
+                             , pretty x
+                             , pretty ";"
+                             ]
+  pretty (EDef f t x) = hsep [ pretty "fun"
+                             , pretty f
+                             , pretty ":"
+                             , pretty t
+                             , pretty "="
+                             , pretty x
+                             , pretty ";"
+                             ]
+  pretty (Atom f x)   = hsep [ pretty "atom"
+                             , pretty f
+                             , pretty ":"
+                             , pretty x
+                             , pretty ";"
+                             ]
+
+instance (Pretty t, Pretty v) => Pretty (Prog t v) where
+  pretty = vcat . map pretty . getDefns
+
+printProg :: (Pretty t, Pretty v) => Prog t v -> IO ()
+printProg = putStrLn . renderString . layoutSmart defaultLayoutOptions . pretty

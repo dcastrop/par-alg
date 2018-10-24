@@ -1,0 +1,13 @@
+poly F = K () + K int * I;
+
+poly T = K () + K int * I * I;
+
+type List1 = Rec F;
+type List2 = Rec (K () + K int * I);
+
+poly T2 = K () + K List2 * I * I;
+
+type Tree1 = Rec T2;
+type Tree2 = Rec (K () + K int * I * I);
+
+type Nat = Tree1 -> Tree2;
