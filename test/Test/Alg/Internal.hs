@@ -59,6 +59,18 @@ suiteType = TestList [ typeTest "()"
                      , typeTest "F (G ())"
                      , typeTest "F (Rec G)"
                      , typeTest "Rec F"
+                     , typeTest "A + B + C"
+                     , typeTest "A + (B + C)"
+                     , typeTest "(A + B) + C"
+                     , typeTest "A * B * C"
+                     , typeTest "(A * B) * C"
+                     , typeTest "A * (B * C)"
+                     , typeTest "A + B * C"
+                     , typeTest "(A + B) * C"
+                     , typeTest "A + B * C -> D -> E"
+                     , typeTest "A + B * (C -> D) -> E"
+                     , typeTest "A + (B * C -> D) -> E"
+                     , typeTest "(A + B * C -> D) -> E"
                      ]
 
 polyTest :: Text -> Test
