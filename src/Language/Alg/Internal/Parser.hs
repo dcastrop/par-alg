@@ -96,8 +96,9 @@ polyParser p = pSum1 <$> try (sepBy1 pprodParser (reservedOp "+"))
 
 simplePoly :: Show a => AlgParser a -> AlgParser (Func a)
 simplePoly p
-  =   pI
-  <|> pK
+  =   try pI
+  <|> try pK
+  <|> try (PV <$> idParser)
   <|> parens (polyParser p)
   <?> "atomic polynomial"
   where
@@ -141,10 +142,10 @@ typeParser p = tFun1 <$> try (sepBy1 tsumParser $ reservedOp "->")
 
 simpleType :: Show a => AlgParser a -> AlgParser (Type a)
 simpleType p
-  =   try pPrim
-  <|> try pUnit
+  =   try pUnit
   <|> try pRec
   <|> try pApp
+  <|> try pPrim
   <|> parens (typeParser p)
   <?> "Atomic type"
   where

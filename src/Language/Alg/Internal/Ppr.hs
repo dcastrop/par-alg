@@ -95,8 +95,8 @@ instance Pretty a => Pretty (Type a) where
   pretty t@(TPrd ts)
     = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) ts
   pretty (TApp f t)
-    = hsep [pretty f, aux]
-    where aux = if isCompound t then parens (pretty t) else pretty t
+    = hsep [pretty f, aux (pretty t)]
+    where aux = if isCompound t then parens else id
   pretty (TRec t)
     = hsep [pretty "Rec", pretty t]
 

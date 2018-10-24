@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Test.Alg.Parser
-  ( tests
+module Test.Alg.Internal.Parser
+  ( suite
   )where
 
 import Data.Text
@@ -10,8 +10,8 @@ import Text.Parsec
 
 import Language.Alg
 
-tests :: Test
-tests = TestLabel "Parser" $
+suite :: Test
+suite = TestLabel "Parser" $
         TestList [ testPoly
                  , testType
                  -- , testAlg
@@ -73,6 +73,9 @@ testType = TestLabel "Type" $
   TestList [ test1
            , test2
            , test3
+           , test4
+           , test5
+           , test6
            ]
   where
     test1 = TestCase $ assertEqual (unpack testV) (Right expect) actual
@@ -103,6 +106,24 @@ testType = TestLabel "Type" $
                               ]
                        , TPrim "g"
                        ] :: Type String)
+
+    test4 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+      where
+        testV  = "()"
+        actual = helperT testV
+        expect = (TUnit :: Type String)
+
+    test5 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+      where
+        testV  = "F ()"
+        actual = helperT testV
+        expect = (TApp (mkId 1 "F") TUnit :: Type String)
+
+    test6 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+      where
+        testV  = "F A"
+        actual = helperT testV
+        expect = (TApp (mkId 1 "F") (TPrim "A") :: Type String)
 
 {-
 testAlg :: Test

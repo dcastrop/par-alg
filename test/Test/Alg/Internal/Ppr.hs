@@ -1,5 +1,5 @@
-module Test.Alg.Ppr
-  ( tests
+module Test.Alg.Internal.Ppr
+  ( suite
   )where
 
 import Test.HUnit
@@ -7,6 +7,13 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 
 import Language.Alg
+
+suite :: Test
+suite = TestLabel "Ppr" $
+        TestList [ testPoly
+                 , testType
+                 , testAlg
+                 ]
 
 helper :: Pretty a => a -> String
 helper = renderString . layoutCompact . pretty
@@ -116,10 +123,3 @@ testAlg = TestLabel "Alg" $
                         ]
                 ]
           :: Alg String Int)
-
-tests :: Test
-tests = TestLabel "Ppr" $
-        TestList [ testPoly
-                 , testType
-                 , testAlg
-                 ]
