@@ -87,9 +87,6 @@ prettyLvl l x
   | prefLvl x < l = pretty x
   | otherwise     = parens (pretty x)
 
-maybePpr :: Pretty a => Maybe a -> Doc ann
-maybePpr = maybe emptyDoc pretty
-
 instance (IsCompound a, Pretty a) => Pretty (Poly a) where
   pretty (PK x)      = hsep [pretty "K", aux]
     where aux = if isCompound x then parens (pretty x) else pretty x
@@ -131,10 +128,10 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Case es)
     = hsep $ punctuate (pretty " |||") $ fmap pprParens es
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
-  pretty (In f)     = hcat [pretty "in", maybePpr f]
-  pretty (Out f)    = hcat [pretty "in", maybePpr f]
+  pretty (In f)     = hcat [pretty "in", maybe emptyDoc (brackets . pretty) f]
+  pretty (Out f)    = hcat [pretty "out", maybe emptyDoc (brackets . pretty) f]
   pretty (Rec f e1 e2)
-    = hsep [pretty "rec", brackets (pretty f), pretty e1, pretty e2]
+    = hsep [pretty "rec", brackets (pretty f), pprParens e1, pprParens e2]
 
 instance (Pretty t, Pretty v) => Pretty (Def t v) where
   pretty (FDef f x)   = hsep [ pretty "poly"

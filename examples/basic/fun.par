@@ -1,0 +1,34 @@
+atom f : int -> int;
+atom g : int -> int;
+
+fun g : int -> int * int
+      = (f  &&& f . f) ||| g ;
+
+fun m : int -> int * int
+      = rec [K () + K int * I * I] f g;
+
+fun m : int -> int * int
+      = rec [K () + K int * I * I] f g .
+        rec [K () + K int * I * I] g h;
+
+fun m : int -> int * int
+      = rec [K () + K int * I * I] f (g .  rec [K () + K int * I * I] g h);
+
+fun inL : F Rec F -> Rec F
+  = in;
+
+fun inL2 : F Rec F -> Rec F
+  = in [F];
+
+fun outL : Rec F -> F Rec F
+  = out;
+
+fun outL2 : Rec F -> F Rec F
+  = out [F];
+
+fun injc : F Rec F -> Rec F
+  = inj[0];
+
+fun projc : F Rec F -> Rec F
+  = proj[0];
+

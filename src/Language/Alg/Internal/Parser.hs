@@ -47,7 +47,7 @@ polyDef = LanguageDef
           , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
           , reservedOpNames = ["*", "+", "->", "&&&", "|||" , ";"]
           , reservedNames   = ["poly", "type", "atom", "fun", -- Keywords
-                                "const", "id", "Rec", --
+                                "const", "id", "Rec", "in", "out", --
                                "()", "rec", "K", "I" --
                               ]
           , caseSensitive   = True
@@ -204,15 +204,15 @@ simpleAlg pt pv
 
 aAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
 aAlg pt pv
-  =   try (parens (algParser pt pv))
-  <|> try pVar
-  <|> try pVal
-  <|> try pUnit
+  =   try pUnit
   <|> try pId
   <|> try pProj
   <|> try pInj
   <|> try pIn
-  <|> pOut
+  <|> try pOut
+  <|> try pVar
+  <|> try pVal
+  <|> parens (algParser pt pv)
   <?> "Atomic expression"
   where
     pVar  = Var <$> idParser
