@@ -15,6 +15,7 @@ suite :: Test
 suite = TestLabel "Internal" $
         TestList [ suitePoly
                  , suiteType
+                 , suiteAlg
                  ]
 
 suitePoly :: Test
@@ -86,6 +87,18 @@ suiteType = TestList [ typeTest "()"
                      , typeTest "(A + B * C -> Rec F) -> Rec F"
                      ]
 
+suiteAlg :: Test
+suiteAlg = TestList [ algTest "f . g . h"
+                    , algTest "f . (g . h)"
+                    , algTest "(f . g) . h"
+                    , algTest "f . (g &&& h)"
+                    , algTest "(f . g) &&& h"
+                    , algTest "f . (g ||| h)"
+                    , algTest "(f . g) ||| h"
+                    , algTest "rec [F] g h . (rec [F + G] h i . j)"
+                    , algTest "rec [F] g h . (rec [F + G] h i . [H]j)"
+                    ]
+
 polyTest :: Text -> Test
 polyTest expected =
   TestCase $ assertEqual ("[Poly] pretty . parse = id: " ++ expect) (Right expect) actual
@@ -100,6 +113,13 @@ typeTest expected =
     expect = unpack expected
     actual = either Left (Right . ppr) (parseT expected)
 
+algTest :: Text -> Test
+algTest expected =
+  TestCase $ assertEqual ("[Alg] pretty . parse = id: " ++ expect) (Right expect) actual
+  where
+    expect = unpack expected
+    actual = either Left (Right . ppr) (parseA expected)
+
 ppr :: Pretty a => a -> String
 ppr = renderString . layoutCompact . pretty
 
@@ -108,3 +128,6 @@ parseP = runParser (polyParser identifier) initialSt ""
 
 parseT :: Text -> Either ParseError (Type String)
 parseT = runParser (typeParser identifier) initialSt ""
+
+parseA :: Text -> Either ParseError (Alg String Integer)
+parseA = runParser (algParser identifier integer) initialSt ""
