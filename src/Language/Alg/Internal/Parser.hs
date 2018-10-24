@@ -139,7 +139,6 @@ typeParser p = tFun1 <$> try (sepBy1 tsumParser $ reservedOp "->")
     tPrd1 [x] = x
     tPrd1 x   = TPrd x
 
-
 simpleType :: Show a => AlgParser a -> AlgParser (Type a)
 simpleType p
   =   try pUnit
@@ -151,5 +150,7 @@ simpleType p
   where
     pPrim = TPrim <$> p
     pUnit = parens (return TUnit)
-    pRec  = reserved "Rec" *> (TRec <$> idParser)
-    pApp  = TApp <$> idParser <*> simpleType p
+    pRec  = reserved "Rec" *> (TRec <$> simplePoly p)
+    pApp  = TApp <$> simplePoly p <*> simpleType p
+
+-- simpleAlg :: AlgParser a ->

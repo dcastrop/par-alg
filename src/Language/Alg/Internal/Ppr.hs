@@ -13,6 +13,7 @@ class IsCompound a where
 instance IsCompound (Poly a) where
   isCompound PSum{} = True
   isCompound PPrd{} = True
+  isCompound PK{}   = True
   isCompound _      = False
 
 instance IsCompound (Type a) where
@@ -95,10 +96,14 @@ instance Pretty a => Pretty (Type a) where
   pretty t@(TPrd ts)
     = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) ts
   pretty (TApp f t)
-    = hsep [pretty f, aux (pretty t)]
-    where aux = if isCompound t then parens else id
-  pretty (TRec t)
-    = hsep [pretty "Rec", pretty t]
+    = hsep [pprParens f, pprParens t]
+  pretty (TRec f)
+    = hsep [pretty "Rec", pprParens f]
+
+pprParens :: (Pretty a, IsCompound a) => a -> Doc ann
+pprParens x
+  | isCompound x = parens (pretty x)
+  | otherwise    = pretty x
 
 maybePpr :: Pretty a => Maybe a -> Doc ann
 maybePpr = maybe emptyDoc pretty

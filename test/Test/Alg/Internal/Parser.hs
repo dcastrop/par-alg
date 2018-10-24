@@ -84,7 +84,7 @@ testType = TestLabel "Type" $
         actual = helperT testV
         expect = (TSum [ TUnit
                        , TPrd [ TPrim "a"
-                              , TRec (mkId 1 "F")
+                              , TRec (PV $ mkId 1 "F")
                               ]
                        ] :: Type String)
     test2 = TestCase $ assertEqual (unpack testV) (Right expect) actual
@@ -93,7 +93,7 @@ testType = TestLabel "Type" $
         actual = helperT testV
         expect = (TFun [ TPrd [TPrim "b"
                               , TSum [TPrim "a", TUnit]
-                              , TFun [TRec (mkId 1 "F") , TPrim "a"]
+                              , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
                               ]
                        , TPrim "c"
                        ] :: Type String)
@@ -117,13 +117,13 @@ testType = TestLabel "Type" $
       where
         testV  = "F ()"
         actual = helperT testV
-        expect = (TApp (mkId 1 "F") TUnit :: Type String)
+        expect = (TApp (PV $ mkId 1 "F") TUnit :: Type String)
 
     test6 = TestCase $ assertEqual (unpack testV) (Right expect) actual
       where
         testV  = "F A"
         actual = helperT testV
-        expect = (TApp (mkId 1 "F") (TPrim "A") :: Type String)
+        expect = (TApp (PV $ mkId 1 "F") (TPrim "A") :: Type String)
 
 {-
 testAlg :: Test

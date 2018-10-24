@@ -64,7 +64,7 @@ testType = TestLabel "Type" $
         expected = "() + a * Rec F"
         actual = helper $ (TSum [ TUnit
                                 , TPrd [ TPrim "a"
-                                       , TRec (mkId 1 "F")
+                                       , TRec (PV $ mkId 1 "F")
                                        ]
                                 ] :: Type String)
     test2 = TestCase $ assertEqual expected expected actual
@@ -72,7 +72,7 @@ testType = TestLabel "Type" $
         expected = "b * (a + ()) * (Rec F -> a) -> c"
         actual = helper $ (TFun [ TPrd [TPrim "b"
                                        , TSum [TPrim "a", TUnit]
-                                       , TFun [TRec (mkId 1 "F") , TPrim "a"]
+                                       , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
                                        ]
                                 , TPrim "c"
                                 ] :: Type String)

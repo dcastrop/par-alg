@@ -34,8 +34,8 @@ data Type a
   | TFun [Type a]
   | TSum [Type a]
   | TPrd [Type a]
-  | TApp Id (Type a)
-  | TRec Id
+  | TApp (Func a) (Type a)
+  | TRec (Func a)
   deriving (Eq, Show)
 
 tSum, tPrd, tFun :: Type a -> Type a -> Type a
