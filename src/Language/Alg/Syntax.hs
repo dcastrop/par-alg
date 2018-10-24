@@ -8,6 +8,8 @@ module Language.Alg.Syntax
   , tSum
   , tPrd
   , tFun
+  , Def(..)
+  , Prog(..)
   ) where
 
 import Language.Internal.Id
@@ -30,6 +32,7 @@ type Func a = Poly (Type a)
 
 data Type a
   = TPrim a
+  | TVar Id
   | TUnit
   | TFun [Type a]
   | TSum [Type a]
@@ -66,9 +69,11 @@ data Alg t v
 data Def t v
   = FDef  Id (Func t)
   | TDef  Id (Type t)
-  | ADef  Id (Alg t v)
-  | Atoms Id (Type t)
+  | EDef  Id (Type t) (Alg t v)
+  | Atom  Id (Type t)
+  deriving Show
 
 newtype Prog t v
   = Prog { getDefns :: [Def t v]
          }
+  deriving Show

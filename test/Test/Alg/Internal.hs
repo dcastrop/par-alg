@@ -4,6 +4,7 @@ module Test.Alg.Internal
   ) where
 
 import Data.Text
+import qualified Data.Map.Strict as Map
 import Test.HUnit
 import Text.Parsec
 import Data.Text.Prettyprint.Doc
@@ -124,10 +125,10 @@ ppr :: Pretty a => a -> String
 ppr = renderString . layoutCompact . pretty
 
 parseP :: Text -> Either ParseError (Func String)
-parseP = runParser (polyParser identifier) initialSt ""
+parseP = runParser (polyParser identifier) (initialSt Map.empty) ""
 
 parseT :: Text -> Either ParseError (Type String)
-parseT = runParser (typeParser identifier) initialSt ""
+parseT = runParser (typeParser identifier) (initialSt Map.empty) ""
 
 parseA :: Text -> Either ParseError (Alg String Integer)
-parseA = runParser (algParser identifier integer) initialSt ""
+parseA = runParser (algParser identifier integer) (initialSt Map.empty) ""

@@ -4,6 +4,7 @@ module Test.Alg.Internal.Parser
   )where
 
 import Data.Text
+import qualified Data.Map.Strict as Map
 
 import Test.HUnit
 import Text.Parsec
@@ -18,13 +19,13 @@ suite = TestLabel "Parser" $
                  ]
 
 helperP :: Text -> Either ParseError (Func String)
-helperP = runParser (polyParser identifier) initialSt ""
+helperP = runParser (polyParser identifier) (initialSt Map.empty) ""
 
 helperT :: Text -> Either ParseError (Type String)
-helperT = runParser (typeParser identifier) initialSt ""
+helperT = runParser (typeParser identifier) (initialSt Map.empty) ""
 
 helperA :: Text -> Either ParseError (Alg String Integer)
-helperA = runParser (algParser identifier integer) initialSt ""
+helperA = runParser (algParser identifier integer) (initialSt Map.empty) ""
 
 testPoly :: Test
 testPoly = TestLabel "Poly" $
