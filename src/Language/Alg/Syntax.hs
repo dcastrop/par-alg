@@ -53,10 +53,11 @@ data Alg t v
   | Unit
   | Comp [Alg t v]
   | Id
-  | Proj Int
+  | Proj Integer
   | Split [Alg t v]
-  | Inj Int
+  | Inj Integer
   | Case [Alg t v]
+  | Fmap (Func t) (Alg t v)
   | In  (Maybe (Func t))
   | Out (Maybe (Func t))
   | Rec (Func t) (Alg t v) (Alg t v)

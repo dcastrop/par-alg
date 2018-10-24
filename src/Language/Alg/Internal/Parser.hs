@@ -1,8 +1,10 @@
 module Language.Alg.Internal.Parser
   ( polyParser
   , typeParser
+  , algParser
   , idParser
   , identifier
+  , integer
   , initialSt
   ) where
 
@@ -60,8 +62,10 @@ reservedOp :: String -> AlgParser ()
 reservedOp     = Token.reservedOp     polyLexer
 -- charLiteral    = Token.charLiteral    polyLexer
 -- stringLiteral  = Token.stringLiteral  polyLexer
--- natural        = Token.natural        polyLexer
--- integer        = Token.integer        polyLexer
+natural :: AlgParser Integer
+natural        = Token.natural        polyLexer
+integer :: AlgParser Integer
+integer        = Token.integer        polyLexer
 -- float          = Token.float          polyLexer
 -- naturalOrFloat = Token.naturalOrFloat polyLexer
 -- decimal        = Token.decimal        polyLexer
@@ -69,13 +73,13 @@ reservedOp     = Token.reservedOp     polyLexer
 -- octal          = Token.octal          polyLexer
 -- symbol         = Token.symbol         polyLexer
 -- lexeme         = Token.lexeme         polyLexer
---whiteSpace :: AlgParser ()
 --whiteSpace     = Token.whiteSpace     polyLexer
 parens :: AlgParser a -> AlgParser a
 parens         = Token.parens         polyLexer
 -- braces         = Token.braces         polyLexer
 -- angles         = Token.angles         polyLexer
--- brackets       = Token.brackets       polyLexer
+brackets :: AlgParser a -> AlgParser a
+brackets       = Token.brackets       polyLexer
 -- semi           = Token.semi           polyLexer
 -- comma          = Token.comma          polyLexer
 -- colon          = Token.colon          polyLexer
@@ -86,13 +90,9 @@ parens         = Token.parens         polyLexer
 -- commaSep1      = Token.commaSep1      polyLexer
 
 polyParser :: Show a => AlgParser a -> AlgParser (Func a)
-polyParser p = pSum1 <$> try (sepBy1 pprodParser (reservedOp "+"))
+polyParser p = singl PSum <$> try (sepBy1 pprodParser (reservedOp "+"))
   where
-    pprodParser = pPrd1 <$> try (sepBy1 (simplePoly p) (reservedOp "*"))
-    pSum1 [x] = x
-    pSum1 x   = PSum x
-    pPrd1 [x] = x
-    pPrd1 x   = PPrd x
+    pprodParser = singl PPrd <$> try (sepBy1 (simplePoly p) (reservedOp "*"))
 
 simplePoly :: Show a => AlgParser a -> AlgParser (Func a)
 simplePoly p
@@ -128,16 +128,14 @@ idParser :: AlgParser Id
 idParser = identifier >>= getId
 
 typeParser :: Show a => AlgParser a -> AlgParser (Type a)
-typeParser p = tFun1 <$> try (sepBy1 tsumParser $ reservedOp "->")
+typeParser p = singl TFun <$> try (sepBy1 tsumParser $ reservedOp "->")
   where
-    tsumParser = tSum1 <$> try (sepBy1 tprodParser $ reservedOp "+")
-    tprodParser = tPrd1 <$> try (sepBy1 (simpleType p) $ reservedOp "*")
-    tFun1 [x] = x
-    tFun1 x   = TFun x
-    tSum1 [x] = x
-    tSum1 x   = TSum x
-    tPrd1 [x] = x
-    tPrd1 x   = TPrd x
+    tsumParser = singl TSum <$> sepBy1 tprodParser (reservedOp "+")
+    tprodParser = singl TPrd <$> sepBy1 (simpleType p) (reservedOp "*")
+
+singl :: ([a] -> a) -> [a] -> a
+singl _f [x] = x
+singl  f xs  = f xs
 
 simpleType :: Show a => AlgParser a -> AlgParser (Type a)
 simpleType p
@@ -153,4 +151,46 @@ simpleType p
     pRec  = reserved "Rec" *> (TRec <$> simplePoly p)
     pApp  = TApp <$> simplePoly p <*> simpleType p
 
--- simpleAlg :: AlgParser a ->
+algParser :: Show t => AlgParser t -> AlgParser v -> AlgParser (Alg t v)
+algParser pt pv
+  =   singl Comp  <$> try (sepBy1 caseParser (reservedOp "."))
+  <?> "Expression"
+  where
+    caseParser  = singl Case  <$> try (sepBy1 splitParser (reservedOp "|||"))
+    splitParser = singl Split <$> try (sepBy1 (simpleAlg pt pv) (reservedOp "&&&"))
+
+
+simpleAlg :: Show t => AlgParser t -> AlgParser v -> AlgParser (Alg t v)
+simpleAlg pt pv
+  =   try (reserved "const" *> (Const <$> aAlg pt pv))
+  <|> try (reserved "rec" *> (Rec <$> brackets (polyParser pt)
+                             <*> aAlg pt pv
+                             <*> aAlg pt pv))
+  <|> try pFmap
+  <|> aAlg pt pv
+  where
+    pFmap = Fmap <$> (brackets $ polyParser pt) <*> aAlg pt pv
+
+aAlg :: Show t => AlgParser t -> AlgParser v -> AlgParser (Alg t v)
+aAlg pt pv
+  =   try (parens (algParser pt pv))
+  <|> try pVar
+  <|> try pVal
+  <|> try pUnit
+  <|> try pId
+  <|> try pProj
+  <|> try pInj
+  <|> try pIn
+  <|> pOut
+  <?> "Atomic expression"
+  where
+    pVar  = Var <$> idParser
+    pVal  = Val <$> pv
+    pUnit = parens (return Unit)
+    pId   = reserved "id" >> pure Id
+    pProj = reserved "proj" >> Proj <$> brackets natural
+    pInj  = reserved "inj" >> Inj <$> brackets natural
+    pIn   = reserved "in" >>
+      In <$> option Nothing (Just <$> brackets (polyParser pt))
+    pOut  = reserved "out" >>
+      Out <$> option Nothing (Just <$> brackets (polyParser pt))

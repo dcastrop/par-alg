@@ -93,7 +93,7 @@ testAlg = TestLabel "Alg" $
   where
     test1 = TestCase $ assertEqual expected expected actual
       where
-        expected = "f &&& (rec [F] j k . id) ||| (h . i)"
+        expected = "(f &&& (rec [F] j k . id)) ||| (h . i)"
         actual = helper $
           ( Case [ Split [ Var $ mkId 1 "f"
                          , Comp [ Rec (PV $ mkId 1 "F")
@@ -109,7 +109,7 @@ testAlg = TestLabel "Alg" $
           :: Alg String Int)
     test2 = TestCase $ assertEqual expected expected actual
       where
-        expected = "const (f &&& rec [F] j k) . id ||| (h . i)"
+        expected = "const (f &&& rec [F] j k) . (id ||| (h . i))"
         actual = helper $
           (Comp [ Const $ Split [ Var $ mkId 1 "f"
                                 , Rec (PV $ mkId 1 "F")

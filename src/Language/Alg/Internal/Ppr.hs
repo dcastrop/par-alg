@@ -29,8 +29,13 @@ instance IsCompound (Alg t v) where
   isCompound Comp{}  = True
   isCompound Split{} = True
   isCompound Case{}  = True
-  isCompound Rec{}   = True
+  isCompound Rec{}   = False
   isCompound _       = False
+
+pprParens :: (Pretty a, IsCompound a) => a -> Doc ann
+pprParens x
+  | isCompound x = parens (pretty x)
+  | otherwise    = pretty x
 
 {- Preference level. Negative numbers are never parentethised. -}
 newtype Lvl = Lvl { getLvl :: Int }
@@ -66,6 +71,7 @@ instance Preference (Alg t v) where
   prefLvl Inj{}   = Lvl $ -1
   prefLvl In{}    = Lvl $ -1
   prefLvl Out{}   = Lvl $ -1
+  prefLvl Fmap{}  = Lvl $ -1
   prefLvl Rec{}   = Lvl $ -1
   prefLvl Comp{}  = Lvl  10
   prefLvl Split{} = Lvl  4
@@ -75,6 +81,9 @@ prettyLvl :: (Pretty a, Preference a) => Lvl -> a -> Doc ann
 prettyLvl l x
   | prefLvl x < l = pretty x
   | otherwise     = parens (pretty x)
+
+maybePpr :: Pretty a => Maybe a -> Doc ann
+maybePpr = maybe emptyDoc pretty
 
 instance (IsCompound a, Pretty a) => Pretty (Poly a) where
   pretty (PK x)      = hsep [pretty "K", aux]
@@ -100,30 +109,23 @@ instance Pretty a => Pretty (Type a) where
   pretty (TRec f)
     = hsep [pretty "Rec", pprParens f]
 
-pprParens :: (Pretty a, IsCompound a) => a -> Doc ann
-pprParens x
-  | isCompound x = parens (pretty x)
-  | otherwise    = pretty x
-
-maybePpr :: Pretty a => Maybe a -> Doc ann
-maybePpr = maybe emptyDoc pretty
-
 instance (Pretty t, Pretty v) => Pretty (Alg t v) where
-  pretty (Var  v)  = pretty v
-  pretty (Val  v)  = pretty v
-  pretty (Const c) = hsep [pretty "const", aux $ pretty c]
+  pretty (Var  v)   = pretty v
+  pretty (Val  v)   = pretty v
+  pretty (Const c)  = hsep [pretty "const", aux $ pretty c]
     where aux = if isCompound c then parens else id
-  pretty Unit      = pretty "()"
-  pretty e@(Comp es)
-    = hsep $ punctuate (pretty " .") $ fmap (prettyLvl (prefLvl e)) es
-  pretty Id        = pretty "id"
-  pretty (Proj i)  = hcat [pretty "proj", brackets (pretty i)]
-  pretty e@(Split es)
-    = hsep $ punctuate (pretty " &&&") $ fmap (prettyLvl (prefLvl e)) es
-  pretty (Inj i)   = hcat [pretty "inj", brackets (pretty i)]
-  pretty e@(Case es)
-    = hsep $ punctuate (pretty " |||") $ fmap (prettyLvl (prefLvl e)) es
-  pretty (In f)    = hcat [pretty "in", maybePpr f]
-  pretty (Out f)   = hcat [pretty "in", maybePpr f]
+  pretty Unit       = pretty "()"
+  pretty (Comp es)
+    = hsep $ punctuate (pretty " .") $ fmap pprParens es
+  pretty Id         = pretty "id"
+  pretty (Proj i)   = hcat [pretty "proj", brackets (pretty i)]
+  pretty (Split es)
+    = hsep $ punctuate (pretty " &&&") $ fmap pprParens es
+  pretty (Inj i)    = hcat [pretty "inj", brackets (pretty i)]
+  pretty (Case es)
+    = hsep $ punctuate (pretty " |||") $ fmap pprParens es
+  pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
+  pretty (In f)     = hcat [pretty "in", maybePpr f]
+  pretty (Out f)    = hcat [pretty "in", maybePpr f]
   pretty (Rec f e1 e2)
     = hsep [pretty "rec", brackets (pretty f), pretty e1, pretty e2]

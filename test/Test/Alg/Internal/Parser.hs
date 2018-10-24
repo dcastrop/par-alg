@@ -14,7 +14,7 @@ suite :: Test
 suite = TestLabel "Parser" $
         TestList [ testPoly
                  , testType
-                 -- , testAlg
+                 , testAlg
                  ]
 
 helperP :: Text -> Either ParseError (Func String)
@@ -22,6 +22,9 @@ helperP = runParser (polyParser identifier) initialSt ""
 
 helperT :: Text -> Either ParseError (Type String)
 helperT = runParser (typeParser identifier) initialSt ""
+
+helperA :: Text -> Either ParseError (Alg String Integer)
+helperA = runParser (algParser identifier integer) initialSt ""
 
 testPoly :: Test
 testPoly = TestLabel "Poly" $
@@ -125,45 +128,73 @@ testType = TestLabel "Type" $
         actual = helperT testV
         expect = (TApp (PV $ mkId 1 "F") (TPrim "A") :: Type String)
 
-{-
+mkATest :: Text -> Alg String Integer -> Test
+mkATest t a = TestCase $ assertEqual (unpack t) expect actual
+  where
+    expect = Right a
+    actual = helperA t
+
 testAlg :: Test
 testAlg = TestLabel "Alg" $
-  TestList [ test1
-           , test2
-           ]
-  where
-    test1 = TestCase $ assertEqual expected expected actual
-      where
-        expected = "f &&& (rec [F] j k . id) ||| (h . i)"
-        actual = helper $
-          ( Case [ Split [ Var $ mkId 1 "f"
-                         , Comp [ Rec (PV $ mkId 1 "F")
-                                  (Var $ mkId 1 "j")
-                                  (Var $ mkId 1 "k")
-                                , Id
-                                ]
-                         ]
-                 , Comp [ Var $ mkId 1 "h"
-                        , Var $ mkId 1 "i"
+  TestList
+  [ mkATest "f" (Var $ mkId 1 "f")
+  , mkATest "f . g . h" $
+    Comp [ Var $ mkId 1 "f"
+         , Var $ mkId 1 "g"
+         , Var $ mkId 1 "h"
+         ]
+  , mkATest "f . (g . h)" $
+    Comp [ Var $ mkId 1 "f"
+         , Comp [ Var $ mkId 1 "g"
+                , Var $ mkId 1 "h"
+                ]
+         ]
+  , mkATest "(f . g) . h" $
+    Comp [ Comp [ Var $ mkId 1 "f"
+                , Var $ mkId 1 "g"
+                ]
+         , Var $ mkId 1 "h"
+         ]
+  , mkATest "const 1" $
+    Const (Val 1)
+  , mkATest "rec[F] f g" $
+    Rec (PV $ mkId 1 "F") (Var $ mkId 1 "f") (Var $ mkId 1 "g")
+  , mkATest "[F] f" $
+    Fmap (PV $ mkId 1 "F") (Var $ mkId 1 "f")
+  , mkATest "f . (g &&& h)" $
+    Comp [ Var $ mkId 1 "f"
+         , Split [ Var $ mkId 1 "g"
+                 , Var $ mkId 1 "h"
+                 ]
+         ]
+  , mkATest "(f . g) &&& h" $
+    Split [ Comp [ Var $ mkId 1 "f"
+                 , Var $ mkId 1 "g"
+                 ]
+          , Var $ mkId 1 "h"
+          ]
+  , mkATest "(f &&& (rec [F] j k . id)) ||| (h . i)" $
+    Case [ Split [ Var $ mkId 1 "f"
+                 , Comp [ Rec (PV $ mkId 1 "F")
+                          (Var $ mkId 1 "j")
+                          (Var $ mkId 1 "k")
+                        , Id
                         ]
                  ]
-          :: Alg String Int)
-    test2 = TestCase $ assertEqual expected expected actual
-      where
-        expected = "const (f &&& rec [F] j k) . id ||| (h . i)"
-        actual = helper $
-          (Comp [ Const $ Split [ Var $ mkId 1 "f"
-                                , Rec (PV $ mkId 1 "F")
-                                  (Var $ mkId 1 "j")
-                                  (Var $ mkId 1 "k")
-                                ]
-                , Case [ Id
-                        , Comp [ Var $ mkId 1 "h"
-                               , Var $ mkId 1 "i"
-                               ]
-                        ]
+         , Comp [ Var $ mkId 1 "h"
+                , Var $ mkId 1 "i"
                 ]
-          :: Alg String Int)
-
-
--}
+         ]
+  , mkATest "const (f &&& rec [F] j k) . (id ||| (h . i))" $
+    Comp [ Const $ Split [ Var $ mkId 1 "f"
+                         , Rec (PV $ mkId 1 "F")
+                           (Var $ mkId 1 "j")
+                           (Var $ mkId 1 "k")
+                         ]
+         , Case [ Id
+                , Comp [ Var $ mkId 1 "h"
+                       , Var $ mkId 1 "i"
+                       ]
+                ]
+         ]
+  ]
