@@ -62,3 +62,13 @@ data Alg t v
   | Out (Maybe (Func t))
   | Rec (Func t) (Alg t v) (Alg t v)
   deriving (Eq, Show)
+
+data Def t v
+  = FDef  Id (Func t)
+  | TDef  Id (Type t)
+  | ADef  Id (Alg t v)
+  | Atoms Id (Type t)
+
+newtype Prog t v
+  = Prog { getDefns :: [Def t v]
+         }
