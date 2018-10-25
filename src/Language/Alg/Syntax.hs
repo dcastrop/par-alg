@@ -5,12 +5,15 @@ module Language.Alg.Syntax
   , Func
   , Alg(..)
   , Type(..)
+  , Scheme(..)
   , tSum
   , tPrd
   , tFun
   , Def(..)
   , Prog(..)
   ) where
+
+import Data.Set ( Set )
 
 import Language.Internal.Id
 
@@ -39,6 +42,7 @@ data Type a
   | TPrd [Type a]
   | TApp (Func a) (Type a)
   | TRec (Func a)
+  | TMeta Int
   deriving (Eq, Show)
 
 tSum, tPrd, tFun :: Type a -> Type a -> Type a
@@ -48,6 +52,12 @@ tPrd (TPrd xs) y = TPrd $ xs ++ [y]
 tPrd l r = TPrd [l,r]
 tFun x (TFun ys) = TFun $ x : ys
 tFun l r = TFun [l,r]
+
+data Scheme a
+  = ForAll { scVars :: Set Id
+           , scType :: Type a
+           }
+  deriving (Eq, Show)
 
 data Alg t v
   = Var  Id
@@ -69,7 +79,7 @@ data Alg t v
 data Def t v
   = FDef  Id (Func t)
   | TDef  Id (Type t)
-  | EDef  Id (Type t) (Alg t v)
+  | EDef  Id (Scheme t) (Alg t v)
   | Atom  Id (Type t)
   deriving Show
 

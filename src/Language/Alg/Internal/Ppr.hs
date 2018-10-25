@@ -4,6 +4,7 @@ module Language.Alg.Internal.Ppr
   ( printProg
   ) where
 
+import qualified Data.Set as Set
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 
@@ -22,6 +23,7 @@ instance IsCompound (Poly a) where
 instance IsCompound (Type a) where
   isCompound TPrim{}   = False
   isCompound TVar{}    = False
+  isCompound TMeta{}   = False
   isCompound TUnit{}   = False
   isCompound TFun{}    = True
   isCompound TSum{}    = True
@@ -59,6 +61,7 @@ instance Preference (Poly a) where
 instance Preference (Type a) where
   prefLvl TPrim{} = Lvl $ -1
   prefLvl TVar{}  = Lvl $ -1
+  prefLvl TMeta{} = Lvl $ -1
   prefLvl TUnit   = Lvl $ -1
   prefLvl TRec{}  = Lvl 1
   prefLvl TApp{}  = Lvl 2
@@ -99,6 +102,7 @@ instance (IsCompound a, Pretty a) => Pretty (Poly a) where
 
 instance Pretty a => Pretty (Type a) where
   pretty (TPrim x)   = pretty x
+  pretty (TMeta x)   = hcat [pretty "?", pretty x]
   pretty (TVar x)    = pretty x
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
@@ -111,6 +115,15 @@ instance Pretty a => Pretty (Type a) where
     = hsep [pprParens f, pprParens t]
   pretty (TRec f)
     = hsep [pretty "Rec", pprParens f]
+
+instance Pretty t => Pretty (Scheme t) where
+  pretty ForAll{ scVars = vs
+               , scType = ty
+               } = hsep [ pretty "forall"
+                        , hsep pvs <> pretty ","
+                        , pretty ty
+                        ]
+    where pvs = fmap pretty $ Set.toList vs
 
 instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Var  v)   = pretty v

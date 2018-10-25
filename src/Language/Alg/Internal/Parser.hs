@@ -22,6 +22,7 @@ import Prelude hiding ( readFile )
 import Control.Monad.Identity
 import Data.Text ( Text )
 import Data.Text.IO ( readFile )
+import qualified Data.Set as Set
 import Data.Map.Strict ( Map )
 import qualified Data.Map.Strict as Map
 import System.Exit
@@ -45,10 +46,10 @@ polyDef = LanguageDef
           , identLetter     = alphaNum <|> oneOf "_'"
           , opStart         = opLetter polyDef
           , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-          , reservedOpNames = ["*", "+", "->", "&&&", "|||" , ";"]
-          , reservedNames   = ["poly", "type", "atom", "fun", -- Keywords
+          , reservedOpNames = ["*", "+", "->", "&&&", "|||" , ";", ","]
+          , reservedNames   = ["poly", "type", "atom", "fun", "forall",
                                 "const", "id", "Rec", "in", "out", --
-                               "()", "rec", "K", "I" --
+                                "()", "rec", "K", "I" --
                               ]
           , caseSensitive   = True
           }
@@ -137,24 +138,31 @@ simplePoly p
 fresh :: AlgParser t Int
 fresh = do
   st@St{freshId = i} <- getState
-  putState st { freshId = i }
+  putState st { freshId = i + 1}
   return i
 
 getId :: String -> AlgParser t Id
 getId s = do
-  st@St{ foundIds = m } <- getState
+  St{ foundIds = m } <- getState
   case Map.lookup s m of
     Nothing -> do
       i <- fresh
       let x = mkId i s
-      putState st
-        { foundIds = Map.insert s x m
-        }
+      modifyState $ \st ->
+        st { foundIds = Map.insert s x m
+           }
       return x
     Just i  -> return i
 
 idParser :: AlgParser t Id
 idParser = identifier >>= getId
+
+schemeParser :: Show a => AlgParser t a -> ParsecT Text (St t) Identity (Scheme a)
+schemeParser p = ForAll <$> option Set.empty pScVars <*> typeParser p
+  where
+    pScVars = reserved "forall"
+              *> (Set.fromList <$> many1 idParser)
+              <* reservedOp ","
 
 typeParser :: Show a => AlgParser t a -> AlgParser t (Type a)
 typeParser p = singl TFun <$> try (sepBy1 tsumParser $ reservedOp "->")
@@ -242,7 +250,7 @@ algDef :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Def a v)
 algDef pt pv =  reserved "fun" *> pDef <* reservedOp ";"
   where pDef = EDef
                <$> idParser
-               <*> (reservedOp ":" *> typeParser pt)
+               <*> (reservedOp ":" *> schemeParser pt)
                <*> (reservedOp "=" *> algParser pt pv)
 
 parseProg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Prog a v)

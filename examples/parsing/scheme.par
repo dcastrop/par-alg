@@ -1,0 +1,2 @@
+fun polymorph : forall a b c, Rec (K () + K a * I) -> Rec (K () + I)
+  = rec [K () + K a * I] (inj[0] ||| (inj[1] . proj[1])) out[K () + K a * I];
