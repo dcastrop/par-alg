@@ -1,10 +1,11 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Language.Alg.Internal.Parser
   ( AlgParser
   , keyword
   , polyParser
   , typeParser
   , algParser
-  , idParser
   , identifier
   , integer
   , initialSt
@@ -33,7 +34,7 @@ import Text.Parsec.Token ( GenTokenParser
                          )
 import qualified Text.Parsec.Token as Token
 
-import Language.Internal.Id
+import Language.Common.Id
 import Language.Alg.Syntax
 
 polyDef :: GenLanguageDef Text u Identity
@@ -54,15 +55,15 @@ polyDef = LanguageDef
           , caseSensitive   = True
           }
 
-data St t = St { freshId  :: Int
-               , foundIds :: Map String Id
+data St t = St { nextId  :: Int
+               , knownIds :: Map String Id
                , externKw :: Map String t
                }
           deriving Show
 
 initialSt :: Map String t -> St t
-initialSt m = St { freshId = 1
-                 , foundIds = Map.empty
+initialSt m = St { nextId = 1
+                 , knownIds = Map.empty
                  , externKw = m
                  }
 
@@ -71,6 +72,17 @@ polyLexer :: GenTokenParser Text (St t) Identity
 polyLexer = makeTokenParser polyDef
 
 type AlgParser t = ParsecT Text (St t) Identity
+
+instance IdGen (AlgParser t) where
+  fresh = do
+    st@St { nextId = i } <- getState
+    putState st { nextId = 1 + i }
+    return i
+  newId i = modifyState $ \st ->
+    st { knownIds = Map.insert (getLbl i) i $ knownIds st }
+  lookupId s = do
+    St { knownIds = m } <- getState
+    return $ Map.lookup s m
 
 identifier ::  AlgParser t String
 identifier = Token.identifier     polyLexer >>= \i -> do
@@ -128,40 +140,24 @@ simplePoly :: Show a => AlgParser t a -> AlgParser t (Func a)
 simplePoly p
   =   try pI
   <|> try pK
-  <|> try (PV <$> idParser)
+  <|> try (PV <$> knownIdParser)
   <|> parens (polyParser p)
   <?> "atomic polynomial"
   where
     pI = reserved "I" *> pure PI
     pK = reserved "K" *> pure PK <*> (simpleType p)
 
-fresh :: AlgParser t Int
-fresh = do
-  st@St{freshId = i} <- getState
-  putState st { freshId = i + 1}
-  return i
+newIdParser :: AlgParser t Id
+newIdParser = identifier >>= freshId
 
-getId :: String -> AlgParser t Id
-getId s = do
-  St{ foundIds = m } <- getState
-  case Map.lookup s m of
-    Nothing -> do
-      i <- fresh
-      let x = mkId i s
-      modifyState $ \st ->
-        st { foundIds = Map.insert s x m
-           }
-      return x
-    Just i  -> return i
-
-idParser :: AlgParser t Id
-idParser = identifier >>= getId
+knownIdParser :: AlgParser t Id
+knownIdParser = identifier >>= freshId
 
 schemeParser :: Show a => AlgParser t a -> ParsecT Text (St t) Identity (Scheme a)
 schemeParser p = ForAll <$> option Set.empty pScVars <*> typeParser p
   where
     pScVars = reserved "forall"
-              *> (Set.fromList <$> many1 idParser)
+              *> (Set.fromList <$> many1 newIdParser)
               <* reservedOp ","
 
 typeParser :: Show a => AlgParser t a -> AlgParser t (Type a)
@@ -185,7 +181,7 @@ simpleType p
   <?> "Atomic type"
   where
     pPrim = TPrim <$> p
-    pVar  = TVar <$> idParser
+    pVar  = TVar <$> knownIdParser
     pUnit = parens (return TUnit)
     pRec  = reserved "Rec" *> (TRec <$> simplePoly p)
     pApp  = TApp <$> simplePoly p <*> simpleType p
@@ -223,7 +219,7 @@ aAlg pt pv
   <|> parens (algParser pt pv)
   <?> "Atomic expression"
   where
-    pVar  = Var <$> idParser
+    pVar  = Var <$> knownIdParser
     pVal  = Val <$> pv
     pUnit = parens (return Unit)
     pId   = reserved "id" >> pure Id
@@ -236,20 +232,20 @@ aAlg pt pv
 
 atomDef :: Show a => AlgParser t a -> AlgParser t (Def a v)
 atomDef pt =  reserved "atom" *> pDef <* reservedOp ";"
-  where pDef = Atom <$> idParser <*> (reservedOp ":" *> typeParser pt)
+  where pDef = Atom <$> newIdParser <*> (reservedOp ":" *> typeParser pt)
 
 functorDef :: Show a => AlgParser t a -> AlgParser t (Def a v)
 functorDef pt =  reserved "poly" *> pDef <* reservedOp ";"
-  where pDef = FDef <$> idParser <*> (reservedOp "=" *> polyParser pt)
+  where pDef = FDef <$> newIdParser <*> (reservedOp "=" *> polyParser pt)
 
 typeDef :: Show a => AlgParser t a -> AlgParser t (Def a v)
 typeDef pt =  reserved "type" *> pDef <* reservedOp ";"
-  where pDef = TDef <$> idParser <*> (reservedOp "=" *> typeParser pt)
+  where pDef = TDef <$> newIdParser <*> (reservedOp "=" *> typeParser pt)
 
 algDef :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Def a v)
 algDef pt pv =  reserved "fun" *> pDef <* reservedOp ";"
   where pDef = EDef
-               <$> idParser
+               <$> newIdParser
                <*> (reservedOp ":" *> schemeParser pt)
                <*> (reservedOp "=" *> algParser pt pv)
 
