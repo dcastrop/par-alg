@@ -163,8 +163,8 @@ schemeParser p = ForAll <$> option Set.empty pScVars <*> typeParser p
 typeParser :: Show a => AlgParser t a -> AlgParser t (Type a)
 typeParser p = singl TFun <$> try (sepBy1 tsumParser $ reservedOp "->")
   where
-    tsumParser = singl TSum <$> sepBy1 tprodParser (reservedOp "+")
-    tprodParser = singl TPrd <$> sepBy1 (simpleType p) (reservedOp "*")
+    tsumParser = singl (`TSum` Nothing) <$> sepBy1 tprodParser (reservedOp "+")
+    tprodParser = singl (`TPrd` Nothing) <$> sepBy1 (simpleType p) (reservedOp "*")
 
 singl :: ([a] -> a) -> [a] -> a
 singl _f [x] = x
@@ -226,9 +226,9 @@ aAlg pt pv
     pProj = reserved "proj" >> Proj <$> brackets natural
     pInj  = reserved "inj" >> Inj <$> brackets natural
     pIn   = reserved "in" >>
-      In <$> option Nothing (Just <$> brackets (polyParser pt))
+      In <$> choice [try $ brackets $ polyParser pt, PMeta <$> fresh]
     pOut  = reserved "out" >>
-      Out <$> option Nothing (Just <$> brackets (polyParser pt))
+      Out <$> choice [try $ brackets $ polyParser pt, PMeta <$> fresh]
 
 atomDef :: Show a => AlgParser t a -> AlgParser t (Def a v)
 atomDef pt =  reserved "atom" *> pDef <* reservedOp ";"

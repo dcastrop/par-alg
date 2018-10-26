@@ -2,6 +2,8 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 module Language.Alg.Internal.Ppr
   ( printProg
+  , render
+  , IsCompound ()
   ) where
 
 import qualified Data.Set as Set
@@ -52,11 +54,12 @@ class Preference a where
   prefLvl :: a -> Lvl
 
 instance Preference (Poly a) where
-  prefLvl PI     = Lvl $ -1
-  prefLvl PK{}   = Lvl $ -1
-  prefLvl PV{}   = Lvl $ -1
-  prefLvl PPrd{} = Lvl 4
-  prefLvl PSum{} = Lvl 5
+  prefLvl PI      = Lvl $ -1
+  prefLvl PK{}    = Lvl $ -1
+  prefLvl PV{}    = Lvl $ -1
+  prefLvl PMeta{} = Lvl $ -1
+  prefLvl PPrd{}  = Lvl 4
+  prefLvl PSum{}  = Lvl 5
 
 instance Preference (Type a) where
   prefLvl TPrim{} = Lvl $ -1
@@ -95,6 +98,7 @@ instance (IsCompound a, Pretty a) => Pretty (Poly a) where
     where aux = if isCompound x then parens (pretty x) else pretty x
   pretty (PV v)      = pretty v
   pretty PI          = pretty "I"
+  pretty (PMeta i)   = hcat [pretty "?", pretty i]
   pretty f@(PPrd fs)
     = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl f)) fs
   pretty f@(PSum fs)
@@ -107,10 +111,10 @@ instance Pretty a => Pretty (Type a) where
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
     = hsep $ punctuate (pretty " ->") $ fmap (prettyLvl (prefLvl t)) ts
-  pretty t@(TSum ts)
-    = hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) ts
-  pretty t@(TPrd ts)
-    = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) ts
+  pretty t@(TSum ts _)
+    = hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) $ ts
+  pretty t@(TPrd ts _)
+    = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) $ ts
   pretty (TApp f t)
     = hsep [pprParens f, pprParens t]
   pretty (TRec f)
@@ -141,8 +145,8 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Case es)
     = hsep $ punctuate (pretty " |||") $ fmap pprParens es
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
-  pretty (In f)     = hcat [pretty "in", maybe emptyDoc (brackets . pretty) f]
-  pretty (Out f)    = hcat [pretty "out", maybe emptyDoc (brackets . pretty) f]
+  pretty (In f)     = hcat [pretty "in", brackets $ pretty f]
+  pretty (Out f)    = hcat [pretty "out", brackets $ pretty f]
   pretty (Rec f e1 e2)
     = hsep [pretty "rec", brackets (pretty f), pprParens e1, pprParens e2]
 
@@ -178,3 +182,6 @@ instance (Pretty t, Pretty v) => Pretty (Prog t v) where
 
 printProg :: (Pretty t, Pretty v) => Prog t v -> IO ()
 printProg = putStrLn . renderString . layoutSmart defaultLayoutOptions . pretty
+
+render :: Pretty v => v -> String
+render = renderString . layoutSmart defaultLayoutOptions . pretty

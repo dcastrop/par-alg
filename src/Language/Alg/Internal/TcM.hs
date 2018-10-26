@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Language.Alg.Internal.TcM
   ( TcM
+  , lookupVar
   , localTc
   , initSt
   , generalise
@@ -47,6 +48,12 @@ initSt s = St { nextId = Parser.nextId s
               }
 
 type TcM t = RWS () [Text] (St t)
+
+lookupVar :: Id -> TcM t (Scheme t)
+lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->
+  case i of
+    Just sc -> return sc
+    Nothing -> fail $ "Variable not in scope: " ++ getLbl x
 
 newPoly :: Id -> Func t -> TcM t ()
 newPoly i f = modify $ \st ->
@@ -107,25 +114,29 @@ generalise x = uncurry ForAll <$> genTv env x
 instance Generalise m t => Generalise m (Poly t) where
   genTv env = go
     where
-      go (PK t)   = second PK <$> genTv env t
-      go e@PI     = pure (Set.empty, e)
-      go e@PV{}   = pure (Set.empty, e)
-      go (PPrd t) = (Set.unions *** PPrd) . unzip <$> mapM go t
-      go (PSum t) = (Set.unions *** PSum) . unzip <$> mapM go t
+      go (PK t)    = second PK <$> genTv env t
+      go e@PI      = pure (Set.empty, e)
+      go e@PV{}    = pure (Set.empty, e)
+      go e@PMeta{} = pure (Set.empty, e)
+      go (PPrd t)  = (Set.unions *** PPrd) . unzip <$> mapM go t
+      go (PSum t)  = (Set.unions *** PSum) . unzip <$> mapM go t
+
+unzipT :: (a, b) -> (c, d) -> ((a,c), (b,d))
+unzipT (a, b) (c, d) = ((a,c), (b,d))
 
 instance Generalise (TcM t) (Type t) where
   genTv env = go
     where
-      go e@TPrim{}  = pure (Set.empty, e)
-      go v@TVar{}   = pure (Set.empty, v)
-      go e@TUnit{}  = pure (Set.empty, e)
-      go (TFun ts)  = (Set.unions *** TFun) . unzip <$> mapM go ts
-      go (TSum ts)  = (Set.unions *** TSum) . unzip <$> mapM go ts
-      go (TPrd ts)  = (Set.unions *** TPrd) . unzip <$> mapM go ts
-      go (TApp f t) = (\ (ix, x) (iy, y) -> (ix `Set.union` iy, TApp x y))
-                      <$> genTv env f <*> go t
-      go (TRec f)   = second TRec <$> genTv env f
-      go (TMeta i)  = (Set.singleton &&& TVar) <$> freshId (env LazyMap.! i)
+      go e@TPrim{}   = pure (Set.empty, e)
+      go v@TVar{}    = pure (Set.empty, v)
+      go e@TUnit{}   = pure (Set.empty, e)
+      go (TFun ts)   = (Set.unions *** TFun) . unzip <$> mapM go ts
+      go (TSum ts r) = (Set.unions *** (`TSum` r)) . unzip <$> mapM go ts
+      go (TPrd ts r) = (Set.unions *** (`TPrd` r)) . unzip <$> mapM go ts
+      go (TApp f t)  = ((uncurry Set.union *** uncurry TApp) .) . unzipT
+                       <$> genTv env f <*> go t
+      go (TRec f)    = second TRec <$> genTv env f
+      go (TMeta i)   = (Set.singleton &&& TVar) <$> freshId (env LazyMap.! i)
 
 skolemise :: Ftv t => Scheme t -> TcM t (Type t)
 skolemise ForAll{scVars=vs, scType=ty}
