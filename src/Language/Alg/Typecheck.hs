@@ -135,23 +135,22 @@ typeOf s (Rec f e1 e2) t = do
   s'' <- typeOf s' e2 (a `tFun` TApp f a)
   typeOf s'' e1 (TApp f b `tFun` b)
 
-unifyPoly :: (Eq t, Pretty t, IsCompound t) => Poly t -> Poly t -> TcM a (Env (Poly t))
-unifyPoly p          x@(PMeta i)
+unifyPoly :: (Eq t, Pretty t, IsCompound t)
+          => SEnv t
+          -> Func t
+          -> Func t
+          -> TcM t (SEnv t)
+unifyPoly s p          x@(PMeta i)
   | i `Set.member` metaVars p = fail $ "Occurs check, cannot unify '"
                                 ++ render x ++ "' with '" ++ render p ++ "'"
-  | otherwise = pure $ Map.insert i p emptySubst -- ^ metavariables
-unifyPoly x@(PMeta i)  p
-  | i `Set.member` metaVars p = fail $ "Occurs check, cannot unify '"
-                                ++ render x ++ "' with '" ++ render p ++ "'"
-  | otherwise = pure $ Map.insert i p emptySubst
-unifyPoly (PPrd ps1) (PPrd ps2)
-  = foldM (\s (l, r) -> Map.union s <$> unifyPoly l (substPoly s r)) emptySubst $
-    zip ps1 ps2
-unifyPoly (PSum ps1) (PSum ps2)
-  = foldM (\s (l, r) -> Map.union s <$> unifyPoly l (substPoly s r)) emptySubst $
-    zip ps1 ps2
-unifyPoly t1    t2
-  | t1 == t2   = return emptySubst
+  | Just p' <- Map.lookup i (fst s) = unifyPoly s p p'
+  | otherwise = pure $ (Map.insert i p $ fst s, snd s)
+unifyPoly s x@PMeta{}  p = unifyPoly s p x
+unifyPoly s (PPrd ps1) (PPrd ps2) = foldM (uncurry . unifyPoly) s $ zip ps1 ps2
+unifyPoly s (PSum ps1) (PSum ps2) = foldM (uncurry . unifyPoly) s $ zip ps1 ps2
+unifyPoly s (PK t1)    (PK t2)    = unify s t1 t2
+unifyPoly s t1    t2
+  | t1 == t2   = return s
   | otherwise = fail $ "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
 --
 --unifyP :: (Eq t, Pretty t) => Func t -> Func t -> TcM t (Env (Type t))
@@ -217,14 +216,13 @@ unify s0 t1@(TPrd ts1 mii) t2@(TPrd ts2 mjj)
   where
     (ts, m) = zipD ts1 ts2
     msg = "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
---unify s0 (TApp f1 t1) (TApp f2 t2) = do
---  sp <- unifyPoly (fst s0) f1 f2
---  s1 <- unifyP f1 (substPoly sp f2)
---  s2 <- unify t1 (subst s1 t2)
---  return $ Map.union s1 s2
---unify (TRec f1) (TRec f2) = do
---  sp <- unifyPoly f1 f2
---  unifyP f1 (substPoly sp f2)
+unify s0 (TApp f1 t1) (TApp f2 t2) = do
+  s1 <- unifyPoly s0 f1 f2
+  t1' <- appPoly (substPoly s1 f1) t1
+  t2' <- appPoly (substPoly s1 f2) t2
+  unify s1 t1' t2'
+unify s0 (TRec f1) (TRec f2) = do
+  unifyPoly f1 f2 s0
 unify s t1 t2
   | t1 == t2   = pure s
   | otherwise = fail $ "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
@@ -239,10 +237,19 @@ unifyTail :: (Eq t, Pretty t)
           -> Maybe Int
           -> Maybe Int
           -> TcM t (SEnv t)
-unifyTail _      spr s None Nothing  Nothing  = return s
+unifyTail _      _   s None Nothing  Nothing  = return s
 unifyTail _      spr s None (Just i) mj       = unify s (spr [] mj) (TMeta i)
 unifyTail _      spr s None mi (Just j)       = unify s (spr [] mi) (TMeta j)
 unifyTail _      spr s (JLeft l) mi (Just j)  = unify s (spr l  mi) (TMeta j)
 unifyTail msgerr _   _ (JLeft _) _  Nothing   = fail msgerr
 unifyTail _      spr s (JRight l) (Just i) mj = unify s (spr l  mj) (TMeta i)
 unifyTail msgerr _   _ (JRight _) Nothing  _  = fail msgerr
+
+-- appPoly :: Func t -> Type t -> TcM t (Type t)
+-- appPoly
+--   = PK a
+--   | PV Id
+--   | PI
+--   | PPrd [Poly a]
+--   | PSum [Poly a]
+--   | PMeta Int -- ^ metavariables
