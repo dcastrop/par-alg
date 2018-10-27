@@ -6,7 +6,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Language.Alg.Internal.TcM
   ( TcM
+  , TcSt (..)
+  , execTcM
   , lookupVar
+  , lookupPoly
   , localTc
   , initSt
   , generalise
@@ -19,8 +22,11 @@ module Language.Alg.Internal.TcM
   , exprDefined
   ) where
 
+import Prelude hiding ( putStrLn )
+
 import Control.Arrow
 import Data.Text ( Text )
+import Data.Text.IO ( putStrLn )
 import Data.Map.Strict ( Map )
 import qualified Data.Map.Strict as Map
 import qualified Data.Map.Lazy as LazyMap
@@ -31,29 +37,36 @@ import Control.Monad.RWS.Strict
 import Language.Common.Id
 import Language.Alg.Syntax
 import qualified Language.Alg.Internal.Parser as Parser
+import Language.Alg.Internal.Ppr ( render )
 
-data St t = St { nextId   :: Int
-               , knownIds :: !(Map String Id)
-               , fDefns   :: !(Map Id (Func t))
-               , tDefns   :: !(Map Id (Type t))
-               , gamma    :: !(Map Id (Scheme t))
-               }
+data TcSt t = TcSt { nextId   :: Int
+                   , knownIds :: !(Map String Id)
+                   , fDefns   :: !(Map Id (Func t))
+                   , tDefns   :: !(Map Id (Type t))
+                   , gamma    :: !(Map Id (Scheme t))
+                   }
 
-initSt :: Parser.St t -> St t
-initSt s = St { nextId = Parser.nextId s
-              , knownIds = Parser.knownIds s
-              , fDefns = Map.empty
-              , tDefns = Map.empty
-              , gamma = Map.empty
-              }
+initSt :: Parser.St t -> TcSt t
+initSt s = TcSt { nextId = Parser.nextId s
+                , knownIds = Parser.knownIds s
+                , fDefns = Map.empty
+                , tDefns = Map.empty
+                , gamma = Map.empty
+                }
 
-type TcM t = RWS () [Text] (St t)
+type TcM t = RWS () [Text] (TcSt t)
+
+execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
+execTcM s m = mapM_ putStrLn w *> pure st
+  where (st, w) = execRWS m () (initSt s)
+
 
 lookupVar :: Id -> TcM t (Scheme t)
 lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->
   case i of
     Just sc -> return sc
     Nothing -> fail $ "Variable not in scope: " ++ getLbl x
+
 
 newPoly :: Id -> Func t -> TcM t ()
 newPoly i f = modify $ \st ->
@@ -69,19 +82,24 @@ newFun i f = modify $ \st ->
 
 polyDefined :: Id -> TcM t ()
 polyDefined i = get >>= \st ->
-  maybe (fail $ "Undefined: " ++ getLbl i)
+  maybe (fail $ "Undefined functor: " ++ render i)
   (const $ return ())
+  $ i `Map.lookup` fDefns st
+
+lookupPoly :: Id -> TcM t (Func t)
+lookupPoly i = get >>= \st ->
+  maybe (fail $ "Undefined functor '" ++ render i ++ "'") pure
   $ i `Map.lookup` fDefns st
 
 typeDefined :: Id -> TcM t ()
 typeDefined i = get >>= \st ->
-  maybe (fail $ "Undefined: " ++ getLbl i)
+  maybe (fail $ "Undefined type: " ++ render i)
   (const $ return ())
   $ i `Map.lookup` tDefns st
 
 exprDefined :: Id -> TcM t ()
 exprDefined i = get >>= \st ->
-  maybe (fail $ "Undefined: " ++ getLbl i)
+  maybe (fail $ "Undefined expression: " ++ render i)
   (const $ return ())
   $ i `Map.lookup` gamma st
 
@@ -95,13 +113,13 @@ localTc m = do
 
 instance IdGen (TcM t) where
   fresh = do
-    s@St{nextId=i} <- get
+    s@TcSt{nextId=i} <- get
     put s{nextId=i+1}
     return i
   newId i = modify $ \st ->
     st { knownIds = Map.insert (getLbl i) i $ knownIds st }
   lookupId s = do
-    St { knownIds = m } <- get
+    TcSt { knownIds = m } <- get
     return $ Map.lookup s m
 
 class IdGen m => Generalise m a where

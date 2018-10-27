@@ -151,7 +151,7 @@ newIdParser :: AlgParser t Id
 newIdParser = identifier >>= freshId
 
 knownIdParser :: AlgParser t Id
-knownIdParser = identifier >>= freshId
+knownIdParser = identifier >>= knownId
 
 schemeParser :: Show a => AlgParser t a -> ParsecT Text (St t) Identity (Scheme a)
 schemeParser p = ForAll <$> option Set.empty pScVars <*> typeParser p

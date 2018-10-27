@@ -8,6 +8,8 @@ module Language.Alg.Typecheck
   , TypeOf (..)
   , checkProg
   , checkDef
+  , execTcM
+  , appPoly
   ) where
 
 import Control.Arrow ( (***) )
@@ -26,12 +28,18 @@ import Language.Alg.Internal.Ppr
 type SEnv t = (Env (Func t), Env (Type t))
 
 class TypeOf t v a | a -> t where
-  checkType :: Env a -> v -> a -> TcM t (Env a)
+  getType :: Env (Type a) -> v -> TcM t a
 
 class KindChecker t where
   checkKind :: Set Id -> t -> TcM a ()
 
-type Prim v t = (KindChecker t, Eq t, Pretty t, Pretty v, Ftv t, TypeOf t v (Type t))
+type Prim v t = ( KindChecker t
+                , Eq t
+                , Pretty t
+                , Pretty v
+                , Ftv t
+                , IsCompound t
+                , TypeOf t v t)
 
 checkProg :: Prim v t => Prog t v -> TcM t ()
 checkProg = mapM_ checkDef . getDefns
@@ -74,7 +82,7 @@ typeOf s (Var x      ) t
   = lookupVar x >>= skolemise >>= (`unif` t)
   where unif = unify s
 typeOf s (Val v      ) t
-  = checkType (snd s) v t >>= \s' -> return (fst s, s')
+  = getType (snd s) v >>= (unify s t . TPrim)
 typeOf s (Const e    ) t
   = do t1 <- TMeta <$> fresh
        t2 <- TMeta <$> fresh
@@ -92,8 +100,8 @@ typeOf s (Comp es    ) t
     go s0 [e]     d  c = typeOf s0 e (d `tFun` c)
     go s0 (x:xs)  d  c = do
       ti <- TMeta <$> fresh
-      s1 <- go s0 xs d ti
-      typeOf s1 x (ti `tFun` c)
+      s1 <- typeOf s0 x (ti `tFun` c)
+      go s1 xs d ti
 typeOf s (Id         ) t = do
   t1 <- TMeta <$> fresh
   unify s t (t1 `tFun` t1)
@@ -196,7 +204,7 @@ zipF xs ys =
 -- app (PMeta i       ) _ = fail
 --   "Cannot apply "
 
-unify :: (Eq t, Pretty t) => SEnv t -> Type t -> Type t -> TcM t (SEnv t)
+unify :: (Eq t, Pretty t, IsCompound t) => SEnv t -> Type t -> Type t -> TcM t (SEnv t)
 unify s t x@(TMeta i)
   | Just t' <- Map.lookup i (snd s)  = unify s t t'
   | i `Set.member` metaVars t = fail $ "Occurs check, cannot unify '"
@@ -218,18 +226,22 @@ unify s0 t1@(TPrd ts1 mii) t2@(TPrd ts2 mjj)
     msg = "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
 unify s0 (TApp f1 t1) (TApp f2 t2) = do
   s1 <- unifyPoly s0 f1 f2
-  t1' <- appPoly (substPoly s1 f1) t1
-  t2' <- appPoly (substPoly s1 f2) t2
-  unify s1 t1' t2'
+  unify s1 t1 t2
+unify s0 (TApp f1 t1) t2 = do
+  t1' <- appPoly (substPoly (fst s0) f1) t1
+  unify s0 t1' t2
+unify s0 t2 (TApp f1 t1) = do
+  t1' <- appPoly (substPoly (fst s0) f1) t1
+  unify s0 t2 t1'
 unify s0 (TRec f1) (TRec f2) = do
-  unifyPoly f1 f2 s0
+  unifyPoly s0 f1 f2
 unify s t1 t2
   | t1 == t2   = pure s
-  | otherwise = fail $ "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
+  | otherwise = fail $ "Cannot unify '" ++ render (subst (snd s) t1) ++ "' with '" ++ render (subst (snd s) t2) ++ "'"
 
 
 -- Unify products/sums with different num of elements
-unifyTail :: (Eq t, Pretty t)
+unifyTail :: (Eq t, Pretty t, IsCompound t)
           => String
           -> ([Type t] -> Maybe Int -> Type t)
           -> SEnv t
@@ -245,11 +257,10 @@ unifyTail msgerr _   _ (JLeft _) _  Nothing   = fail msgerr
 unifyTail _      spr s (JRight l) (Just i) mj = unify s (spr l  mj) (TMeta i)
 unifyTail msgerr _   _ (JRight _) Nothing  _  = fail msgerr
 
--- appPoly :: Func t -> Type t -> TcM t (Type t)
--- appPoly
---   = PK a
---   | PV Id
---   | PI
---   | PPrd [Poly a]
---   | PSum [Poly a]
---   | PMeta Int -- ^ metavariables
+appPoly :: Pretty t => Func t -> Type t -> TcM t (Type t)
+appPoly (PK t)    _ = pure t
+appPoly (PV v)    t = lookupPoly v >>= (`appPoly` t)
+appPoly PI        t = pure t
+appPoly (PPrd ps) t = TPrd <$> mapM (`appPoly` t) ps <*> pure Nothing
+appPoly (PSum ps) t = TSum <$> mapM (`appPoly` t) ps <*> pure Nothing
+appPoly x@PMeta{} t = fail $ "Ambiguous type '" ++ render (TApp x t) ++ "'"
