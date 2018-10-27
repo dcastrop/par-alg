@@ -20,6 +20,7 @@ module Language.Alg.Syntax
   , Prog(..)
   ) where
 
+import Control.Arrow ( (***) )
 import Data.Set ( Set )
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -116,8 +117,34 @@ instance Subst (Type a) (Type a) where
       go x@TVar{}    = x
       go x@TUnit{}   = x
       go (TFun ts)   = TFun $ map go ts
-      go (TSum ts t) = TSum (map go ts) t
-      go (TPrd ts t) = TPrd (map go ts) t
+      -- XXX: careful, substitutions of sums and prods may extend the number
+      -- of elements. See unification rules
+      go (TSum ts t) = TSum (map go $ ts ++ ts') $ mt
+        where
+          (mt, ts') = aux t
+          aux Nothing = (Nothing, [])
+          aux j@(Just i)
+            | Just (TSum ts1 t') <- Map.lookup i e
+            = (id *** (ts1 ++)) $ aux t'
+            | Just (TMeta t') <- Map.lookup i e
+            = aux (Just t')
+            | Just t1 <- Map.lookup i e
+            = (Nothing, [t1])
+            | otherwise
+            = (j, [])
+      go (TPrd ts t) = TPrd (map go $ ts ++ ts') $ mt
+        where
+          (mt, ts') = aux t
+          aux Nothing = (Nothing, [])
+          aux j@(Just i)
+            | Just (TPrd ts1 t') <- Map.lookup i e
+            = (id *** (ts1 ++)) $ aux t'
+            | Just (TMeta t') <- Map.lookup i e
+            = aux (Just t')
+            | Just t1 <- Map.lookup i e
+            = (Nothing, [t1])
+            | otherwise
+            = (j, [])
       go (TApp f t)  = TApp (subst e f) $ go t
       go (TRec f)    = TRec $ subst e f
       go x@(TMeta i)
