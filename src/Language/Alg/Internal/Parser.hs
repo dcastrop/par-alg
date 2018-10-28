@@ -9,6 +9,7 @@ module Language.Alg.Internal.Parser
   , identifier
   , integer
   , initialSt
+  , testSt
   , algDef
   , functorDef
   , atomDef
@@ -61,12 +62,17 @@ data St t = St { nextId  :: Int
                }
           deriving Show
 
+testSt :: Int -> Map String Id -> Map String t -> St t
+testSt i m1 m2 = St { nextId = i
+                    , knownIds = m1
+                    , externKw = m2
+                    }
+
 initialSt :: Map String t -> St t
 initialSt m = St { nextId = 1
                  , knownIds = Map.empty
                  , externKw = m
                  }
-
 
 polyLexer :: GenTokenParser Text (St t) Identity
 polyLexer = makeTokenParser polyDef
@@ -199,8 +205,8 @@ simpleAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
 simpleAlg pt pv
   =   try (reserved "const" *> (Const <$> aAlg pt pv))
   <|> try (reserved "rec" *> (Rec <$> brackets (polyParser pt)
-                             <*> aAlg pt pv
-                             <*> aAlg pt pv))
+                               <*> aAlg pt pv
+                               <*> aAlg pt pv))
   <|> try pFmap
   <|> aAlg pt pv
   where

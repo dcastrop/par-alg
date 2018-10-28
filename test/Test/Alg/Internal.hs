@@ -125,10 +125,23 @@ ppr :: Pretty a => a -> String
 ppr = renderString . layoutCompact . pretty
 
 parseP :: Text -> Either ParseError (Func String)
-parseP = runParser (polyParser identifier) (initialSt Map.empty) ""
+parseP = runParser (polyParser identifier) testState ""
 
 parseT :: Text -> Either ParseError (Type String)
-parseT = runParser (typeParser identifier) (initialSt Map.empty) ""
+parseT = runParser (typeParser identifier) testState ""
 
 parseA :: Text -> Either ParseError (Alg String Integer)
-parseA = runParser (algParser identifier integer) (initialSt Map.empty) ""
+parseA = runParser (algParser identifier integer) testState ""
+
+testState :: St String
+testState = testSt 9 l Map.empty
+  where l = Map.fromList
+            [ ("f", mkId 1 "f")
+            , ("g", mkId 2 "g")
+            , ("h", mkId 3 "h")
+            , ("F", mkId 4 "F")
+            , ("G", mkId 5 "G")
+            , ("H", mkId 6 "H")
+            , ("i", mkId 7 "i")
+            , ("j", mkId 8 "j")
+            ]
