@@ -1,0 +1,35 @@
+fun testId : forall a, a -> a
+  = id;
+
+poly P = K (() + int) + I * I;
+
+fun testInOut : Rec P -> Rec P
+  = in . out;
+
+fun testInOut : P Rec P -> P Rec P
+  = out . in;
+
+poly L = K () + K int * I;
+
+poly N = K () + I;
+
+fun length : Rec L -> Rec L
+  = rec [L] (in . (inj[0] ||| inj[1])) out;
+
+fun length : Rec L -> Rec L
+  = rec [L] in ((inj[0] ||| inj[1]) . out);
+
+fun length : Rec L -> Rec N
+  = rec [L] (in . (inj[0] ||| (inj[1] . proj[1]))) out;
+
+fun length : Rec L -> Rec N
+  = rec [N] in ((inj[0] ||| (inj[1] . proj[1])) . out);
+//
+//atom split : Rec L -> P Rec L;
+//
+//
+//atom merge : P Rec L -> Rec L;
+//
+//fun ms : Rec L -> Rec L
+//  = rec [P] merge split;
+

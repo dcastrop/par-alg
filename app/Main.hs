@@ -5,8 +5,14 @@ import System.Exit
 
 import Language.Alg.C
 
+
 compile :: FilePath -> IO ()
-compile f = parseFile f >>= \(_st, p) ->
+compile f = do
+  putStrLn $ "Compiling: " ++ f
+  putStrLn "\tparsing"
+  t@(_, p) <- parseFile f
+  putStrLn "\ttypechecking"
+  _ <- uncurry typecheck t
   printProg p
 
 compileAll :: [FilePath] -> IO ()

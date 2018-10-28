@@ -65,23 +65,23 @@ testType = TestLabel "Type" $
         actual = helper $ (TSum [ TUnit
                                 , TPrd [ TPrim "a"
                                        , TRec (PV $ mkId 1 "F")
-                                       ]
-                                ] :: Type String)
+                                       ] Nothing
+                                ] Nothing :: Type String)
     test2 = TestCase $ assertEqual expected expected actual
       where
         expected = "b * (a + ()) * (Rec F -> a) -> c"
         actual = helper $ (TFun [ TPrd [TPrim "b"
-                                       , TSum [TPrim "a", TUnit]
+                                       , TSum [TPrim "a", TUnit] Nothing
                                        , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
-                                       ]
+                                       ] Nothing
                                 , TPrim "c"
                                 ] :: Type String)
     test3 = TestCase $ assertEqual expected expected actual
       where
         expected = "a * b + c -> g"
-        actual = helper $ (TFun [ TSum [ TPrd [TPrim "a", TPrim "b"]
+        actual = helper $ (TFun [ TSum [ TPrd [TPrim "a", TPrim "b"] Nothing
                                        , TPrim "c"
-                                       ]
+                                       ] Nothing
                                 , TPrim "g"
                                 ] :: Type String)
 

@@ -18,14 +18,28 @@ suite = TestLabel "Parser" $
                  , testAlg
                  ]
 
+testState :: St String
+testState = testSt 10 l Map.empty
+  where l = Map.fromList
+            [ ("f", mkId 1 "f")
+            , ("g", mkId 2 "g")
+            , ("h", mkId 3 "h")
+            , ("F", mkId 4 "F")
+            , ("G", mkId 5 "G")
+            , ("H", mkId 6 "H")
+            , ("i", mkId 7 "i")
+            , ("j", mkId 8 "j")
+            , ("k", mkId 9 "k")
+            ]
+
 helperP :: Text -> Either ParseError (Func String)
-helperP = runParser (polyParser identifier) (initialSt Map.empty) ""
+helperP = runParser (polyParser identifier) testState ""
 
 helperT :: Text -> Either ParseError (Type String)
-helperT = runParser (typeParser identifier) (initialSt Map.empty) ""
+helperT = runParser (typeParser identifier) testState ""
 
 helperA :: Text -> Either ParseError (Alg String Integer)
-helperA = runParser (algParser identifier integer) (initialSt Map.empty) ""
+helperA = runParser (algParser identifier integer) testState ""
 
 testPoly :: Test
 testPoly = TestLabel "Poly" $
@@ -35,28 +49,28 @@ testPoly = TestLabel "Poly" $
            , test4
            ]
   where
-    test1 = TestCase $ assertEqual (unpack testV) (Right expected) actual
+    test1 = TestCase $ assertEqual (unpack testV) (show expected) actual
       where
         testV = "K () + K a * I"
-        actual = helperP testV
+        actual = either show show $ helperP testV
         expected = PSum [ PK TUnit
                         , PPrd [ PK (TPrim "a")
                                , PI
                                ]
                         ] :: Func String
-    test2 = TestCase $ assertEqual (unpack testV) (Right expected) actual
+    test2 = TestCase $ assertEqual (unpack testV) (show expected) actual
       where
         testV = "(K a + K ()) + I * I"
-        actual = helperP testV
+        actual = either show show $ helperP testV
         expected = PSum [ PSum [ PK (TPrim "a")
                                , PK TUnit
                                ]
                         , PPrd [PI, PI]
                         ] :: Func String
-    test3 = TestCase $ assertEqual (unpack testV) (Right expected) actual
+    test3 = TestCase $ assertEqual (unpack testV) (show expected) actual
       where
         testV = "K a + (K () + I) * I"
-        actual   = helperP testV
+        actual   = either show show $ helperP testV
         expected = PSum [ PK (TPrim "a")
                         , PPrd [ PSum [ PK TUnit
                                       , PI
@@ -64,10 +78,10 @@ testPoly = TestLabel "Poly" $
                                , PI
                                ]
                         ] :: Func String
-    test4 = TestCase $ assertEqual (unpack testV) (Right expected) actual
+    test4 = TestCase $ assertEqual (unpack testV) (show expected) actual
       where
         testV = "K a + K () + I * I"
-        actual = helperP testV
+        actual = either show show $ helperP testV
         expected = PSum [ PK (TPrim "a")
                         , PK TUnit
                         , PPrd [PI, PI]
@@ -82,58 +96,58 @@ testType = TestLabel "Type" $
            , test6
            ]
   where
-    test1 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+    test1 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV = "() + a * Rec F"
-        actual = helperT testV
+        actual = either show show $ helperT testV
         expect = (TSum [ TUnit
                        , TPrd [ TPrim "a"
                               , TRec (PV $ mkId 1 "F")
-                              ]
-                       ] :: Type String)
-    test2 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+                              ] Nothing
+                       ] Nothing :: Type String)
+    test2 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV = "b * (a + ()) * (Rec F -> a) -> c"
-        actual = helperT testV
+        actual = either show show $ helperT testV
         expect = (TFun [ TPrd [TPrim "b"
-                              , TSum [TPrim "a", TUnit]
+                              , TSum [TPrim "a", TUnit] Nothing
                               , TFun [TRec (PV $ mkId 1 "F") , TPrim "a"]
-                              ]
+                              ] Nothing
                        , TPrim "c"
                        ] :: Type String)
-    test3 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+    test3 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV = "a * b + c -> g"
-        actual = helperT testV
-        expect = (TFun [ TSum [ TPrd [TPrim "a", TPrim "b"]
+        actual = either show show $ helperT testV
+        expect = (TFun [ TSum [ TPrd [TPrim "a", TPrim "b"] Nothing
                               , TPrim "c"
-                              ]
+                              ] Nothing
                        , TPrim "g"
                        ] :: Type String)
 
-    test4 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+    test4 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV  = "()"
-        actual = helperT testV
+        actual = either show show $ helperT testV
         expect = (TUnit :: Type String)
 
-    test5 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+    test5 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV  = "F ()"
-        actual = helperT testV
+        actual = either show show $ helperT testV
         expect = (TApp (PV $ mkId 1 "F") TUnit :: Type String)
 
-    test6 = TestCase $ assertEqual (unpack testV) (Right expect) actual
+    test6 = TestCase $ assertEqual (unpack testV) (show expect) actual
       where
         testV  = "F A"
-        actual = helperT testV
+        actual = either show show $ helperT testV
         expect = (TApp (PV $ mkId 1 "F") (TPrim "A") :: Type String)
 
 mkATest :: Text -> Alg String Integer -> Test
 mkATest t a = TestCase $ assertEqual (unpack t) expect actual
   where
-    expect = Right a
-    actual = helperA t
+    expect = show a
+    actual = either show show $ helperA t
 
 testAlg :: Test
 testAlg = TestLabel "Alg" $
