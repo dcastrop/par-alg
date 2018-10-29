@@ -4,6 +4,10 @@ module Language.Alg.Internal.Ppr
   ( printProg
   , render
   , IsCompound (..)
+  , Preference (..)
+  , Lvl (..)
+  , prettyLvl
+  , pprParens
   ) where
 
 import qualified Data.Set as Set

@@ -8,6 +8,7 @@ module Language.Alg.Internal.TcM
   ( TcM
   , TcSt (..)
   , execTcM
+  , runTcM
   , lookupVar
   , lookupPoly
   , localTc
@@ -60,6 +61,9 @@ execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
 execTcM s m = mapM_ putStrLn w *> pure st
   where (st, w) = execRWS m () (initSt s)
 
+runTcM :: Parser.St t -> TcM t a -> IO a
+runTcM s m = mapM_ putStrLn w *> pure a
+  where (a, _st, w) = runRWS m () (initSt s)
 
 lookupVar :: Id -> TcM t (Scheme t)
 lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->
@@ -110,12 +114,13 @@ localTc m = do
   put st
   return x
 
-
-instance IdGen (TcM t) where
+instance Fresh (TcM t) where
   fresh = do
     s@TcSt{nextId=i} <- get
     put s{nextId=i+1}
     return i
+
+instance IdGen (TcM t) where
   newId i = modify $ \st ->
     st { knownIds = Map.insert (getLbl i) i $ knownIds st }
   lookupId s = do

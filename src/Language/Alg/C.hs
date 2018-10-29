@@ -24,8 +24,8 @@ import qualified Language.Alg.Typecheck as X
 
 type CProg = X.Prog CType CVal
 
-typecheck :: X.St CType -> CProg -> IO (X.TcSt CType)
-typecheck s p = X.execTcM s (X.checkProg p)
+typecheck :: X.St CType -> CProg -> IO CProg
+typecheck s p = X.runTcM s (X.checkProg p)
 
 parseProg :: X.AlgParser CType CProg
 parseProg = X.parseProg X.keyword parseVal

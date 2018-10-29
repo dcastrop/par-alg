@@ -16,7 +16,7 @@ import Control.Arrow ( (***) )
 import Data.Set ( Set )
 import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
-import Control.Monad ( foldM )
+import Control.Monad ( foldM, (<=<) )
 import Data.Text.Prettyprint.Doc
 
 import Language.Common.Id
@@ -41,17 +41,20 @@ type Prim v t = ( KindChecker t
                 , IsCompound t
                 , TypeOf t v t)
 
-checkProg :: Prim v t => Prog t v -> TcM t ()
-checkProg = mapM_ checkDef . getDefns
+-- Fills in metavar & type information
+checkProg :: Prim v t => Prog t v -> TcM t (Prog t v)
+checkProg = pure . Prog <=< mapM checkDef . getDefns
 
-checkDef :: Prim v t => Def t v -> TcM t ()
-checkDef (FDef v f)   = checkKind Set.empty f *> newPoly v f
-checkDef (TDef v f)   = checkKind Set.empty f *> newType v f
-checkDef (Atom v t)   = checkKind Set.empty t *> newFun v (ForAll Set.empty t)
+checkDef :: Prim v t => Def t v -> TcM t (Def t v)
+checkDef d@(FDef v f) = checkKind Set.empty f *> newPoly v f *> pure d
+checkDef d@(TDef v f) = checkKind Set.empty f *> newType v f *> pure d
+checkDef d@(Atom v t) = checkKind Set.empty t *> newFun v (ForAll Set.empty t)
+                        *> pure d
 checkDef (EDef i s f) = do
   checkKind (scVars s) (scType s)
-  _ <- typeOf (emptySubst, emptySubst) f (scType s)
+  sb <- typeOf (emptySubst, emptySubst) f (scType s)
   newFun i s
+  return $ EDef i s $ subst (fst sb) f
 
 instance KindChecker t => KindChecker (Poly t) where
   checkKind vs (PK t)   = (checkKind vs) t
@@ -159,7 +162,8 @@ unifyPoly s (PSum ps1) (PSum ps2) = foldM (uncurry . unifyPoly) s $ zip ps1 ps2
 unifyPoly s (PK t1)    (PK t2)    = unify s t1 t2
 unifyPoly s t1    t2
   | t1 == t2   = return s
-  | otherwise = fail $ "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
+  | otherwise = fail $ "Cannot unify '" ++ render (subst (snd s) t1)
+                ++ "' with '" ++ render (subst (snd s) t2) ++ "'"
 --
 --unifyP :: (Eq t, Pretty t) => Func t -> Func t -> TcM t (Env (Type t))
 --unifyP (PK i) (PK j)
@@ -217,13 +221,15 @@ unify s0 t1@(TSum ts1 mii) t2@(TSum ts2 mjj)
        unifyTail msg TSum s1 m mii mjj
   where
     (ts, m) = zipD ts1 ts2
-    msg = "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
+    msg s' = "Cannot unify '" ++ render (subst s' t1)
+             ++ "' with '" ++ render (subst s' t2) ++ "'"
 unify s0 t1@(TPrd ts1 mii) t2@(TPrd ts2 mjj)
   = do s1 <- foldM (uncurry . unify) s0 ts
        unifyTail msg TPrd s1 m mii mjj
   where
     (ts, m) = zipD ts1 ts2
-    msg = "Cannot unify '" ++ render t1 ++ "' with '" ++ render t2 ++ "'"
+    msg s' = "Cannot unify '" ++ render (subst s' t1)
+             ++ "' with '" ++ render (subst s' t2) ++ "'"
 unify s0 (TApp f1 t1) (TApp f2 t2) = do
   s1 <- unifyPoly s0 f1 f2
   unify s1 t1 t2
@@ -237,12 +243,12 @@ unify s0 (TRec f1) (TRec f2) = do
   unifyPoly s0 f1 f2
 unify s t1 t2
   | t1 == t2   = pure s
-  | otherwise = fail $ "Cannot unify '" ++ render (subst (snd s) t1) ++ "' with '" ++ render (subst (snd s) t2) ++ "'"
-
+  | otherwise = fail $ "Cannot unify type '" ++ render (subst (snd s) t1)
+                ++ "' with '" ++ render (subst (snd s) t2) ++ "'"
 
 -- Unify products/sums with different num of elements
 unifyTail :: (Eq t, Pretty t, IsCompound t)
-          => String
+          => (Env (Type t) -> String)
           -> ([Type t] -> Maybe Int -> Type t)
           -> SEnv t
           -> MEither [Type t] [Type t]
@@ -253,9 +259,9 @@ unifyTail _      _   s None Nothing  Nothing  = return s
 unifyTail _      spr s None (Just i) mj       = unify s (spr [] mj) (TMeta i)
 unifyTail _      spr s None mi (Just j)       = unify s (spr [] mi) (TMeta j)
 unifyTail _      spr s (JLeft l) mi (Just j)  = unify s (spr l  mi) (TMeta j)
-unifyTail msgerr _   _ (JLeft _) _  Nothing   = fail msgerr
+unifyTail msgerr _   s (JLeft _) _  Nothing   = fail (msgerr $ snd s)
 unifyTail _      spr s (JRight l) (Just i) mj = unify s (spr l  mj) (TMeta i)
-unifyTail msgerr _   _ (JRight _) Nothing  _  = fail msgerr
+unifyTail msgerr _   s (JRight _) Nothing  _  = fail (msgerr $ snd s)
 
 appPoly :: Pretty t => Func t -> Type t -> TcM t (Type t)
 appPoly (PK t)    _ = pure t
