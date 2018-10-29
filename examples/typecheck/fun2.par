@@ -21,11 +21,11 @@ fun length : L Nat -> L ()
    = id +++ id *** const ();
 
 
-//atom split : Rec L -> P Rec L;
-//
-//
-//atom merge : P Rec L -> Rec L;
-//
-//fun ms : Rec L -> Rec L
-//  = rec [P] merge split;
+atom split : Rec L -> P Rec L;
+
+
+atom merge : P Rec L -> Rec L;
+
+fun ms : Rec L -> Rec L
+  = rec [P] merge split;
 
