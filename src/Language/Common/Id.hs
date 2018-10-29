@@ -3,6 +3,7 @@ module Language.Common.Id
   , getId
   , getLbl
   , mkId
+  , Fresh(..)
   , IdGen(..)
   , freshId
   , knownId
@@ -28,8 +29,10 @@ instance Pretty Id where
   -- pretty i = hcat [pretty $ getLbl i, pretty $ getId i]
   pretty i = pretty $ getLbl i
 
-class Monad m => IdGen m where
+class Monad m => Fresh m where
   fresh :: m Int
+
+class Fresh m => IdGen m where
   newId :: Id     -> m ()
   lookupId :: String -> m (Maybe Id)
 

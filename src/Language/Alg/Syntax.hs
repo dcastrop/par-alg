@@ -7,6 +7,7 @@ module Language.Alg.Syntax
   , pPrd
   , Func
   , Alg(..)
+  , comp
   , Ftv(..)
   , Mv(..)
   , Type(..)
@@ -206,6 +207,24 @@ data Alg t v
   | Out (Func t)
   | Rec (Func t) (Alg t v) (Alg t v)
   deriving (Eq, Show)
+
+instance Subst (Func t) (Alg t v) where
+  subst s ( Const e     ) = Const (subst s e)
+  subst s ( Comp es     ) = Comp $ map (subst s) es
+  subst s ( Split es    ) = Split $ map (subst s) es
+  subst s ( Case es     ) = Case $ map (subst s) es
+  subst s ( Fmap f e    ) = Fmap (substPoly s f) (subst s e)
+  subst s ( In  f       ) = In (substPoly s f)
+  subst s ( Out f       ) = Out (substPoly s f)
+  subst s ( Rec f e1 e2 ) = Rec (substPoly s f) (subst s e1) (subst s e2)
+  subst _ t               = t
+
+
+comp :: Alg t v -> Alg t v -> Alg t v
+comp (Comp xs) (Comp ys) = Comp $ xs ++ ys
+comp (Comp xs) y         = Comp $ xs ++ [y]
+comp x         (Comp ys) = Comp $ x : ys
+comp x         y         = Comp [x, y]
 
 data Def t v
   = FDef  Id (Func t)

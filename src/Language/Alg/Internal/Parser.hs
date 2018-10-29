@@ -79,11 +79,13 @@ polyLexer = makeTokenParser polyDef
 
 type AlgParser t = ParsecT Text (St t) Identity
 
-instance IdGen (AlgParser t) where
+instance Fresh (AlgParser t) where
   fresh = do
     st@St { nextId = i } <- getState
     putState st { nextId = 1 + i }
     return i
+
+instance IdGen (AlgParser t) where
   newId i = modifyState $ \st ->
     st { knownIds = Map.insert (getLbl i) i $ knownIds st }
   lookupId s = do
@@ -121,7 +123,8 @@ integer        = Token.integer        polyLexer
 -- octal          = Token.octal          polyLexer
 -- symbol         = Token.symbol         polyLexer
 -- lexeme         = Token.lexeme         polyLexer
---whiteSpace     = Token.whiteSpace     polyLexer
+whiteSpace :: AlgParser t ()
+whiteSpace     = Token.whiteSpace     polyLexer
 parens :: AlgParser t a -> AlgParser t a
 parens         = Token.parens         polyLexer
 -- braces         = Token.braces         polyLexer
@@ -197,8 +200,14 @@ algParser pt pv
   =   singl Comp  <$> try (sepBy1 caseParser (reservedOp "."))
   <?> "Expression"
   where
-    caseParser  = singl Case  <$> try (sepBy1 splitParser (reservedOp "|||"))
-    splitParser = singl Split <$> try (sepBy1 (simpleAlg pt pv) (reservedOp "&&&"))
+    caseParser  = singl Case  <$> try (sepBy1 sumParser (reservedOp "|||"))
+    sumParser   = singl (Case . inj) <$> try (sepBy1 splitParser (reservedOp "+++"))
+      where
+        inj l = map (\(i, x) -> Inj i `comp` x) $ zip [0..] l
+    splitParser = singl Split <$> try (sepBy1 prodParser (reservedOp "&&&"))
+    prodParser = singl (Split . proj) <$> try (sepBy1 (simpleAlg pt pv) (reservedOp "***"))
+      where
+        proj l = map (\(i, x) -> x `comp` Proj i) $ zip [0..] l
 
 
 simpleAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
@@ -256,7 +265,7 @@ algDef pt pv =  reserved "fun" *> pDef <* reservedOp ";"
                <*> (reservedOp "=" *> algParser pt pv)
 
 parseProg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Prog a v)
-parseProg pt pv = Prog <$> many1 pDef
+parseProg pt pv = whiteSpace *> (Prog <$> many1 pDef) <* eof
   where pDef = choice [ atomDef pt
                       , functorDef pt
                       , typeDef pt
