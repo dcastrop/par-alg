@@ -6,7 +6,6 @@ module Language.Alg.C
   , X.TcSt
   , parseProg
   , parseFile
-  , typecheck
   , X.printProg
   ) where
 
@@ -20,12 +19,8 @@ import qualified Language.Alg.Syntax as X
 import qualified Language.Alg.Internal.Ppr as X
 import qualified Language.Alg.Internal.Parser as X
 import qualified Language.Alg.Internal.TcM as X
-import qualified Language.Alg.Typecheck as X
 
 type CProg = X.Prog CType CVal
-
-typecheck :: X.St CType -> CProg -> IO CProg
-typecheck s p = X.runTcM s (X.checkProg p)
 
 parseProg :: X.AlgParser CType CProg
 parseProg = X.parseProg X.keyword parseVal

@@ -25,11 +25,11 @@ fun length : Rec L -> Rec N
 fun length : Rec L -> Rec N
   = rec [N] in ((inj[0] ||| (inj[1] . proj[1])) . out);
 
-//atom split : Rec L -> P Rec L;
-//
-//
-//atom merge : P Rec L -> Rec L;
-//
-//fun ms : Rec L -> Rec L
-//  = rec [P] merge split;
+atom split : Rec L -> P Rec L;
+
+
+atom merge : P Rec L -> Rec L;
+
+fun ms : Rec L -> Rec L
+  = rec [P] merge split;
 
