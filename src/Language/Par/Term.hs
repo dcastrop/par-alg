@@ -4,16 +4,15 @@ module Language.Par.Term
   ) where
 
 import Control.Monad.RWS.Strict
-import qualified Data.Map.Strict as Map
 import Data.Text.Prettyprint.Doc ( Pretty(..)
                                  , hcat
                                  , hsep
                                  , punctuate
                                  , brackets )
 
-import Language.Common.Id
 import Language.Alg.Syntax
 import Language.Alg.Internal.Ppr
+import Language.Alg.Internal.TcM
 import Language.Par.Role
 
 data ATerm t v
@@ -27,39 +26,50 @@ data ATerm t v
   | AnnFmap (Func t) Role (Alg t v)
   deriving Show
 
-annotate :: (Pretty v, Pretty t) => Alg t v -> RoleGen t (ATerm t v)
-annotate x = ask >>= (`ann` x)
+annotate :: (Pretty v, Pretty t) => Alg t v -> TcM t (ATerm t v)
+annotate (Comp es    ) = AnnComp <$> mapM annotate es
+annotate  Id           = pure AnnId
+annotate (Proj i     ) = pure $ AnnPrj i
+annotate (Split es   ) = AnnSplit <$> mapM annotate es
+annotate (Inj i      ) = pure $ AnnInj i
+annotate (Case es    ) = AnnCase <$> mapM annotate es
+annotate (Fmap f e   ) = appPoly f e >>= annotate
+annotate (Rec f e1 e2) = ask >>= unrollAnnotate f e1 e2
+annotate t             = AnnAlg t <$> newRole
 
-ann :: (Pretty v, Pretty t) => Int -> Alg t v -> RoleGen t (ATerm t v)
-ann i (Comp es    ) = AnnComp <$> mapM (ann i) es
-ann _  Id           = pure AnnId
-ann _ (Proj i     ) = pure $ AnnPrj i
-ann i (Split es   ) = AnnSplit <$> mapM (ann i) es
-ann _ (Inj i      ) = pure $ AnnInj i
-ann i (Case es    ) = AnnCase <$> mapM (ann i) es
-ann i (Fmap f e   ) = appPoly f e >>= (ann i)
-ann i (Rec f e1 e2) = unrollAnn f e1 e2 i
-ann _ t             = AnnAlg t . newRole <$> fresh
-
-unrollAnn :: (Pretty v, Pretty t)
+unrollAnnotate :: (Pretty v, Pretty t)
           => Func t
           -> Alg t v
           -> Alg t v
           -> Int
-          -> RoleGen t (ATerm t v)
-unrollAnn f e1 e2 n
-   | n <= 0     = AnnAlg (Rec f e1 e2) . newRole <$> fresh
-   | otherwise = appPoly f (Rec f e1 e2) >>= \ e -> ann (n-1) (Comp [e1, e, e2])
+          -> TcM t (ATerm t v)
+unrollAnnotate f e1 e2 n
+   | n <= 0     = AnnAlg (Rec f e1 e2) <$> newRole
+   | otherwise = do
+       ae1 <- annotate e1
+       ae2 <- annotate e2
+       ae  <- annApp f (unrollAnnotate f e1 e2 (n-1))
+       pure $ AnnComp [ae1, ae, ae2]
 
+acomp :: ATerm t v -> ATerm t v -> ATerm t v
+acomp (AnnComp es1) (AnnComp es2) = AnnComp $ es1 ++ es2
+acomp (AnnComp es1) e = AnnComp $ es1 ++ [e]
+acomp e (AnnComp es2) = AnnComp $ e : es2
+acomp e1 e2 = AnnComp [e1, e2]
 
-lookupPoly :: Id -> RoleGen t (Func t)
-lookupPoly i = get >>= \st -> maybe err getf $ i `Map.lookup` tyEnv st
-  where
-    getf (AnnF f) = pure f
-    getf _        = err
-    err = fail $ "Undefined functor '" ++ render i ++ "'"
+annApp :: (Pretty t, Pretty v) => Func t -> TcM t (ATerm t v) -> TcM t (ATerm t v)
+annApp  PK{}     _ = pure AnnId
+annApp (PV v)    t = lookupPoly v >>= (`annApp` t)
+annApp PI        t = t
+annApp (PPrd ps) t
+  = AnnSplit . map (\(i, x) -> x `acomp` AnnPrj i)
+  . zip [0..] <$> mapM (`annApp` t) ps
+annApp (PSum ps) t
+  = AnnCase . map (\(i, x) -> AnnInj i `acomp` x)
+  . zip [0..] <$> mapM (`annApp` t) ps
+annApp x@PMeta{} _ = fail $ "Ambiguous type '" ++ render x ++ "'"
 
-appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> RoleGen t (Alg t v)
+appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> TcM t (Alg t v)
 appPoly  PK{}     _ = pure Id
 appPoly (PV v)    t = lookupPoly v >>= (`appPoly` t)
 appPoly PI        t = pure t

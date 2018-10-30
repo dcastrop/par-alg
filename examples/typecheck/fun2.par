@@ -7,7 +7,7 @@ fun testInOut : Rec P -> Rec P
   = in . out;
 
 fun testInOut : P Rec P -> P Rec P
-  = out . in;
+   = out . in;
 
 poly L = K () + K int * I;
 
@@ -15,7 +15,7 @@ poly N = K () + I;
 type Nat = Rec N;
 
 fun length : int + int -> int + int
-  = id +++ id;
+   = id +++ id;
 
 fun length : L Nat -> L ()
    = id +++ id *** const ();

@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,76 +7,76 @@
 module Language.Alg.Typecheck
   ( KindChecker (..)
   , TypeOf (..)
+  , Prim
+  , typecheck
+  , protocol
   , checkProg
   , checkDef
+  , tcTerm
   , execTcM
   , appPoly
   ) where
 
 import Control.Arrow ( (***) )
-import Data.Set ( Set )
+import Control.Monad ( zipWithM )
 import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import Control.Monad ( foldM, (<=<) )
-import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc hiding ( annotate )
 
+import Language.SessionTypes.Common
+import Language.SessionTypes.Global
 import Language.Common.Id
 import Language.Common.Subst
 import Language.Alg.Syntax
+import Language.Alg.Internal.Parser ( St )
 import Language.Alg.Internal.TcM
 import Language.Alg.Internal.Ppr
+import Language.Par.Role
+import Language.Par.Term
+import Language.Par.Type
+import Language.Par.Prog
 
 type SEnv t = (Env (Func t), Env (Type t))
 
-class TypeOf t v a | a -> t where
-  getType :: Env (Type a) -> v -> TcM t a
-
-class KindChecker t where
-  checkKind :: Set Id -> t -> TcM a ()
-
-type Prim v t = ( KindChecker t
-                , Eq t
-                , Pretty t
-                , Pretty v
-                , Ftv t
-                , IsCompound t
-                , TypeOf t v t)
+typecheck :: Prim v t => St t -> Prog t v -> IO (Int, TyEnv t, AProg t v)
+typecheck st = (\((e, p), TcSt{ nextRole = i }) -> return (i, e, p))
+               <=< (go . checkProg)
+  where
+    go = runTcM st
 
 -- Fills in metavar & type information
-checkProg :: Prim v t => Prog t v -> TcM t (Prog t v)
-checkProg = pure . Prog <=< mapM checkDef . getDefns
+checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, AProg t v)
+checkProg = (\(a, b) -> pure (a, reverse b)) <=< foldM go (Map.empty, []) . getDefns
+  where
+    go (e, ls) d = do
+      x <- checkDef d
+      case x of
+        Left (i, df) -> pure (Map.insert i df e, ls)
+        Right l     -> pure (e, l : ls)
 
-checkDef :: Prim v t => Def t v -> TcM t (Def t v)
-checkDef d@(FDef v f) = checkKind Set.empty f *> newPoly v f *> pure d
-checkDef d@(TDef v f) = checkKind Set.empty f *> newType v f *> pure d
-checkDef d@(Atom v t) = checkKind Set.empty t *> newFun v (ForAll Set.empty t)
-                        *> pure d
+checkDef :: Prim v t => Def t v -> TcM t (Either (Id, TyDef t) (ADef t v))
+checkDef (FDef v f) = checkKind Set.empty f *> newPoly v f
+                      *> pure (Left (v, AnnF f))
+checkDef (TDef v f) = checkKind Set.empty f *> newType v f
+                      *> pure (Left (v, AnnT f))
+checkDef (Atom v t) = checkKind Set.empty t *> newFun v (ForAll Set.empty t)
+                      *> pure (Left (v, AnnA t))
 checkDef (EDef i s f) = do
   checkKind (scVars s) (scType s)
   sb <- typeOf (emptySubst, emptySubst) f (scType s)
   newFun i s
-  return $ EDef i s $ subst (fst sb) f
+  af <- annotate $ subst (fst sb) f
+  case scType s of
+    TFun (a:_) -> do
+      aty <- roleInfer af (TyAnn a (Rol 0))
+      gg <- protoInfer (TyAnn a (Rol 0)) af
+      return $ Right $ AnnEDef i (AForAll (scVars s) (TyAnn a (Rol 0)) aty) af gg
+    _ -> fail $ "The definition '" ++ render i ++ "' is not a function."
 
-instance KindChecker t => KindChecker (Poly t) where
-  checkKind vs (PK t)   = (checkKind vs) t
-  checkKind  _ PI       = return ()
-  checkKind  _ (PV i)   = polyDefined i
-  checkKind  _ PMeta{}  = fail "Undefined term in polynomial"
-  checkKind vs (PPrd p) = mapM_ (checkKind vs) p
-  checkKind vs (PSum p) = mapM_ (checkKind vs) p
 
-instance KindChecker t => KindChecker (Type t) where
-  checkKind vs (TPrim t)  = (checkKind vs) t
-  checkKind vs (TVar v)
-    | v `Set.member` vs = return ()
-    | otherwise         = typeDefined v
-  checkKind  _ TUnit      = return ()
-  checkKind vs (TFun t)   = mapM_ (checkKind vs) t
-  checkKind vs (TSum t _)   = mapM_ (checkKind vs) t
-  checkKind vs (TPrd t _)   = mapM_ (checkKind vs) t
-  checkKind vs (TApp f t) = (checkKind vs) f >> checkKind vs t
-  checkKind vs (TRec f)   = (checkKind vs) f
-  checkKind  _ (TMeta _)  = fail "Unexpected metavariable when checking type"
+tcTerm :: Prim v t => Alg t v -> Type t -> TcM t (Env (Type t))
+tcTerm e t = typeOf (Map.empty, Map.empty) e t >>= return . snd
 
 -- FIXME: Refactor, use StateT for typeOf with environments, or (since metavars are
 -- introduced fresh), just add Env (Type t) to state. However, there is no need to
@@ -218,18 +219,18 @@ unify s x@TMeta{} t = unify s t x
 unify s0 (TFun ts1) (TFun ts2) = foldM (uncurry . unify) s0 $ zipF ts1 ts2
 unify s0 t1@(TSum ts1 mii) t2@(TSum ts2 mjj)
   = do s1 <- foldM (uncurry . unify) s0 ts
-       unifyTail msg TSum s1 m mii mjj
+       unifyTail msge TSum s1 m mii mjj
   where
     (ts, m) = zipD ts1 ts2
-    msg s' = "Cannot unify '" ++ render (subst s' t1)
-             ++ "' with '" ++ render (subst s' t2) ++ "'"
+    msge _ = "Cannot unify sum '" ++ render t1
+              ++ "' with '" ++ render t2 ++ "'"
 unify s0 t1@(TPrd ts1 mii) t2@(TPrd ts2 mjj)
   = do s1 <- foldM (uncurry . unify) s0 ts
-       unifyTail msg TPrd s1 m mii mjj
+       unifyTail msge TPrd s1 m mii mjj
   where
     (ts, m) = zipD ts1 ts2
-    msg s' = "Cannot unify '" ++ render (subst s' t1)
-             ++ "' with '" ++ render (subst s' t2) ++ "'"
+    msge s' = "Cannot unify prod '" ++ render (subst s' t1)
+              ++ "' with '" ++ render (subst s' t2) ++ "'"
 unify s0 (TApp f1 t1) (TApp f2 t2) = do
   s1 <- unifyPoly s0 f1 f2
   unify s1 t1 t2
@@ -270,3 +271,118 @@ appPoly PI        t = pure t
 appPoly (PPrd ps) t = TPrd <$> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly (PSum ps) t = TSum <$> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly x@PMeta{} t = fail $ "Ambiguous type '" ++ render (TApp x t) ++ "'"
+
+-- p |- A -> B, where A is given, infer B
+roleInfer :: Prim v t => ATerm t v -> AType t -> TcM t (AType t)
+roleInfer p (TyAlt ts)   = TyAlt <$> mapM (roleInfer p) ts
+roleInfer AnnId t        = pure t
+roleInfer (AnnAlg e r) t = do
+  ty <- TMeta <$> fresh
+  s  <- tcTerm e ((snd $ rGet t) `tFun` ty)
+  return $ TyAnn (subst s ty) r
+roleInfer (AnnComp es) t = go (reverse es) t
+  where
+    go [] t' = pure t'
+    go (x:xs) t' = roleInfer x t' >>= go xs
+roleInfer p@(AnnPrj i) (TyPrd ts)
+  | length ts > (fromInteger i)
+  = pure $ ts !! (fromInteger i)
+  | otherwise
+  = fail $ "Cannot infer annotated type of '" ++ render p ++ "'"
+roleInfer p@(AnnPrj i) (TyAnn (TPrd ts _) r)
+  | length ts > (fromInteger i)
+  = pure $ TyAnn (ts !! (fromInteger i)) r
+  | otherwise
+  = fail $ "Cannot infer annotated type of '" ++ render p ++ "'"
+roleInfer (AnnSplit es) t
+  = TyPrd <$> mapM (`roleInfer` t) es
+roleInfer (AnnCase es) (TyBrn i _ a _)
+  = roleInfer (es !! i) a
+roleInfer (AnnCase es) (TyAnn (TSum ts _) r)
+  = TyAlt <$> mapM (\ (e, t) -> roleInfer e (TyAnn t r)) (zip es ts)
+roleInfer (AnnInj i) t
+  = do vs <- mapM (const (TMeta <$> fresh)) [0..i-1]
+       v <- fresh
+       pure $ TyBrn (fromInteger i) vs t (Left v) -- XXX: generate metavars!!!
+roleInfer AnnFmap{} _
+  = error "Panic! fmap should be unrolled before reaching this point"
+roleInfer e (TyAnn (TApp f a) r)
+  = appPoly f a >>= \b -> roleInfer e (TyAnn b r)
+roleInfer e t
+  = fail $ "Cannot type-check '" ++ render e ++ "' against annotated type '" ++
+    render t ++ "'"
+
+infixl 4 |>
+
+(|>) :: GTy t -> Global t -> GTy t
+Choice r rs gs1 |> g@(Brn g2)
+  = Choice r (Set.toList rs') $ mapAlt (\ (Lbl l) gt -> gt |> g2 !! l) gs1
+  where
+    rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
+Comm m g1       |> g2          = Comm m (g1 |> g2)
+GRec v g1       |> g2          = GRec v (g1 |> g2)
+g@GVar{}        |> _           = g
+GEnd            |> Leaf g2     = g2
+_               |> _           = error m
+  where
+    m = "Panic! Ill-formed sequencing of \
+        \global types in Language.Session.Infer.|>"
+
+seqP :: Global t -> Global t -> Global t
+Leaf g1 `seqP` g2      = Leaf $ g1 |> g2
+Brn gs1 `seqP` Brn gs2 = Brn $ zipWith seqP gs1 gs2
+_       `seqP` _       = error m
+  where
+    m = "Panic! Ill-formed sequencing of \
+        \global types in Language.Session.Infer.seqP"
+
+msg :: Pretty t => AType t -> RoleId -> TcM t (Global t)
+msg (TyAnn t ri   ) ro = Leaf <$> comm
+  where
+    comm = Comm <$> pure (Msg [ri] [ro] t ()) <*> pure GEnd
+msg (TyBrn _ _ a _) ro = msg a ro
+msg (TyAlt ts     ) ro = Brn <$> mapM (`msg` ro) ts
+msg (TyPrd ts     ) ro = foldr1 seqP <$> mapM (`msg` ro) ts
+msg t@TyApp{}       _  = fail $ "Found functor application: " ++ render t
+msg (TyMeta i)      _  = fail $ "Ambiguous annotated type" ++ render i
+
+protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
+protocol sc t = protoInfer (ascDom sc) t
+
+protoInfer :: Prim v t => AType t -> ATerm t v -> TcM t (Global t)
+protoInfer ti (AnnAlg _ r   ) = msg ti r
+protoInfer _   AnnId          = pure $ Leaf GEnd
+protoInfer ti (AnnComp es   ) = go (reverse es) ti
+  where
+    go [] t = pure $ repeatAlts t (Leaf GEnd)
+    go (e:es') t = seqP <$> protoInfer t e <*> (roleInfer e t >>= go es')
+protoInfer ti (AnnSplit es  ) = go (reverse es)
+  where
+    go [] = pure $ Leaf GEnd
+    go (e:es')
+      = seqP
+      <$> protoInfer ti e
+      <*> (roleInfer e ti >>= \ t ->
+              go es' >>= pure . repeatAlts t
+          )
+protoInfer _  AnnPrj{}        = pure $ Leaf GEnd
+protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
+  = do gs <- zipWithM getGT as es
+       let rs = Set.toList $ Set.unions (map getRoles gs) Set.\\ Set.singleton ri
+       return $ Leaf $ Choice ri rs $ foldr (uncurry addAlt) emptyAlt $ zip [0..] gs
+  where
+    as = map (`TyAnn` ri) ts
+    getGT a e = protoInfer a e >>= \(Leaf i) -> pure i
+protoInfer (TyAnn (TApp f a) ri) (AnnCase es)
+  = appPoly f a >>= \b -> protoInfer (TyAnn b ri) (AnnCase es)
+protoInfer t  p@AnnCase{}     = fail $ "The input to annotated case '"
+  ++ render p ++ "' cannot be distributed into annotated type '"
+  ++ render t ++ "'"
+protoInfer (TyAnn (TApp f a) r) p
+  = appPoly f a >>= \b -> protoInfer (TyAnn b r) p
+protoInfer _  AnnInj{}        = pure $ Leaf GEnd
+protoInfer _  AnnFmap{}       = fail "Unimplemented"
+
+repeatAlts :: AType t -> Global t -> Global t
+repeatAlts (TyAlt ts) g = Brn $ map (`repeatAlts` g) ts
+repeatAlts _          g = g

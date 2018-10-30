@@ -1,12 +1,15 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Language.Alg.Internal.TcM
   ( TcM
   , TcSt (..)
+  , newRole
   , execTcM
   , runTcM
   , lookupVar
@@ -21,6 +24,9 @@ module Language.Alg.Internal.TcM
   , polyDefined
   , typeDefined
   , exprDefined
+  , TypeOf (..)
+  , KindChecker (..)
+  , Prim
   ) where
 
 import Prelude hiding ( putStrLn )
@@ -28,6 +34,7 @@ import Prelude hiding ( putStrLn )
 import Control.Arrow
 import Data.Text ( Text )
 import Data.Text.IO ( putStrLn )
+import Data.Text.Prettyprint.Doc
 import Data.Map.Strict ( Map )
 import qualified Data.Map.Strict as Map
 import qualified Data.Map.Lazy as LazyMap
@@ -35,12 +42,17 @@ import Data.Set ( Set )
 import qualified Data.Set as Set
 import Control.Monad.RWS.Strict
 
+import Language.SessionTypes.Common
+
 import Language.Common.Id
+import Language.Common.Subst
 import Language.Alg.Syntax
+import Language.Alg.Internal.Ppr
 import qualified Language.Alg.Internal.Parser as Parser
 import Language.Alg.Internal.Ppr ( render )
 
 data TcSt t = TcSt { nextId   :: Int
+                   , nextRole :: Int
                    , knownIds :: !(Map String Id)
                    , fDefns   :: !(Map Id (Func t))
                    , tDefns   :: !(Map Id (Type t))
@@ -49,21 +61,32 @@ data TcSt t = TcSt { nextId   :: Int
 
 initSt :: Parser.St t -> TcSt t
 initSt s = TcSt { nextId = Parser.nextId s
+                , nextRole = 1
                 , knownIds = Parser.knownIds s
                 , fDefns = Map.empty
                 , tDefns = Map.empty
                 , gamma = Map.empty
                 }
 
-type TcM t = RWS () [Text] (TcSt t)
+newRole :: TcM t Role
+newRole = do
+  st@TcSt { nextRole = i } <- get
+  put st { nextRole = i + 1 }
+  return $ Rol i
+
+type TcM t = RWS Int [Text] (TcSt t)
+
+-- XXX: hardcoded!
+_MAX_UNROLL :: Int
+_MAX_UNROLL = 1
 
 execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
 execTcM s m = mapM_ putStrLn w *> pure st
-  where (st, w) = execRWS m () (initSt s)
+  where (st, w) = execRWS m _MAX_UNROLL (initSt s)
 
-runTcM :: Parser.St t -> TcM t a -> IO a
-runTcM s m = mapM_ putStrLn w *> pure a
-  where (a, _st, w) = runRWS m () (initSt s)
+runTcM :: Parser.St t -> TcM t a -> IO (a, TcSt t)
+runTcM s m = mapM_ putStrLn w *> pure (a, st)
+  where (a, st, w) = runRWS m _MAX_UNROLL (initSt s)
 
 lookupVar :: Id -> TcM t (Scheme t)
 lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->
@@ -184,3 +207,38 @@ tyVarSupplier fvs
 instMeta :: Set String -> LazyMap.Map Int String
 instMeta fvs = LazyMap.fromList $ zip [0..] sup
   where sup = tyVarSupplier fvs
+
+class TypeOf t v a | a -> t where
+  getType :: Env (Type a) -> v -> TcM t a
+
+class KindChecker t where
+  checkKind :: Set Id -> t -> TcM a ()
+
+type Prim v t = ( KindChecker t
+                , Eq t
+                , Pretty t
+                , Pretty v
+                , Ftv t
+                , IsCompound t
+                , TypeOf t v t)
+
+instance KindChecker t => KindChecker (Poly t) where
+  checkKind vs (PK t)   = (checkKind vs) t
+  checkKind  _ PI       = return ()
+  checkKind  _ (PV i)   = polyDefined i
+  checkKind  _ PMeta{}  = fail "Undefined term in polynomial"
+  checkKind vs (PPrd p) = mapM_ (checkKind vs) p
+  checkKind vs (PSum p) = mapM_ (checkKind vs) p
+
+instance KindChecker t => KindChecker (Type t) where
+  checkKind vs (TPrim t)  = (checkKind vs) t
+  checkKind vs (TVar v)
+    | v `Set.member` vs = return ()
+    | otherwise         = typeDefined v
+  checkKind  _ TUnit      = return ()
+  checkKind vs (TFun t)   = mapM_ (checkKind vs) t
+  checkKind vs (TSum t _)   = mapM_ (checkKind vs) t
+  checkKind vs (TPrd t _)   = mapM_ (checkKind vs) t
+  checkKind vs (TApp f t) = (checkKind vs) f >> checkKind vs t
+  checkKind vs (TRec f)   = (checkKind vs) f
+  checkKind  _ (TMeta _)  = fail "Unexpected metavariable when checking type"

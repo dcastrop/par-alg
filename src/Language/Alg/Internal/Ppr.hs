@@ -115,10 +115,20 @@ instance Pretty a => Pretty (Type a) where
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
     = hsep $ punctuate (pretty " ->") $ fmap (prettyLvl (prefLvl t)) ts
-  pretty t@(TSum ts _)
+  pretty t@(TSum ts Nothing)
     = hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) $ ts
-  pretty t@(TPrd ts _)
+  pretty t@(TSum ts (Just i))
+    = hsep [ hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) $ ts
+           , pretty " +? "
+           , pretty i
+           ]
+  pretty t@(TPrd ts Nothing)
     = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) $ ts
+  pretty t@(TPrd ts (Just i))
+    = hsep [ hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) $ ts
+           , pretty " +? "
+           , pretty i
+           ]
   pretty (TApp f t)
     = hsep [pprParens f, pprParens t]
   pretty (TRec f)
@@ -127,11 +137,13 @@ instance Pretty a => Pretty (Type a) where
 instance Pretty t => Pretty (Scheme t) where
   pretty ForAll{ scVars = vs
                , scType = ty
-               } = hsep [ pretty "forall"
-                        , hsep pvs <> pretty ","
+               } = hcat [ pForAll
                         , pretty ty
                         ]
     where pvs = fmap pretty $ Set.toList vs
+          pForAll
+            | Set.null vs = emptyDoc
+            | otherwise   = hsep [pretty "forall" , hsep pvs <> pretty ",", space]
 
 instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Var  v)   = pretty v
