@@ -146,7 +146,7 @@ instance Pretty t => Pretty (Scheme t) where
             | otherwise   = hsep [pretty "forall" , hsep pvs <> pretty ",", space]
 
 instance (Pretty t, Pretty v) => Pretty (Alg t v) where
-  pretty (Var  v)   = pretty v
+  pretty (Var  v  ) = pretty v
   pretty (Val  v)   = pretty v
   pretty (Const c)  = hsep [pretty "const", aux $ pretty c]
     where aux = if isCompound c then parens else id
