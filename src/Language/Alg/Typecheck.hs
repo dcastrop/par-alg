@@ -39,11 +39,11 @@ import Language.Par.Prog
 
 type SEnv t = (Env (Func t), Env (Type t))
 
-typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
-typecheck st = (\((e, p), tcst) -> return (tcst, e, p))
+typecheck :: Prim v t => Int -> St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
+typecheck d st = (\((e, p), tcst) -> return (tcst, e, p))
                <=< (go . checkProg)
   where
-    go = runTcM st
+    go = runTcM d st
 
 -- Fills in metavar & type information
 checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, AProg t v)
@@ -278,8 +278,9 @@ roleInfer p (TyAlt ts)   = TyAlt <$> mapM (roleInfer p) ts
 roleInfer AnnId t        = pure t
 roleInfer (AnnAlg e r) t = do
   ty <- TMeta <$> fresh
-  s  <- tcTerm e ((snd $ rGet t) `tFun` ty)
-  return $ TyAnn (subst s ty) r
+  let (ri, ti) = rGet t
+  s  <- tcTerm e (ti `tFun` ty)
+  return $ addBranch ri $ TyAnn (subst s ty) r
 roleInfer (AnnComp es) t = go (reverse es) t
   where
     go [] t' = pure t'
@@ -295,7 +296,11 @@ roleInfer p@(AnnPrj i) (TyAnn (TPrd ts _) r)
   | otherwise
   = fail $ "Cannot infer annotated type of '" ++ render p ++ "'"
 roleInfer (AnnSplit es) t
-  = TyPrd <$> mapM (`roleInfer` t) es
+  = prodAlt [] <$> mapM (`roleInfer` t) es
+  where
+    prodAlt l [] = TyPrd $ reverse l
+    prodAlt l (TyAlt ti : ts) = TyAlt (map (\ tin -> prodAlt l (tin : ts)) ti)
+    prodAlt l (to : ts) = prodAlt (to : l) ts
 roleInfer (AnnCase es) (TyBrn i _ a _)
   = roleInfer (es !! i) a
 roleInfer (AnnCase es) (TyAnn (TSum ts _) r)
@@ -314,27 +319,29 @@ roleInfer e t
 
 infixl 4 |>
 
-(|>) :: GTy t -> Global t -> GTy t
+(|>) :: Pretty t => GTy t -> Global t -> String -> GTy t
 Choice r rs gs1 |> g@(Brn g2)
-  = Choice r (Set.toList rs') $ mapAlt (\ (Lbl l) gt -> gt |> g2 !! l) gs1
+  = \ctx -> Choice r (Set.toList rs') $ mapAlt (\ (Lbl l) gt -> (gt |> g2 !! l) ctx) gs1
   where
     rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
-Comm m g1       |> g2          = Comm m (g1 |> g2)
-GRec v g1       |> g2          = GRec v (g1 |> g2)
-g@GVar{}        |> _           = g
-GEnd            |> Leaf g2     = g2
-_               |> _           = error m
+Comm m g1       |> g2          = \ctx -> Comm m $ (g1 |> g2) ctx
+GRec v g1       |> g2          = \ctx -> GRec v $ (g1 |> g2) ctx
+g@GVar{}        |> _           = \_tx -> g
+GEnd            |> Leaf g2     = \_tx -> g2
+l               |> r           = \ctx -> error (m ctx)
   where
-    m = "Panic! Ill-formed sequencing of \
-        \global types in Language.Session.Infer.|>"
+    m ctx = "Panic! Ill-formed sequencing of \
+        \global types in Language.Alg.Typecheck.|>, called from " ++ ctx ++ "\n\n"
+        ++ render l ++ "\n" ++ render r
 
-seqP :: Global t -> Global t -> Global t
-Leaf g1 `seqP` g2      = Leaf $ g1 |> g2
-Brn gs1 `seqP` Brn gs2 = Brn $ zipWith seqP gs1 gs2
-_       `seqP` _       = error m
+seqP :: Pretty t => String -> Global t -> Global t -> Global t
+seqP ctx (Leaf g1)  g2       = Leaf $ (g1 |> g2) ctx
+seqP ctx (Brn gs1) (Brn gs2) = Brn $ zipWith (seqP ctx) gs1 gs2
+seqP ctx l        r          = error m
   where
     m = "Panic! Ill-formed sequencing of \
-        \global types in Language.Session.Infer.seqP"
+        \global types in Language.Alg.Typecheck.seqP called from " ++ ctx ++ "\n\n"
+        ++ render l ++ "\n" ++ render r
 
 msg :: Pretty t => AType t -> RoleId -> TcM t (Global t)
 msg (TyAnn t ri   ) ro = Leaf <$> comm
@@ -342,30 +349,46 @@ msg (TyAnn t ri   ) ro = Leaf <$> comm
     comm = Comm <$> pure (Msg [ri] [ro] t ()) <*> pure GEnd
 msg (TyBrn _ _ a _) ro = msg a ro
 msg (TyAlt ts     ) ro = Brn <$> mapM (`msg` ro) ts
-msg (TyPrd ts     ) ro = foldr1 seqP <$> mapM (`msg` ro) ts
+msg t@(TyPrd ts   ) ro = foldr1 (seqP $ "msg:" ++ render t) <$> mapM (`msg` ro) ts
 msg t@TyApp{}       _  = fail $ "Found functor application: " ++ render t
 msg (TyMeta i)      _  = fail $ "Ambiguous annotated type" ++ render i
 
 protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
 protocol sc t = protoInfer (ascDom sc) t
 
-protoInfer :: Prim v t => AType t -> ATerm t v -> TcM t (Global t)
-protoInfer ti (AnnAlg _ r   ) = msg ti r
-protoInfer _   AnnId          = pure $ Leaf GEnd
-protoInfer ti (AnnComp es   ) = go (reverse es) ti
+protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (Global t)
+
+protoInfer (TyAnn (TApp f a) ri) e
+  = appPoly f a >>= \b -> protoInfer (TyAnn b ri) e
+
+protoInfer ti    (AnnComp es ) = go (reverse es) ti
   where
-    go [] t = pure $ repeatAlts t (Leaf GEnd)
-    go (e:es') t = seqP <$> protoInfer t e <*> (roleInfer e t >>= go es')
-protoInfer ti (AnnSplit es  ) = go (reverse es)
+    go [] t = protoInfer t (AnnId :: ATerm t v)
+    go (e:es') t = do
+      g  <- protoInfer t e
+      tn <- roleInfer e t
+      gg <- go es' tn
+      seqP ("protoInfer: comp: left: "
+            ++ render e
+            ++ "\n\n right:"
+            ++ render (AnnComp es')
+            ++ "\n\n type in:"
+            ++ render t
+            ++ "\n\n type next:"
+            ++ render tn
+            ++ "\n\n global type left \n\t"
+            ++ render g
+            ++ "\n\n global type right \n\t"
+            ++ render gg) <$> protoInfer t e <*> (roleInfer e t >>= go es')
+protoInfer ti ei@(AnnSplit es  ) = go (reverse es) ti
   where
-    go [] = pure $ Leaf GEnd
-    go (e:es')
-      = seqP
-      <$> protoInfer ti e
-      <*> (roleInfer e ti >>= \ t ->
-              go es' >>= pure . repeatAlts t
-          )
-protoInfer _  AnnPrj{}        = pure $ Leaf GEnd
+    go l (TyAlt ts) = Brn <$> mapM (go l) ts
+    go [] t = pure $ repeatAlts t $ Leaf GEnd
+    go (e:es') t
+      = seqP ("protoInfer: split: " ++ render ei)
+      <$> protoInfer t e
+      <*> (roleInfer e t >>= \ tn ->
+              go es' (multAlts tn t))
 protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
   = do gs <- zipWithM getGT as es
        let rs = Set.toList $ Set.unions (map getRoles gs) Set.\\ Set.singleton ri
@@ -373,16 +396,29 @@ protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
   where
     as = map (`TyAnn` ri) ts
     getGT a e = protoInfer a e >>= \(Leaf i) -> pure i
-protoInfer (TyAnn (TApp f a) ri) (AnnCase es)
-  = appPoly f a >>= \b -> protoInfer (TyAnn b ri) (AnnCase es)
 protoInfer t  p@AnnCase{}     = fail $ "The input to annotated case '"
   ++ render p ++ "' cannot be distributed into annotated type '"
   ++ render t ++ "'"
-protoInfer (TyAnn (TApp f a) r) p
-  = appPoly f a >>= \b -> protoInfer (TyAnn b r) p
+
+protoInfer (TyAlt ti) e
+  = Brn <$> mapM (\t -> protoInfer t e) ti
+
+protoInfer _  AnnPrj{}        = pure $ Leaf GEnd
 protoInfer _  AnnInj{}        = pure $ Leaf GEnd
+protoInfer ti (AnnAlg _ r   ) = msg ti r
+protoInfer _   AnnId          = pure $ Leaf GEnd
 protoInfer _  AnnFmap{}       = fail "Unimplemented"
+
+multAlts :: AType t1 -> AType t2 -> AType t2
+multAlts (TyAlt ts) t' = TyAlt $ map (`multAlts` t') ts
+multAlts _          t' = t'
 
 repeatAlts :: AType t -> Global t -> Global t
 repeatAlts (TyAlt ts) g = Brn $ map (`repeatAlts` g) ts
 repeatAlts _          g = g
+
+addBranch :: Language.Par.Role.Role -> AType t -> AType t
+addBranch (RAlt  rs) t = TyAlt $ map (`addBranch` t) rs
+addBranch (RBrn _ r) t = addBranch r t
+addBranch (RPrd  rs) t = foldr (\r t' -> addBranch r t') t rs
+addBranch _          t = t

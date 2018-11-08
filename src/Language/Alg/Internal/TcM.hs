@@ -76,17 +76,13 @@ newRole = do
 
 type TcM t = RWS Int [Text] (TcSt t)
 
--- XXX: hardcoded!
-_MAX_UNROLL :: Int
-_MAX_UNROLL = 1
+execTcM :: Int -> Parser.St t -> TcM t a -> IO (TcSt t)
+execTcM d s m = mapM_ putStrLn w *> pure st
+  where (st, w) = execRWS m d (initSt s)
 
-execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
-execTcM s m = mapM_ putStrLn w *> pure st
-  where (st, w) = execRWS m _MAX_UNROLL (initSt s)
-
-runTcM :: Parser.St t -> TcM t a -> IO (a, TcSt t)
-runTcM s m = mapM_ putStrLn w *> pure (a, st)
-  where (a, st, w) = runRWS m _MAX_UNROLL (initSt s)
+runTcM :: Int -> Parser.St t -> TcM t a -> IO (a, TcSt t)
+runTcM d s m = mapM_ putStrLn w *> pure (a, st)
+  where (a, st, w) = runRWS m d (initSt s)
 
 lookupVar :: Id -> TcM t (Scheme t)
 lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->

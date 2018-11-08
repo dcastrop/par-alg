@@ -22,13 +22,13 @@ logError = putStrLn
 output :: String -> IO ()
 output = whenNormal . putStrLn
 
-compile :: FilePath -> IO ()
-compile f = do
+compile :: Flags -> FilePath -> IO ()
+compile Flags { recursion_depth = d } f = do
   logInfo $ "Compiling: " ++ f
   logInfo "...parsing"
   t <- parseFile f
   logInfo "...typechecking"
-  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
+  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry (typecheck d) t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   output $ renderProg fnDefns
   logInfo "...compiling to monadic code"
@@ -36,7 +36,7 @@ compile f = do
   output $ renderPCode parProg
 
 compileAll :: Flags -> IO ()
-compileAll = mapM_ compile . files
+compileAll f@Flags { files = fl } = mapM_ (compile f) fl
 
 data Flags
   = Flags
@@ -48,7 +48,7 @@ data Flags
 flags :: String -> Flags
 flags p
   = Flags
-  { recursion_depth = 3 &= help "Unroll recursive functions up to a maximum depth"
+  { recursion_depth = 0 &= help "Unroll recursive functions up to a maximum depth"
   , num_procs = 1 &= help "Maximum number of roles"
   , files = def &= args &= typFile
   }
