@@ -380,7 +380,7 @@ protoInfer ti    (AnnComp es ) = go (reverse es) ti
             ++ render g
             ++ "\n\n global type right \n\t"
             ++ render gg) <$> protoInfer t e <*> (roleInfer e t >>= go es')
-protoInfer ti ei@(AnnSplit es  ) = go (reverse es) ti
+protoInfer ti ei@(AnnSplit es  ) = go es ti
   where
     go l (TyAlt ts) = Brn <$> mapM (go l) ts
     go [] t = pure $ repeatAlts t $ Leaf GEnd
