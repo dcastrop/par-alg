@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Language.Par.Role
   ( RoleId
+  , mkRole
   , Role (..)
   , RoleAnn (..)
   , RgSt (..)
@@ -20,6 +21,9 @@ import Language.Common.Id
 import Language.Alg.Syntax
 
 type RoleId = ST.Role
+
+mkRole :: Int -> RoleId
+mkRole = ST.Rol
 
 data Role
   = RId RoleId       -- r1, r2 ...

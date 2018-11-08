@@ -1,3 +1,8 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- Endpoint terms: monadic language for parallel programs
 module Language.Ept.EMonad
   ( ETerm(..)
@@ -8,20 +13,60 @@ module Language.Ept.EMonad
   , ecomp
   , msg
   , gen
+  , genProg
+  , generate
+  , renderPCode
   ) where
 
 import Control.Monad.RWS.Strict
 import Data.Map ( Map )
 import Data.List ( foldl' )
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import Language.Common.Id
 import Language.Alg.Syntax
 import Language.Alg.Internal.TcM
 import Language.Alg.Internal.Ppr
 import Language.Par.Role
 import Language.Par.Term
+import Language.Par.Prog
 -- import Language.SessionTypes.Common hiding (Role)
+
+renderPCode :: Prim v t => Map Id (ParProg t v) -> String
+renderPCode
+  = renderString
+  . layoutSmart defaultLayoutOptions
+  . vsep
+  . map pprPDefns
+  . Map.toList
+  where
+    pprPDefns (i, p) = nest 4 $ vsep [ hsep [pretty i, pretty "="]
+                                     , vsep $ map pprCRole $ Map.toList p
+                                     , line
+                                     ]
+    pprCRole (r, m) = hsep [pretty r, pretty "|->", pretty m]
+
+generate :: Prim v t => TcSt t -> AProg t v -> IO (Int, Map Id (ParProg t v))
+generate tcst p = return (st, a)
+  where
+    (a, st, _w) = runRWS (genProg p) () (initCGSt tcst)
+
+initCGSt :: TcSt t -> Int
+initCGSt _st = 1
+
+genProg :: Prim v t => AProg t v -> CodeGen (Map Id (ParProg t v))
+genProg = mapM go >=> (pure . Map.fromList)
+  where
+    go (AnnEDef i _ t _) = (i,) <$> gen t emptyK (RId $ mkRole 0)
+    emptyK r = do
+      x <- fresh
+      return $
+        Map.fromList $
+        map (\r1 -> (r1, EAbs x $ ERet (EVar x))) $
+        roleIds r
 
 data ETerm t v
   = EVar Int
@@ -72,15 +117,16 @@ app (EAbs i m) v = go m
       | otherwise = EAbs j $ go m1
 
 data EProg t v
-  = EptEnv { getEnv :: Map RoleId (EFun t v) }
+  = EptEnv { getEnv :: ParProg t v }
 
 
 type CodeGen = RWS () [String] Int
+type ParProg t v = Map RoleId (EFun t v)
 
-fresh :: CodeGen Int
-fresh = get >>= \i -> put (i+1) >> pure i
+instance Fresh CodeGen where
+  fresh = get >>= \i -> put (i+1) >> pure i
 
-lookR :: RoleId -> Map RoleId (EFun t v) -> CodeGen (EFun t v)
+lookR :: RoleId -> ParProg t v -> CodeGen (EFun t v)
 lookR r m
   | Just f <- Map.lookup r m = pure f
   | otherwise               = do v <- fresh
@@ -102,15 +148,15 @@ ecomp ev1 ev2
       | otherwise
       = []
 
-msg :: Prim v t => Role -> RoleId -> CodeGen (Map RoleId (EFun t v))
+msg :: Prim v t => Role -> RoleId -> CodeGen (ParProg t v)
 msg (RId ri) ro
   | ri == ro = fresh >>= \v -> pure $ Map.singleton ri (EAbs v (ERet (EVar v)))
   | otherwise = do x <- fresh
                    y <- fresh
                    z <- fresh
                    pure $ Map.fromList
-                     [ (ri, EAbs x (ESnd ro (EVar x)))
-                     , (ro, EAbs y (ERcv ri `EBnd` EAbs z (ERet (EVar y))))
+                     [ (ri, EAbs x (ESnd ro (EVar x) `EBnd` EAbs z (ERet (EVar x))))
+                     , (ro, EAbs y (ERcv ri))
                      ]
 msg (RPrd as) ro
   = do es <- envs
@@ -133,7 +179,7 @@ msg (RBrn i a) ro
 msg t _
   = fail $ "Cannot generate code for distributed type '" ++ render t ++ "'"
 
-type Gen t v = Role -> CodeGen (Map RoleId (EFun t v))
+type Gen t v = Role -> CodeGen (ParProg t v)
 
 gen :: Prim v t
     => ATerm t v
@@ -166,20 +212,21 @@ gen (AnnSplit es) k r = go es []
 gen (AnnInj i) k r = k (RBrn (fromInteger i) r)
 gen (AnnCase es) k (RBrn i r)
   | length es > i = gen (es !! i) k r
-gen (AnnCase es) k (RId r) = do
-  evs <- mapM (\ e -> gen e k (RId r)) es
-  let rs = concatMap Map.keys evs
-  case rs of
-    [] -> fail $ "Panic: empty case in code generation"
-    r1:rs1 -> do
-      ev <- foldM (\e r2 -> do
-                     x <- fresh
-                     return $
-                       Map.insert r2 (EAbs x $ EBrn r $ map (getC x r2) evs) e
-                 ) Map.empty rs
-      x <- fresh
-      (\kk -> Map.insert r kk ev) <$>
-        (EAbs x <$> (ECh (EVar x) r1 <$> mapM (\(i, ev') -> getF r ev' >>= tagBr i rs1) (zip [0..] evs)))
+gen (AnnCase es) k (RId r)
+  | length es > 1 = do
+      evs <- mapM (\ e -> gen e k (RId r)) es
+      let rs = concatMap Map.keys evs
+      case rs of
+        [] -> fail $ "Panic: empty case in code generation"
+        r1:rs1 -> do
+          ev <- foldM (\e r2 -> do
+                         x <- fresh
+                         return $
+                           Map.insert r2 (EAbs x $ EBrn r $ map (getC x r2) evs) e
+                     ) Map.empty rs
+          x <- fresh
+          (\kk -> Map.insert r kk ev) <$>
+            (EAbs x <$> (ECh (EVar x) r1 <$> mapM (\(i, ev') -> getF r ev' >>= tagBr i rs1) (zip [0..] evs)))
   where
     getC x i m
       | Just c <- Map.lookup i m = app c (EVar x)
@@ -195,11 +242,12 @@ gen (AnnCase _es) _k _r
            \ sum of size < i"
 gen AnnFmap{} _ _ = error "Panic! Unsupported annotated fmap!"
 
--- roleIds :: Role -> [RoleId]
--- roleIds (RId r) = [r]
--- roleIds (RPrd rs) = concatMap roleIds rs
--- roleIds (RAlt rs) = concatMap roleIds rs
--- roleIds (RBrn _ r) = roleIds r
+roleIds :: Role -> [RoleId]
+roleIds (RId r) = [r]
+roleIds (RPrd rs) = concatMap roleIds rs
+roleIds (RAlt rs) = concatMap roleIds rs
+roleIds (RBrn _ r) = roleIds r
+
 -- type Lt t = LT Id (Type t) ()
 --
 -- data LScheme t = LForall Id (Lt t) (Type t)
@@ -217,3 +265,54 @@ gen AnnFmap{} _ _ = error "Panic! Unsupported annotated fmap!"
 --
 -- sessionInfer :: Prim t v => EMonad t v -> LtM t (LScheme t)
 -- sessionInfer (ERet v) = fresh >>= \l -> ForAll l (LVar l) <$> checkETerm v
+
+--------------------------------------------------------------------------------
+-- Prettyprinting instances
+
+instance IsCompound (ETerm t v) where
+  isCompound EVar {} = False
+  isCompound EVal {} = False
+  isCompound EPair{} = False
+  isCompound EInj {} = True
+  isCompound EApp {} = True
+
+instance Prim v t => Pretty (ETerm t v) where
+  pretty (EVar i) = hcat [pretty "v", pretty i]
+  pretty (EVal v) = pretty v
+  pretty (EPair ts) = parens $ hsep $ punctuate (pretty ", ") $ map pretty ts
+  pretty (EInj i t) = hsep [ hcat [pretty "inj", brackets $ pretty i]
+                           , pprParens t
+                           ]
+  pretty (EApp e t) = hsep [pprParens e, pprParens t]
+
+instance Prim v t => Pretty (EFun t v) where
+  pretty (EAbs i m) = hsep [ hcat [ pretty "\\"
+                                  , pretty "v", pretty i
+                                  , pretty "->"
+                                  ]
+                           , pretty m
+                           ]
+
+instance Prim v t => Pretty (EMonad t v) where
+  pretty (ERet t)    = hsep [pretty "return", pprParens t]
+  pretty (EBnd m f)  = hsep [pretty m, pretty ">>=", pretty f]
+  pretty (ESnd r t)  = hsep [pretty "send", pretty r, pprParens t]
+  pretty (ETag r i)  = hsep [pretty "tag", pretty r, pretty i]
+  pretty (ERcv r)    = hsep [pretty "recv", pretty r]
+  pretty (ECh t r a) = hsep [ pretty "choice"
+                            , pprParens t
+                            , pretty r
+                            , nest 4 $
+                              parens $
+                              vsep $
+                              punctuate (pretty ",") $
+                              map pretty a
+                            ]
+  pretty (EBrn r a) = hsep [ pretty "branch"
+                            , pretty r
+                            , nest 4 $
+                              parens $
+                              vsep $
+                              punctuate (pretty ",") $
+                              map pretty a
+                            ]

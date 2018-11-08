@@ -9,7 +9,9 @@ import System.Console.CmdArgs
 
 import Language.Alg.C
 import Language.Alg.Typecheck
+import Language.Alg.Internal.TcM
 import Language.Par.Prog
+import Language.Ept.EMonad
 
 logInfo :: String -> IO ()
 logInfo = whenLoud . putStrLn
@@ -26,9 +28,12 @@ compile f = do
   logInfo "...parsing"
   t <- parseFile f
   logInfo "...typechecking"
-  (numRoles, _tyDefns, fnDefns) <- uncurry typecheck t
+  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   output $ renderProg fnDefns
+  logInfo "...compiling to monadic code"
+  (_, parProg) <- generate tcSt fnDefns
+  output $ renderPCode parProg
 
 compileAll :: Flags -> IO ()
 compileAll = mapM_ compile . files

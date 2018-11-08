@@ -39,8 +39,8 @@ import Language.Par.Prog
 
 type SEnv t = (Env (Func t), Env (Type t))
 
-typecheck :: Prim v t => St t -> Prog t v -> IO (Int, TyEnv t, AProg t v)
-typecheck st = (\((e, p), TcSt{ nextRole = i }) -> return (i, e, p))
+typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
+typecheck st = (\((e, p), tcst) -> return (tcst, e, p))
                <=< (go . checkProg)
   where
     go = runTcM st
