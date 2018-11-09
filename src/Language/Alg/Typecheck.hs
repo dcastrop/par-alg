@@ -20,7 +20,7 @@ module Language.Alg.Typecheck
 
 import Control.Monad ( zipWithM )
 import qualified Data.Set as Set
-import Data.List ( foldl1', foldl' )
+import Data.List ( foldl1' )
 import qualified Data.Map.Strict as Map
 import Control.Monad ( (<=<) )
 import Data.Text.Prettyprint.Doc hiding ( annotate )
@@ -54,7 +54,7 @@ checkProg = (\(a, b) -> pure (a, reverse b)) <=< foldM' go (Map.empty, []) . get
     go (e, ls) d = do
       !x <- checkDef d
       case x of
-        Left (i, df) -> pure (Map.insert i df e, ls)
+        Left (i, df) -> let !l = Map.insert i df e in pure (l, ls)
         Right l     -> pure (e, l : ls)
 
 checkDef :: Prim v t => Def t v -> TcM t (Either (Id, TyDef t) (ADef t v))
@@ -258,12 +258,14 @@ roleInfer p (TyAlt ts)   = TyAlt <$!> mapM (roleInfer p) ts
 roleInfer AnnId t        = pure t
 roleInfer (AnnAlg e r) t = do
   !ty <- TMeta <$!> fresh
-  let !(ri, ti) = rGet t
+  let !(_, ti) = rGet t
   !s  <- tcTerm e (ti `tFun` ty)
   let !ty' = subst s ty
-  return $! addBranch ri $! TyAnn ty' r
+  return $! TyAnn ty' r
 roleInfer (AnnComp es) t = go (reverse es) t
   where
+    go l (TyAlt (th : ts))
+      | all (== th) ts = go l th
     go [] t' = pure t'
     go (x:xs) t' = roleInfer x t' >>= go xs
 roleInfer p@(AnnPrj i) (TyPrd ts)
@@ -277,11 +279,7 @@ roleInfer p@(AnnPrj i) (TyAnn (TPrd ts _) r)
   | otherwise
   = fail $! "Cannot infer annotated type of '" ++ render p ++ "'"
 roleInfer (AnnSplit es) t
-  = prodAlt [] <$!> mapM (`roleInfer` t) es
-  where
-    prodAlt l [] = TyPrd $! reverse l
-    prodAlt l (TyAlt ti : ts) = TyAlt (map (\ tin -> prodAlt l (tin : ts)) ti)
-    prodAlt l (to : ts) = prodAlt (to : l) ts
+  = TyPrd <$!> mapM (`roleInfer` t) es
 roleInfer (AnnCase es) (TyBrn i _ a _)
   = let !e = es !! i
     in roleInfer e a
@@ -299,6 +297,16 @@ roleInfer e t
   = fail $! "Cannot type-check '" ++ render e ++ "' against annotated type '" ++
     render t ++ "'"
 
+gSeq :: [GTy t] -> GTy t
+gSeq ls =
+  case  filter notEnd ls of
+    [] -> GEnd
+    [x] -> x
+    ls' -> GSeq ls'
+  where
+    notEnd GEnd = False
+    notEnd _    = True
+
 infixl 4 |>
 
 (|>) :: Pretty t => GTy t -> Global t -> GTy t
@@ -307,11 +315,13 @@ Choice r rs gs1 |> g@(Brn g2)
   where
     !rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
     !lrs = Set.toList rs'
+c@Choice{}      |> BSeq gs g   = gSeq $! (c |> Brn gs) : g
 Comm m g1       |> g2          = Comm m $! g1 |> g2
 GRec v g1       |> g2          = GRec v $! g1 |> g2
 g@GVar{}        |> _           = g
 GEnd            |> Leaf g2     = g2
-_               |> _           = error m
+GSeq gs         |> Leaf g      = gSeq $! gs ++ [g]
+g1              |> g2          = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
   where
     m = "Panic! Ill-formed sequencing of \
         \global types in Language.Alg.Typecheck.|>"
@@ -319,7 +329,10 @@ _               |> _           = error m
 seqP :: Pretty t => Global t -> Global t -> Global t
 seqP (Leaf g1)  g2       = Leaf $! g1 |> g2
 seqP (Brn gs1) (Brn gs2) = Brn $! zipWith seqP gs1 gs2
-seqP _        _          = error m
+seqP g1        (Leaf GEnd) = g1
+seqP (Brn gs1) (Leaf g2) = BSeq gs1 [g2]
+seqP (BSeq gs1 gss) (Leaf g2) = BSeq gs1 (gss ++ [g2])
+seqP g1       g2         = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
   where
     m = "Panic! Ill-formed sequencing of \
         \global types in Language.Alg.Typecheck.seqP"
@@ -327,7 +340,7 @@ seqP _        _          = error m
 msg :: Pretty t => AType t -> RoleId -> TcM t (Global t)
 msg (TyAnn t ri   ) ro = Leaf <$!> comm
   where
-    comm = Comm <$!> pure (Msg [ri] [ro] t ()) <*> pure GEnd
+    comm = Comm <$!> pure (Msg [ri] [ro] t Nothing) <*> pure GEnd
 msg (TyBrn _ _ a _) ro = msg a ro
 msg (TyAlt ts     ) ro = Brn <$!> mapM (`msg` ro) ts
 msg (TyPrd ts     ) ro = foldl1' seqP <$!> mapM (`msg` ro) ts
@@ -339,6 +352,9 @@ protocol sc t = protoInfer (ascDom sc) t
 
 protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (Global t)
 
+protoInfer (TyAlt ti) e
+  = Brn <$!> mapM (\t -> protoInfer t e) ti
+
 protoInfer (TyAnn (TApp f a) ri) e
   = appPoly f a >>= \b -> protoInfer (TyAnn b ri) e
 
@@ -346,15 +362,16 @@ protoInfer ti    (AnnComp es ) = go (reverse es) ti
   where
     go [] t = protoInfer t (AnnId :: ATerm t v)
     go (e:es') t = seqP <$!> protoInfer t e <*> (roleInfer e t >>= go es')
-protoInfer ti (AnnSplit es  ) = go es ti
+
+protoInfer ti (AnnSplit es  ) = (Leaf . gSeq) <$!> mapM go es
   where
-    go l (TyAlt ts) = Brn <$!> mapM (go l) ts
-    go [] t = pure $! repeatAlts t $! Leaf GEnd
-    go (e:es') t
-      = seqP
-      <$!> protoInfer t e
-      <*> (roleInfer e t >>= \ tn ->
-              go es' (multAlts tn t))
+    go e = protoInfer ti e >>= \x ->
+      case x of
+        Leaf g -> return g
+        _ -> error $ "Panic! protocol inference \
+                    \ cannot return branching if the input is \
+                    \ not a branching global type"
+
 protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
   = do !gs <- zipWithM getGT as es
        let !rs = Set.toList $! Set.unions (map getRoles gs) Set.\\ Set.singleton ri
@@ -362,29 +379,13 @@ protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
   where
     as = map (`TyAnn` ri) ts
     getGT a e = protoInfer a e >>= \(Leaf i) -> pure i
+
 protoInfer t  p@AnnCase{}     = fail $! "The input to annotated case '"
   ++ render p ++ "' cannot be distributed into annotated type '"
   ++ render t ++ "'"
-
-protoInfer (TyAlt ti) e
-  = Brn <$!> mapM (\t -> protoInfer t e) ti
 
 protoInfer _  AnnPrj{}        = pure $! Leaf GEnd
 protoInfer _  AnnInj{}        = pure $! Leaf GEnd
 protoInfer ti (AnnAlg _ r   ) = msg ti r
 protoInfer _   AnnId          = pure $! Leaf GEnd
 protoInfer _  AnnFmap{}       = fail "Unimplemented"
-
-multAlts :: AType t1 -> AType t2 -> AType t2
-multAlts (TyAlt ts) t' = TyAlt $! map (`multAlts` t') ts
-multAlts _          t' = t'
-
-repeatAlts :: AType t -> Global t -> Global t
-repeatAlts (TyAlt ts) g = Brn $! map (`repeatAlts` g) ts
-repeatAlts _          g = g
-
-addBranch :: Language.Par.Role.Role -> AType t -> AType t
-addBranch (RAlt  rs) t = TyAlt $! map (`addBranch` t) rs
-addBranch (RBrn _ r) t = addBranch r t
-addBranch (RPrd  rs) t = foldl' (\t' r -> addBranch r t') t $! reverse rs
-addBranch _          t = t

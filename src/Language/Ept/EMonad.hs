@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -70,25 +71,25 @@ genProg = mapM go >=> (pure . Map.fromList)
         roleIds r
 
 data ETerm t v
-  = EVar Int
-  | EVal v
-  | EPair [ETerm t v]
-  | EInj Int (ETerm t v)
-  | EApp (Alg t v) (ETerm t v)
+  = EVar !Int
+  | EVal !v
+  | EUnit
+  | EPair ![ETerm t v]
+  | EInj !Int !(ETerm t v)
+  | EApp !(Alg t v) !(ETerm t v)
   deriving Show
 
 data EFun t v
-  = EAbs (Maybe Int) (EMonad t v)
+  = EAbs !(Maybe Int) !(EMonad t v)
   deriving Show
 
 data EMonad t v
-  = ERet (ETerm t v)
-  | EBnd (EMonad t v) (EFun t v)
-  | ESnd RoleId (ETerm t v)
-  | ETag RoleId Int -- Singleton choice, equivalent to sending (EInj i)
-  | ERcv RoleId
-  | ECh  (ETerm t v) RoleId [EFun t v]
-  | EBrn RoleId [EMonad t v]
+  = ERet !(ETerm t v)
+  | EBnd !(EMonad t v) !(EFun t v)
+  | ESnd !RoleId !(ETerm t v)
+  | ERcv !RoleId
+  | ECh  !(ETerm t v) ![RoleId] ![EFun t v]
+  | EBrn !RoleId ![EMonad t v]
   deriving Show
 
 mcomp :: EFun t v -> EFun t v -> EFun t v
@@ -108,7 +109,6 @@ app (EAbs i m) v = go m
     go (ERet v') = ERet $! sbst v'
     go (EBnd m1 f) = eBnd (go m1) (substF f)
     go (ESnd r v') = ESnd r $! sbst v'
-    go m1@ETag{} = m1
     go m1@ERcv{} = m1
     go (ECh v' r fs) = ECh (sbst v') r $! map substF fs
     go (EBrn r ms) = EBrn r $! map go ms
@@ -117,6 +117,7 @@ app (EAbs i m) v = go m
      | i == Just j = v
      | otherwise = v'
     sbst x@EVal{} = x
+    sbst x@EUnit  = x
     sbst (EPair es) = EPair $! map sbst es
     sbst (EInj j e) = EInj j $! sbst e
     sbst (EApp f x) = EApp f (sbst x)
@@ -231,8 +232,8 @@ gen (AnnCase es) k (RId r) = do
       evs <- mapM (\ e -> gen e k (RId r)) es
       let rs = List.nub (concatMap Map.keys evs)
       case rs List.\\ [r] of
-        [] -> k (RId r)
-        r1:rs1 -> do
+        []  -> k (RId r)
+        rs1 -> do
           ev <- foldM' (\e r2 -> do
                          x <- fresh
                          return $!
@@ -240,28 +241,22 @@ gen (AnnCase es) k (RId r) = do
                      ) Map.empty rs
           x <- fresh
           (\kk -> Map.insert r kk ev) <$!>
-            (EAbs (Just x) <$!> (ECh (EVar x) r1 <$!> mapM (tags rs1) (zip [0..] evs)))
-  where
-    tags rs1 (i, ev') = do
-      v  <- fresh
-      let rmb = EAbs (Just v)  (ERet (EVar v))
-          rst = EAbs Nothing (ERet (EVar v))
-      k1 <- getF r ev'
-      k2 <- tagBr i rs1 (rst `mcomp` k1)
-      return $! rmb `mcomp` k2
-    getC x i m
-      | Just c <- Map.lookup i m = app c (EVar x)
-      | otherwise               = ERet $! EVar x
-    getF i m
-      | Just c <- Map.lookup i m = pure c
-      | otherwise               = (\x -> EAbs (Just x) $! ERet $! EVar x) <$!> fresh
-    tagBr i rs kk = foldM' (\ c r' -> do
-                              x <- fresh
-                              return $! EAbs (Just x) $! ETag r' i `eBnd` c) kk rs
+            (EAbs (Just x) <$!> (ECh (EVar x) rs1 <$!> mapM (getF r) evs))
+
 gen (AnnCase _es) _k _r
   = fail $! "Panic: ill-typed term in code generation. case applied to a \
            \ sum of size < i"
 gen AnnFmap{} _ _ = error "Panic! Unsupported annotated fmap!"
+
+getC :: Ord k => Int -> k -> Map k (EFun t v) -> EMonad t v
+getC x i m
+  | Just c <- Map.lookup i m = app c (EVar x)
+  | otherwise               = ERet $! EVar x
+
+getF :: (Ord k, Fresh f) => k -> Map k (EFun t v) -> f (EFun t v)
+getF i m
+  | Just c <- Map.lookup i m = pure c
+  | otherwise               = (\x -> EAbs (Just x) $! ERet $! EVar x) <$!> fresh
 
 roleIds :: Role -> [RoleId]
 roleIds (RId r) = [r]
@@ -292,6 +287,7 @@ roleIds (RBrn _ r) = roleIds r
 
 instance IsCompound (ETerm t v) where
   isCompound EVar {} = False
+  isCompound EUnit{} = False
   isCompound EVal {} = False
   isCompound EPair{} = False
   isCompound EInj {} = True
@@ -299,6 +295,7 @@ instance IsCompound (ETerm t v) where
 
 instance Prim v t => Pretty (ETerm t v) where
   pretty (EVar i) = hcat [pretty "v", pretty i]
+  pretty EUnit    = parens emptyDoc
   pretty (EVal v) = pretty v
   pretty (EPair ts) = parens $! hsep $! punctuate (pretty ", ") $! map pretty ts
   pretty (EInj i t) = hsep [ hcat [pretty "inj", brackets $! pretty i]
@@ -316,26 +313,43 @@ instance Prim v t => Pretty (EFun t v) where
       pprVar Nothing = pretty "_"
       pprVar (Just v) = hcat [pretty "v", pretty v]
 
-instance Prim v t => Pretty (EMonad t v) where
+instance forall v t. Prim v t => Pretty (EMonad t v) where
   pretty (ERet t)    = hsep [pretty "return", pprParens t]
-  pretty (EBnd m f)  = hsep [pretty m, pretty ">>=", pretty f]
+  pretty blck@EBnd{} = hsep [ pretty "do {"
+                            , align $!
+                              vsep $!
+                              (punctuate (pretty ";") $! go blck)
+                              ++ [pretty "}"]
+                            ]
+    where
+      go (EBnd m1 (EAbs Nothing m2))
+        = hsep [pretty "_ <-", pretty m1] : go m2
+      go (EBnd m1 (EAbs (Just v1) m2))
+        = hsep [ hcat [pretty "v", pretty v1]
+               , pretty "<-"
+               , pretty m1] : go m2
+      go m
+        = [pretty m]
   pretty (ESnd r t)  = hsep [pretty "send", pretty r, pprParens t]
-  pretty (ETag r i)  = hsep [pretty "tag", pretty r, pretty i]
   pretty (ERcv r)    = hsep [pretty "recv", pretty r]
-  pretty (ECh t r a) = hsep [ pretty "choice"
-                            , pprParens t
-                            , pretty r
-                            , nest 4 $!
-                              parens $!
-                              vsep $!
-                              punctuate (pretty ",") $!
-                              map pretty a
+  pretty (ECh t r a) = hang 2 $!
+                       vsep [ hsep [ pretty "choice"
+                                   , pprParens t
+                                   , pretty r
+                                   ]
+                            , encloseSep
+                               (pretty "( ")
+                               (pretty " )")
+                               (pretty ", ")
+                               $! map pretty a
                             ]
-  pretty (EBrn r a) = hsep [ pretty "branch"
-                            , pretty r
-                            , nest 4 $!
-                              parens $!
-                              vsep $!
-                              punctuate (pretty ",") $!
-                              map pretty a
-                            ]
+  pretty (EBrn r a) = hang 2 $!
+                      vsep [ hsep [ pretty "branch"
+                                  , pretty r
+                                  ]
+                           , encloseSep
+                             (pretty "( ")
+                             (pretty " )")
+                             (pretty ", ")
+                             $! map pretty a
+                           ]

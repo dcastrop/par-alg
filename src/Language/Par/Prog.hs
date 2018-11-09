@@ -75,20 +75,22 @@ instance (Pretty t, Pretty v) => Pretty (ADef t v) where
                                            , hsep [ pretty "~" , pretty g ]
                                            , line
                                            ]
-
 type GTy t = GT Int (Type t) ()
 
 data Global t
   = Leaf !(GTy t)
-  | Brn  [Global t]
+  | Brn  ![Global t]
+  | BSeq ![Global t] ![GTy t]
   deriving Show
 
 gRoles :: Global t -> Set RoleId
 gRoles (Leaf g) = getRoles g
 gRoles (Brn gs) = Set.unions $! map gRoles gs
+gRoles (BSeq gs gt) = Set.unions $! map gRoles gs ++ map getRoles gt
 
 instance Pretty t => Pretty (Global t) where
   pretty (Leaf g) = pretty g
   pretty (Brn gs) = hsep [ pretty "alts ["
                          , vsep $! punctuate (pretty ",") $! map pretty gs
                          , pretty "]" ]
+  pretty (BSeq gs gt) = hsep [pretty (Brn gs), pretty ";", pretty $ GSeq gt]

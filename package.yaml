@@ -45,6 +45,7 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -Werror
+    - -O2
     dependencies:
     - par-lang
     - cmdargs >= 0.10 && < 0.11
