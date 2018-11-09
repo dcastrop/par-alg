@@ -33,9 +33,9 @@ import Language.Par.Term
 import Language.Par.Type
 
 data AnnScheme a
-  = AForAll { ascVars :: Set Id
-            , ascDom :: AType a
-            , ascCod :: AType a
+  = AForAll { ascVars :: !(Set Id)
+            , ascDom :: !(AType a)
+            , ascCod :: !(AType a)
             }
   deriving (Eq, Show)
 
@@ -48,12 +48,12 @@ instance Pretty t => Pretty (AnnScheme t) where
                         , pretty " -> "
                         , pretty bty
                         ]
-    where pvs = fmap pretty $ Set.toList vs
+    where pvs = fmap pretty $! Set.toList vs
           pForAll
             | Set.null vs = emptyDoc
             | otherwise   = hsep [pretty "forall" , hsep pvs <> pretty ",", space]
 
-data ADef t v = AnnEDef  Id (AnnScheme t) (ATerm t v) (Global t)
+data ADef t v = AnnEDef  !Id !(AnnScheme t) !(ATerm t v) !(Global t)
   deriving Show
 
 type AProg t v = [ADef t v]
@@ -69,7 +69,7 @@ renderProg
 --------------------------------------------------------------------------------
 
 instance (Pretty t, Pretty v) => Pretty (ADef t v) where
-  pretty (AnnEDef i s d g) = nest 4 $ vsep [ hsep [ pretty "par_fun" , pretty i ]
+  pretty (AnnEDef i s d g) = nest 4 $! vsep [ hsep [ pretty "par_fun" , pretty i ]
                                            , hsep [ pretty ":" , pretty s ]
                                            , hsep [ pretty "=" , pretty d ]
                                            , hsep [ pretty "~" , pretty g ]
@@ -79,16 +79,16 @@ instance (Pretty t, Pretty v) => Pretty (ADef t v) where
 type GTy t = GT Int (Type t) ()
 
 data Global t
-  = Leaf (GTy t)
+  = Leaf !(GTy t)
   | Brn  [Global t]
   deriving Show
 
 gRoles :: Global t -> Set RoleId
 gRoles (Leaf g) = getRoles g
-gRoles (Brn gs) = Set.unions $ map gRoles gs
+gRoles (Brn gs) = Set.unions $! map gRoles gs
 
 instance Pretty t => Pretty (Global t) where
   pretty (Leaf g) = pretty g
   pretty (Brn gs) = hsep [ pretty "alts ["
-                         , vsep $ punctuate (pretty ",") $ map pretty gs
+                         , vsep $! punctuate (pretty ",") $! map pretty gs
                          , pretty "]" ]

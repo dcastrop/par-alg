@@ -16,14 +16,14 @@ import Language.Alg.Internal.TcM
 import Language.Par.Role
 
 data ATerm t v
-  = AnnAlg (Alg t v) RoleId
+  = AnnAlg !(Alg t v) !RoleId
   | AnnId
-  | AnnComp [ATerm t v]
-  | AnnPrj Integer
-  | AnnSplit [ATerm t v]
-  | AnnInj Integer
-  | AnnCase [ATerm t v]
-  | AnnFmap (Func t) Role (Alg t v)
+  | AnnComp ![ATerm t v]
+  | AnnPrj !Integer
+  | AnnSplit ![ATerm t v]
+  | AnnInj !Integer
+  | AnnCase ![ATerm t v]
+  | AnnFmap !(Func t) !Role !(Alg t v)
   deriving Show
 
 annotate :: (Pretty v, Pretty t) => Alg t v -> TcM t (ATerm t v)

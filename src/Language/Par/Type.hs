@@ -14,12 +14,12 @@ import Language.Alg.Internal.Ppr
 import Language.Par.Role
 
 data AType t
-  = TyAnn (Type t) RoleId                              -- a@r
-  | TyBrn Int [Type t] (AType t) (Either Int [Type t]) -- branch_i A b
-  | TyAlt [AType t]                                    -- A \oplus B <- can only occur after case, so we must know always the number of alternatives
-  | TyPrd [AType t]                                    -- A x B
-  | TyApp (Func t) Role (Type t)                       -- F@R a
-  | TyMeta Int                                         -- Metavar
+  = TyAnn  !(Type t) !RoleId                              -- a@r
+  | TyBrn  !Int ![Type t] !(AType t) !(Either Int [Type t]) -- branch_i A b
+  | TyAlt  ![AType t]                                    -- A \oplus B <- can only occur after case, so we must know always the number of alternatives
+  | TyPrd  ![AType t]                                    -- A x B
+  | TyApp  !(Func t) !Role !(Type t)                       -- F@R a
+  | TyMeta !Int                                         -- Metavar
   deriving (Eq, Show)
 
 instance Pretty t => RoleAnn (Type t) (AType t) where

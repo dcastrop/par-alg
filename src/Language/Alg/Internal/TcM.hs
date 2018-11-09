@@ -24,6 +24,8 @@ module Language.Alg.Internal.TcM
   , polyDefined
   , typeDefined
   , exprDefined
+  , foldM'
+  , (<$!>)
   , TypeOf (..)
   , KindChecker (..)
   , Prim
@@ -32,8 +34,8 @@ module Language.Alg.Internal.TcM
 import Prelude hiding ( putStrLn )
 
 import Control.Arrow
-import Data.Text ( Text )
-import Data.Text.IO ( putStrLn )
+--import Data.Text ( Text )
+--import Data.Text.IO ( putStrLn )
 import Data.Text.Prettyprint.Doc
 import Data.Map.Strict ( Map )
 import qualified Data.Map.Strict as Map
@@ -50,6 +52,12 @@ import Language.Alg.Syntax
 import Language.Alg.Internal.Ppr
 import qualified Language.Alg.Internal.Parser as Parser
 import Language.Alg.Internal.Ppr ( render )
+
+foldM' :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
+foldM' _ z [] = return z
+foldM' f z (x:xs) = do
+  z' <- f z x
+  z' `seq` foldM' f z' xs
 
 data TcSt t = TcSt { nextId   :: Int
                    , nextRole :: Int
@@ -72,59 +80,59 @@ newRole :: TcM t Role
 newRole = do
   st@TcSt { nextRole = i } <- get
   put st { nextRole = i + 1 }
-  return $ Rol i
+  return $! Rol i
 
-type TcM t = RWS Int [Text] (TcSt t)
+type TcM t = RWS Int () (TcSt t)
 
 execTcM :: Int -> Parser.St t -> TcM t a -> IO (TcSt t)
-execTcM d s m = mapM_ putStrLn w *> pure st
-  where (st, w) = execRWS m d (initSt s)
+execTcM d s m = {- mapM_ putStrLn w *> -} pure st
+  where (st, _w) = execRWS m d (initSt s)
 
 runTcM :: Int -> Parser.St t -> TcM t a -> IO (a, TcSt t)
-runTcM d s m = mapM_ putStrLn w *> pure (a, st)
-  where (a, st, w) = runRWS m d (initSt s)
+runTcM d s m = {- mapM_ putStrLn w *> -} pure (a, st)
+  where (a, st, _w) = runRWS m d (initSt s)
 
 lookupVar :: Id -> TcM t (Scheme t)
-lookupVar x = Map.lookup x . gamma <$> get >>= \ i ->
+lookupVar x = Map.lookup x . gamma <$!> get >>= \ i ->
   case i of
     Just sc -> return sc
-    Nothing -> fail $ "Variable not in scope: " ++ getLbl x
+    Nothing -> fail $! "Variable not in scope: " ++ getLbl x
 
 
 newPoly :: Id -> Func t -> TcM t ()
-newPoly i f = modify $ \st ->
-  st { fDefns = Map.insert i f $ fDefns st }
+newPoly i f = modify $! \st ->
+  st { fDefns = Map.insert i f $! fDefns st }
 
 newType :: Id -> Type t -> TcM t ()
-newType i f = modify $ \st ->
-  st { tDefns = Map.insert i f $ tDefns st }
+newType i f = modify $! \st ->
+  st { tDefns = Map.insert i f $! tDefns st }
 
 newFun :: Id -> Scheme t -> TcM t ()
-newFun i f = modify $ \st ->
-  st { gamma = Map.insert i f $ gamma st }
+newFun i f = modify $! \st ->
+  st { gamma = Map.insert i f $! gamma st }
 
 polyDefined :: Id -> TcM t ()
 polyDefined i = get >>= \st ->
-  maybe (fail $ "Undefined functor: " ++ render i)
-  (const $ return ())
-  $ i `Map.lookup` fDefns st
+  maybe (fail $! "Undefined functor: " ++ render i)
+  (const $! return ())
+  $! i `Map.lookup` fDefns st
 
 lookupPoly :: Id -> TcM t (Func t)
 lookupPoly i = get >>= \st ->
-  maybe (fail $ "Undefined functor '" ++ render i ++ "'") pure
-  $ i `Map.lookup` fDefns st
+  maybe (fail $! "Undefined functor '" ++ render i ++ "'") pure
+  $! i `Map.lookup` fDefns st
 
 typeDefined :: Id -> TcM t ()
 typeDefined i = get >>= \st ->
-  maybe (fail $ "Undefined type: " ++ render i)
-  (const $ return ())
-  $ i `Map.lookup` tDefns st
+  maybe (fail $! "Undefined type: " ++ render i)
+  (const $! return ())
+  $! i `Map.lookup` tDefns st
 
 exprDefined :: Id -> TcM t ()
 exprDefined i = get >>= \st ->
-  maybe (fail $ "Undefined expression: " ++ render i)
-  (const $ return ())
-  $ i `Map.lookup` gamma st
+  maybe (fail $! "Undefined expression: " ++ render i)
+  (const $! return ())
+  $! i `Map.lookup` gamma st
 
 localTc :: TcM t a -> TcM t a
 localTc m = do
@@ -140,28 +148,28 @@ instance Fresh (TcM t) where
     return i
 
 instance IdGen (TcM t) where
-  newId i = modify $ \st ->
-    st { knownIds = Map.insert (getLbl i) i $ knownIds st }
+  newId i = modify $! \st ->
+    st { knownIds = Map.insert (getLbl i) i $! knownIds st }
   lookupId s = do
     TcSt { knownIds = m } <- get
-    return $ Map.lookup s m
+    return $! Map.lookup s m
 
 class IdGen m => Generalise m a where
   genTv :: LazyMap.Map Int String -> a -> m (Set Id, a)
 
 generalise :: Ftv t => Type t -> TcM t (Scheme t)
-generalise x = uncurry ForAll <$> genTv env x
-  where env = instMeta $ Set.map getLbl $ ftv x
+generalise x = uncurry ForAll <$!> genTv env x
+  where env = instMeta $! Set.map getLbl $! ftv x
 
 instance Generalise m t => Generalise m (Poly t) where
   genTv env = go
     where
-      go (PK t)    = second PK <$> genTv env t
+      go (PK t)    = second PK <$!> genTv env t
       go e@PI      = pure (Set.empty, e)
       go e@PV{}    = pure (Set.empty, e)
       go e@PMeta{} = pure (Set.empty, e)
-      go (PPrd t)  = (Set.unions *** PPrd) . unzip <$> mapM go t
-      go (PSum t)  = (Set.unions *** PSum) . unzip <$> mapM go t
+      go (PPrd t)  = (Set.unions *** PPrd) . unzip <$!> mapM go t
+      go (PSum t)  = (Set.unions *** PSum) . unzip <$!> mapM go t
 
 unzipT :: (a, b) -> (c, d) -> ((a,c), (b,d))
 unzipT (a, b) (c, d) = ((a,c), (b,d))
@@ -172,18 +180,18 @@ instance Generalise (TcM t) (Type t) where
       go e@TPrim{}   = pure (Set.empty, e)
       go v@TVar{}    = pure (Set.empty, v)
       go e@TUnit{}   = pure (Set.empty, e)
-      go (TFun ts)   = (Set.unions *** TFun) . unzip <$> mapM go ts
-      go (TSum ts r) = (Set.unions *** (`TSum` r)) . unzip <$> mapM go ts
-      go (TPrd ts r) = (Set.unions *** (`TPrd` r)) . unzip <$> mapM go ts
+      go (TFun ts)   = (Set.unions *** TFun) . unzip <$!> mapM go ts
+      go (TSum ts r) = (Set.unions *** (`TSum` r)) . unzip <$!> mapM go ts
+      go (TPrd ts r) = (Set.unions *** (`TPrd` r)) . unzip <$!> mapM go ts
       go (TApp f t)  = ((uncurry Set.union *** uncurry TApp) .) . unzipT
-                       <$> genTv env f <*> go t
-      go (TRec f)    = second TRec <$> genTv env f
-      go (TMeta i)   = (Set.singleton &&& TVar) <$> freshId (env LazyMap.! i)
+                       <$!> genTv env f <*> go t
+      go (TRec f)    = second TRec <$!> genTv env f
+      go (TMeta i)   = (Set.singleton &&& TVar) <$!> freshId (env LazyMap.! i)
 
 skolemise :: Ftv t => Scheme t -> TcM t (Type t)
 skolemise ForAll{scVars=vs, scType=ty}
   = (`subst` ty) . Map.fromList
-  <$> mapM (\i -> (getId i,) . TMeta <$> fresh) (Set.toList vs)
+  <$!> mapM (\i -> (getId i,) . TMeta <$!> fresh) (Set.toList vs)
 
 tyVarSupplier :: Set String -> [String]
 tyVarSupplier fvs
