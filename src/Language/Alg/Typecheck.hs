@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -21,8 +22,9 @@ module Language.Alg.Typecheck
 import Control.Monad ( zipWithM )
 import qualified Data.Set as Set
 import Data.List ( foldl1' )
+import Data.Map.Strict ( Map )
+import Data.Traversable ( mapM )
 import qualified Data.Map.Strict as Map
-import Control.Monad ( (<=<) )
 import Data.Text.Prettyprint.Doc hiding ( annotate )
 
 import Language.SessionTypes.Common
@@ -42,22 +44,65 @@ data SEnv t = SEnv { fstE :: !(Env (Func t))
                    , sndE :: !(Env (Type t))
                    }
 
-typecheck :: Prim v t => Int -> St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
-typecheck d st p = go (checkProg p) >>= \((e, p'), tcst) -> return (tcst, e, p')
+typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
+typecheck st p = go >>= \((e, p'), tcst) -> return (tcst, e, p')
   where
-    go = runTcM d st
+    go = runTcM st $ do
+      !(te, pr) <- checkProg p
+      !pr' <- rewrite pr
+      return (te, pr')
+
+rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t (AProg t v)
+rewrite defns = mapM rwStrat $! Map.toList toRewrite
+  where
+    !toRewrite = Map.filter notRefl defns
+    notRefl (_, RwRefl) = False
+    notRefl _           = True
+
+rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t (ADef t v)
+rwStrat (i, (ef, rw)) = do
+  !sc <- lookupVar i
+  case scType sc of
+    TFun (a:_) -> do
+      let initR = Rol 0
+          initT = TyAnn a $! initR
+      !(aty, af) <- rwAlg initT rw (AnnAlg ef initR)
+      -- !aty <- roleInfer a initR
+      !gg <- protoInfer initT af
+      return $! AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) af gg
+    _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
+
+rwAlg :: Prim v t => AType t -> RwStrat t v -> ATerm t v -> TcM t (AType t, ATerm t v)
+rwAlg ti (RwSeq s1 s2) a = rwAlg ti s1 a >>= rwAlg ti s2 . snd
+rwAlg ti RwRefl        a = (,a) <$!> roleInfer a ti
+rwAlg ti (Unroll i) (AnnAlg (Rec f m s) r1) = do
+  rf <- (`AnnAlg` r1) <$!> unroll f m s i
+  to <- roleInfer rf ti
+  pure (to, rf)
+rwAlg _ Unroll{} t = fail $! "Cannot unroll: " ++ render t
+rwAlg ti (Annotate s) ef = go ef
+  where
+    go (AnnAlg e r) = do
+      a <- annotate r s e
+      to <- roleInfer a ti
+      pure (to, a)
+    go a = fail $ "Cannot annotate. Already annotated: " ++ render a
+
 
 -- Fills in metavar & type information
-checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, AProg t v)
-checkProg = (\(a, b) -> pure (a, reverse b)) <=< foldM' go (Map.empty, []) . getDefns
+checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, Map Id (Alg t v, RwStrat t v))
+checkProg = foldM' go (Map.empty, Map.empty) . getDefns
   where
-    go (e, ls) d = do
+    go (e, ls) (EPar i s2)
+      | Just (a, s1) <- Map.lookup i ls = pure (e, Map.insert i (a, rwSeq s1 s2) ls)
+      | otherwise = fail $! "Undefined term: " ++ render i
+    go (e, f) d = do
       !x <- checkDef d
       case x of
-        Left (i, df) -> let !l = Map.insert i df e in pure (l, ls)
-        Right l     -> pure (e, l : ls)
+        Left  (i, df) -> let !l = Map.insert i df e in pure (l, f)
+        Right (i, a)  -> let !l = Map.insert i (a, RwRefl) f in pure (e, l)
 
-checkDef :: Prim v t => Def t v -> TcM t (Either (Id, TyDef t) (ADef t v))
+checkDef :: Prim v t => Def t v -> TcM t (Either (Id, TyDef t) (Id, Alg t v))
 checkDef (FDef v f) = checkKind Set.empty f *> newPoly v f
                       *> pure (Left (v, AnnF f))
 checkDef (TDef v f) = checkKind Set.empty f *> newType v f
@@ -68,13 +113,9 @@ checkDef (EDef i s f) = do
   checkKind (scVars s) (scType s)
   !sb <- typeOf (SEnv emptySubst emptySubst) f (scType s)
   newFun i s
-  !af <- annotate $! subst (fstE sb) f
-  case scType s of
-    TFun (a:_) -> do
-      !aty <- roleInfer af (TyAnn a (Rol 0))
-      !gg <- protoInfer (TyAnn a (Rol 0)) af
-      return $! Right $! AnnEDef i (AForAll (scVars s) (TyAnn a (Rol 0)) aty) af gg
-    _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
+  return $! Right $! (i, subst (fstE sb) f)
+checkDef (EPar _i _s) = fail "Unimplemented: checking rewriting strategies"
+
 
 
 tcTerm :: Prim v t => Alg t v -> Type t -> TcM t (Env (Type t))
@@ -302,6 +343,7 @@ gSeq ls =
   case  filter notEnd ls of
     [] -> GEnd
     [x] -> x
+    (Comm i g1 : gs) -> Comm i $! gSeq $ g1 : gs
     ls' -> GSeq ls'
   where
     notEnd GEnd = False
@@ -329,6 +371,7 @@ g1              |> g2          = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ rend
 seqP :: Pretty t => Global t -> Global t -> Global t
 seqP (Leaf g1)  g2       = Leaf $! g1 |> g2
 seqP (Brn gs1) (Brn gs2) = Brn $! zipWith seqP gs1 gs2
+seqP (Brn gs1) (BSeq gs2 gs) = BSeq (zipWith seqP gs1 gs2) gs
 seqP g1        (Leaf GEnd) = g1
 seqP (Brn gs1) (Leaf g2) = BSeq gs1 [g2]
 seqP (BSeq gs1 gss) (Leaf g2) = BSeq gs1 (gss ++ [g2])
@@ -338,7 +381,9 @@ seqP g1       g2         = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
         \global types in Language.Alg.Typecheck.seqP"
 
 msg :: Pretty t => AType t -> RoleId -> TcM t (Global t)
-msg (TyAnn t ri   ) ro = Leaf <$!> comm
+msg (TyAnn t  ri   ) ro
+  | ri == ro = pure $! Leaf GEnd
+  | otherwise = Leaf <$!> comm
   where
     comm = Comm <$!> pure (Msg [ri] [ro] t Nothing) <*> pure GEnd
 msg (TyBrn _ _ a _) ro = msg a ro
@@ -379,6 +424,10 @@ protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
   where
     as = map (`TyAnn` ri) ts
     getGT a e = protoInfer a e >>= \(Leaf i) -> pure i
+
+protoInfer (TyBrn i _ a _) (AnnCase es)
+  | length es > i
+  = protoInfer a (es !! i)
 
 protoInfer t  p@AnnCase{}     = fail $! "The input to annotated case '"
   ++ render p ++ "' cannot be distributed into annotated type '"

@@ -30,7 +30,7 @@ parseFile = X.parseFile keywords X.keyword parseVal
 
 -- XXX: Stub
 data CType = CInt32
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 instance Pretty CType where
   pretty CInt32 = pretty "int"
@@ -45,7 +45,7 @@ instance X.Ftv CType where
   ftv _ = Set.empty
 
 data CVal = CInt Int32
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 instance Pretty CVal where
   pretty (CInt i) = pretty i

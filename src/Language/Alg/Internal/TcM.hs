@@ -10,6 +10,7 @@ module Language.Alg.Internal.TcM
   ( TcM
   , TcSt (..)
   , newRole
+  , altRole
   , execTcM
   , runTcM
   , lookupVar
@@ -82,15 +83,24 @@ newRole = do
   put st { nextRole = i + 1 }
   return $! Rol i
 
-type TcM t = RWS Int () (TcSt t)
+altRole :: [TcM t a] -> TcM t [a]
+altRole = foldM' go [] . reverse
+  where
+    go l m = do
+      st@TcSt{ nextRole = i } <- get
+      x <- m
+      put st { nextRole = i }
+      return $ x : l
 
-execTcM :: Int -> Parser.St t -> TcM t a -> IO (TcSt t)
-execTcM d s m = {- mapM_ putStrLn w *> -} pure st
-  where (st, _w) = execRWS m d (initSt s)
+type TcM t = RWS () () (TcSt t)
 
-runTcM :: Int -> Parser.St t -> TcM t a -> IO (a, TcSt t)
-runTcM d s m = {- mapM_ putStrLn w *> -} pure (a, st)
-  where (a, st, _w) = runRWS m d (initSt s)
+execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
+execTcM s m = {- mapM_ putStrLn w *> -} pure st
+  where (st, _w) = execRWS m () (initSt s)
+
+runTcM :: Parser.St t -> TcM t a -> IO (a, TcSt t)
+runTcM s m = {- mapM_ putStrLn w *> -} pure (a, st)
+  where (a, st, _w) = runRWS m () (initSt s)
 
 lookupVar :: Id -> TcM t (Scheme t)
 lookupVar x = Map.lookup x . gamma <$!> get >>= \ i ->
@@ -224,6 +234,8 @@ type Prim v t = ( KindChecker t
                 , Pretty v
                 , Ftv t
                 , IsCompound t
+                , Ord v
+                , Ord t
                 , TypeOf t v t)
 
 instance KindChecker t => KindChecker (Poly t) where

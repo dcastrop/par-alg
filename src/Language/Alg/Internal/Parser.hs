@@ -22,6 +22,7 @@ module Language.Alg.Internal.Parser
 import Prelude hiding ( readFile )
 
 import Control.Monad.Identity
+import Data.List ( foldl' )
 import Data.Text ( Text )
 import Data.Text.IO ( readFile )
 import qualified Data.Set as Set
@@ -127,7 +128,8 @@ whiteSpace :: AlgParser t ()
 whiteSpace     = Token.whiteSpace     polyLexer
 parens :: AlgParser t a -> AlgParser t a
 parens         = Token.parens         polyLexer
--- braces         = Token.braces         polyLexer
+braces :: AlgParser t a -> AlgParser t a
+braces         = Token.braces         polyLexer
 -- angles         = Token.angles         polyLexer
 brackets :: AlgParser t a -> AlgParser t a
 brackets       = Token.brackets       polyLexer
@@ -264,15 +266,35 @@ algDef pt pv =  reserved "fun" *> pDef <* reservedOp ";"
                <*> (reservedOp ":" *> schemeParser pt)
                <*> (reservedOp "=" *> algParser pt pv)
 
-parseProg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Prog a v)
+stratDef :: (Show a, Ord a, Ord v) => AlgParser t a -> AlgParser t v -> AlgParser t (Def a v)
+stratDef pt pv = reserved "par" *> pDef <* reservedOp ";"
+  where
+    pDef = EPar
+           <$> knownIdParser
+           <*> braces (foldl' RwSeq RwRefl <$> (sepBy atomStrat $ reservedOp ";"))
+    atomStrat = choice [ try annotations
+                       , unrolling
+                       ]
+    annotations = do
+      reserved "annotate"
+      Annotate <$>
+        braces ( foldl' (flip Set.insert) Set.empty
+                 <$> (sepBy (algParser pt pv) $ reservedOp ";")
+               )
+    unrolling = do
+      reserved "unroll"
+      Unroll . fromInteger <$> integer
+
+parseProg :: (Show a, Ord a, Ord v) => AlgParser t a -> AlgParser t v -> AlgParser t (Prog a v)
 parseProg pt pv = whiteSpace *> (Prog <$> many1 pDef) <* eof
   where pDef = choice [ atomDef pt
                       , functorDef pt
                       , typeDef pt
                       , algDef pt pv
+                      , stratDef pt pv
                       ]
 
-parseFile :: (Show a, Show v)
+parseFile :: (Show a, Show v, Ord a, Ord v)
           => Map String a
           -> AlgParser a a
           -> AlgParser a v

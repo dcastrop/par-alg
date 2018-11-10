@@ -13,6 +13,8 @@ module Language.Alg.Syntax
   , Type(..)
   , Scheme(..)
   , Subst(..)
+  , RwStrat(..)
+  , rwSeq
   , substPoly
   , tSum
   , tPrd
@@ -43,7 +45,7 @@ data Poly a
   | PPrd ![Poly a]
   | PSum ![Poly a]
   | PMeta !Int -- ^ metavariables
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 substPoly :: Env (Poly a) -> Poly a -> Poly a
 substPoly e = go
@@ -109,7 +111,7 @@ data Type a
   | TApp !(Func a) !(Type a)
   | TRec !(Func a)
   | TMeta !Int
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Subst (Type a) (Type a) where
   subst e = go
@@ -206,7 +208,7 @@ data Alg t v
   | In  !(Func t)
   | Out !(Func t)
   | Rec !(Func t) !(Alg t v) !(Alg t v)
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Subst (Func t) (Alg t v) where
   subst s ( Const e     ) = Const (subst s e)
@@ -219,17 +221,31 @@ instance Subst (Func t) (Alg t v) where
   subst s ( Rec f e1 e2 ) = Rec (substPoly s f) (subst s e1) (subst s e2)
   subst _ t               = t
 
-
 comp :: Alg t v -> Alg t v -> Alg t v
 comp (Comp xs) (Comp ys) = Comp $! xs ++ ys
 comp (Comp xs) y         = Comp $! xs ++ [y]
 comp x         (Comp ys) = Comp $! x : ys
 comp x         y         = Comp [x, y]
 
+data RwStrat t v
+  = Unroll !Int
+  | Annotate (Set (Alg t v))
+
+  | RwRefl
+  | RwSeq !(RwStrat t v) !(RwStrat t v)
+  deriving Show
+
+rwSeq :: RwStrat t v -> RwStrat t v -> RwStrat t v
+rwSeq RwRefl r = r
+rwSeq r RwRefl = r
+rwSeq r1 r2 = RwSeq r1 r2
+
+
 data Def t v
   = FDef  !Id !(Func t)
   | TDef  !Id !(Type t)
   | EDef  !Id !(Scheme t) !(Alg t v)
+  | EPar  !Id !(RwStrat t v)
   | Atom  !Id !(Type t)
   deriving Show
 

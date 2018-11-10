@@ -10,6 +10,7 @@ import System.Console.CmdArgs
 import Language.Alg.C
 import Language.Alg.Typecheck
 import Language.Alg.Internal.TcM
+import Language.Alg.Internal.Ppr
 import Language.Par.Prog
 import Language.Ept.EMonad
 
@@ -23,12 +24,13 @@ output :: String -> IO ()
 output = whenNormal . putStrLn
 
 compile :: Flags -> FilePath -> IO ()
-compile Flags { recursion_depth = d } f = do
+compile _ f = do
   logInfo $ "Compiling: " ++ f
   logInfo "...parsing"
   t <- parseFile f
+  output $ render $ snd t
   logInfo "...typechecking"
-  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry (typecheck d) t
+  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   output $ renderProg fnDefns
   logInfo "...compiling to monadic code"
@@ -40,16 +42,14 @@ compileAll f@Flags { files = fl } = mapM_ (compile f) fl
 
 data Flags
   = Flags
-  { recursion_depth :: Int
-  , num_procs :: Int
+  { num_procs :: Int
   , files :: [FilePath]
   } deriving (Show, Data, Typeable)
 
 flags :: String -> Flags
 flags p
   = Flags
-  { recursion_depth = 0 &= help "Unroll recursive functions up to a maximum depth"
-  , num_procs = 1 &= help "Maximum number of roles"
+  { num_procs = 1 &= help "Maximum number of roles"
   , files = def &= args &= typFile
   }
   &= verbosity

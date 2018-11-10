@@ -28,3 +28,12 @@ atom merge : P Rec L -> Rec L;
 fun ms : Rec L -> Rec L
   = rec [P] merge split;
 
+par ms {
+  unroll 2;
+  annotate {
+    merge;
+    rec [P] merge split
+  }
+};
+
+

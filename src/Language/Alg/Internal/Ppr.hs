@@ -114,21 +114,20 @@ instance Pretty a => Pretty (Type a) where
   pretty (TVar x)    = pretty x
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
-    = hsep $ punctuate (pretty " ->") $ fmap (prettyLvl (prefLvl t)) ts
+    = group $! encloseSep emptyDoc emptyDoc (pretty "-> ") $!
+      fmap (prettyLvl (prefLvl t)) ts
   pretty t@(TSum ts Nothing)
-    = hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) $ ts
+    = group $! encloseSep emptyDoc emptyDoc (pretty "+ ") $!
+      fmap (prettyLvl (prefLvl t)) $ ts
   pretty t@(TSum ts (Just i))
-    = hsep [ hsep $ punctuate (pretty " +") $ fmap (prettyLvl (prefLvl t)) $ ts
-           , pretty " +? "
-           , pretty i
-           ]
+    = group $! encloseSep emptyDoc emptyDoc (pretty "+ ") $!
+      (fmap (prettyLvl (prefLvl t)) $ ts) ++ [hcat [pretty "+?", pretty i]]
   pretty t@(TPrd ts Nothing)
-    = hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) $ ts
+    = group $! encloseSep emptyDoc emptyDoc (pretty "* ") $!
+      fmap (prettyLvl (prefLvl t)) $ ts
   pretty t@(TPrd ts (Just i))
-    = hsep [ hsep $ punctuate (pretty " *") $ fmap (prettyLvl (prefLvl t)) $ ts
-           , pretty " +? "
-           , pretty i
-           ]
+    = group $! encloseSep emptyDoc emptyDoc (pretty "* ") $!
+      (fmap (prettyLvl (prefLvl t)) $ ts) ++ [hcat [pretty "*?", pretty i]]
   pretty (TApp f t)
     = hsep [pprParens f, pprParens t]
   pretty (TRec f)
@@ -148,18 +147,17 @@ instance Pretty t => Pretty (Scheme t) where
 instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Var  v  ) = pretty v
   pretty (Val  v)   = pretty v
-  pretty (Const c)  = hsep [pretty "const", aux $ pretty c]
-    where aux = if isCompound c then parens else id
+  pretty (Const c)  = hsep [pretty "const", pprParens c]
   pretty Unit       = pretty "()"
   pretty (Comp es)
-    = hsep $ punctuate (pretty " .") $ fmap pprParens es
+    = group $! encloseSep emptyDoc emptyDoc (pretty ". ") $! fmap pprParens es
   pretty Id         = pretty "id"
   pretty (Proj i)   = hcat [pretty "proj", brackets (pretty i)]
   pretty (Split es)
-    = hsep $ punctuate (pretty " &&&") $ fmap pprParens es
+    = group $! encloseSep emptyDoc emptyDoc (pretty "&&& ") $! fmap pprParens es
   pretty (Inj i)    = hcat [pretty "inj", brackets (pretty i)]
   pretty (Case es)
-    = hsep $ punctuate (pretty " |||") $ fmap pprParens es
+    = group $! encloseSep emptyDoc emptyDoc (pretty "||| ") $! fmap pprParens es
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
   pretty (In f)     = hcat [pretty "in", brackets $ pretty f]
   pretty (Out f)    = hcat [pretty "out", brackets $ pretty f]
@@ -182,16 +180,42 @@ instance (Pretty t, Pretty v) => Pretty (Def t v) where
                              , pretty f
                              , pretty ":"
                              , pretty t
-                             , pretty "="
-                             , pretty x
-                             , pretty ";"
+                             , nest 4 $!
+                               hsep [ pretty "="
+                                    , pretty x
+                                    , pretty ";"
+                                    ]
                              ]
+  pretty (EPar f r) = hsep [ pretty "par"
+                           , pretty f
+                           , braces $!
+                             nest 4 $!
+                             vsep $!
+                             punctuate (pretty ";") $!
+                             prettyRw r
+                           ]
   pretty (Atom f x)   = hsep [ pretty "atom"
                              , pretty f
                              , pretty ":"
                              , pretty x
                              , pretty ";"
                              ]
+
+prettyRw :: (Pretty t, Pretty v) => RwStrat t v -> [Doc ann]
+prettyRw (Unroll i) = [ hsep [ pretty "unroll", pretty i] ]
+prettyRw (Annotate a) = [ hsep [ pretty "annotate"
+                               , braces $!
+                                 vsep $!
+                                 punctuate (pretty ";") $!
+                                 map pretty $!
+                                 Set.toList a
+                               ]
+                        ]
+prettyRw RwRefl = []
+prettyRw (RwSeq s1 s2) = prettyRw s1 ++ prettyRw s2
+
+instance (Pretty t, Pretty v) => Pretty (RwStrat t v) where
+  pretty p = vsep $ punctuate (pretty ";") $! prettyRw p
 
 instance (Pretty t, Pretty v) => Pretty (Prog t v) where
   pretty = vcat . map pretty . getDefns

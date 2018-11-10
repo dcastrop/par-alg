@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -77,11 +78,11 @@ data ETerm t v
   | EPair ![ETerm t v]
   | EInj !Int !(ETerm t v)
   | EApp !(Alg t v) !(ETerm t v)
-  deriving Show
+  deriving (Show, Eq)
 
 data EFun t v
   = EAbs !(Maybe Int) !(EMonad t v)
-  deriving Show
+  deriving (Show, Eq)
 
 data EMonad t v
   = ERet !(ETerm t v)
@@ -90,13 +91,18 @@ data EMonad t v
   | ERcv !RoleId
   | ECh  !(ETerm t v) ![RoleId] ![EFun t v]
   | EBrn !RoleId ![EMonad t v]
-  deriving Show
+  deriving (Show, Eq)
 
 mcomp :: EFun t v -> EFun t v -> EFun t v
 mcomp (EAbs x m) f = EAbs x (eBnd m f)
 
 eBnd :: EMonad t v -> EFun t v -> EMonad t v
-eBnd m@(ERet EApp{}) f = EBnd m f
+eBnd m@(ERet (EApp Var{} _)) f = EBnd m f
+eBnd m@(ERet (EApp Comp{} _)) f = EBnd m f
+eBnd m@(ERet (EApp Split{} _)) f = EBnd m f
+eBnd m@(ERet (EApp Case{} _)) f = EBnd m f
+eBnd m@(ERet (EApp Fmap{} _)) f = EBnd m f
+eBnd m@(ERet (EApp Rec{} _)) f = EBnd m f
 eBnd   (ERet t     ) f = app f t
 eBnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
@@ -132,6 +138,16 @@ data EProg t v
 
 type CodeGen = RWS () [String] Int
 type ParProg t v = Map RoleId (EFun t v)
+
+resetVars :: [CodeGen a] -> CodeGen [a]
+resetVars [] = return []
+resetVars (mh : mt) = do
+  x <- get
+  h <- mh
+  put x
+  t <- resetVars mt
+  return $ h : t
+
 
 instance Fresh CodeGen where
   fresh = get >>= \i -> put (i+1) >> pure i
@@ -229,16 +245,16 @@ gen (AnnInj i) k r = k (RBrn (fromInteger i) r)
 gen (AnnCase es) k (RBrn i r)
   | length es > i = gen (es !! i) k r
 gen (AnnCase es) k (RId r) = do
-      evs <- mapM (\ e -> gen e k (RId r)) es
+      evs <- resetVars $! map (\ e -> gen e k (RId r)) es
       let rs = List.nub (concatMap Map.keys evs)
+      ev <- foldM' (\e r2 -> do
+                      x <- fresh
+                      return $!
+                        Map.insert r2 (EAbs (Just x) $! EBrn r $! map (getC x r2) evs) e
+                  ) Map.empty rs
       case rs List.\\ [r] of
         []  -> k (RId r)
         rs1 -> do
-          ev <- foldM' (\e r2 -> do
-                         x <- fresh
-                         return $!
-                           Map.insert r2 (EAbs (Just x) $! EBrn r $! map (getC x r2) evs) e
-                     ) Map.empty rs
           x <- fresh
           (\kk -> Map.insert r kk ev) <$!>
             (EAbs (Just x) <$!> (ECh (EVar x) rs1 <$!> mapM (getF r) evs))
@@ -304,11 +320,12 @@ instance Prim v t => Pretty (ETerm t v) where
   pretty (EApp e t) = hsep [pprParens e, pprParens t]
 
 instance Prim v t => Pretty (EFun t v) where
-  pretty (EAbs i m) = hsep [ pretty "\\"
-                           , pprVar i
-                           , pretty "->"
-                           , pretty m
-                           ]
+  pretty (EAbs i m) = nest 2 $ vsep [ hsep [ pretty "\\"
+                                           , pprVar i
+                                           , pretty "->"
+                                           ]
+                                    , pretty m
+                                    ]
     where
       pprVar Nothing = pretty "_"
       pprVar (Just v) = hcat [pretty "v", pretty v]
@@ -335,7 +352,10 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
   pretty (ECh t r a) = hang 2 $!
                        vsep [ hsep [ pretty "choice"
                                    , pprParens t
-                                   , pretty r
+                                   , brackets $!
+                                     hsep $!
+                                     punctuate (pretty ", ") $!
+                                     map pretty r
                                    ]
                             , encloseSep
                                (pretty "( ")
