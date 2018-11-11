@@ -2,7 +2,6 @@ module Language.Par.Prog
   ( AProg
   , ADef (..)
   , AnnScheme (..)
-  , TyEnv
   , renderProg
   , GTy
   , Global (..)

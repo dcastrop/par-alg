@@ -11,23 +11,27 @@ module Language.Alg.Typecheck
   , TypeOf (..)
   , Prim
   , typecheck
-  , protocol
   , checkProg
   , checkDef
   , tcTerm
   , execTcM
   , appPoly
+
+  , protocol
+  , rAnn
+  , rGet
+  , roleTrack
   ) where
 
 import Control.Monad ( zipWithM )
 import qualified Data.Set as Set
-import Data.List ( foldl1', transpose )
+import Data.List ( foldl' )
 import Data.Map.Strict ( Map )
 import Data.Traversable ( mapM )
 import qualified Data.Map.Strict as Map
 import Data.Text.Prettyprint.Doc hiding ( annotate )
 
-import Language.SessionTypes.Common
+import Language.SessionTypes.Common hiding ( Role )
 import Language.SessionTypes.Global
 import Language.Common.Id
 import Language.Common.Subst
@@ -51,43 +55,6 @@ typecheck st p = go >>= \((e, p'), tcst) -> return (tcst, e, p')
       !(te, pr) <- checkProg p
       !pr' <- rewrite pr
       return (te, pr')
-
-rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t (AProg t v)
-rewrite defns = mapM rwStrat $! Map.toList toRewrite
-  where
-    !toRewrite = Map.filter notRefl defns
-    notRefl (_, RwRefl) = False
-    notRefl _           = True
-
-rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t (ADef t v)
-rwStrat (i, (ef, rw)) = do
-  !sc <- lookupVar i
-  case scType sc of
-    TFun (a:_) -> do
-      let initR = Rol 0
-          initT = TyAnn a $! initR
-      !(aty, af) <- rwAlg initT rw (AnnAlg ef initR)
-      -- !aty <- roleInfer a initR
-      !gg <- protoInfer initT af
-      return $! AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) af gg
-    _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
-
-rwAlg :: Prim v t => AType t -> RwStrat t v -> ATerm t v -> TcM t (AType t, ATerm t v)
-rwAlg ti (RwSeq s1 s2) a = rwAlg ti s1 a >>= rwAlg ti s2 . snd
-rwAlg ti RwRefl        a = (,a) <$!> roleInfer a ti
-rwAlg ti (Unroll i) (AnnAlg (Rec f m s) r1) = do
-  rf <- (`AnnAlg` r1) <$!> unroll f m s i
-  to <- roleInfer rf ti
-  pure (to, rf)
-rwAlg _ Unroll{} t = fail $! "Cannot unroll: " ++ render t
-rwAlg ti (Annotate s) ef = go ef
-  where
-    go (AnnAlg e r) = do
-      a <- annotate r s e
-      to <- roleInfer a ti
-      pure (to, a)
-    go a = fail $ "Cannot annotate. Already annotated: " ++ render a
-
 
 -- Fills in metavar & type information
 checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, Map Id (Alg t v, RwStrat t v))
@@ -115,7 +82,6 @@ checkDef (EDef i s f) = do
   newFun i s
   return $! Right $! (i, subst (fstE sb) f)
 checkDef (EPar _i _s) = fail "Unimplemented: checking rewriting strategies"
-
 
 
 tcTerm :: Prim v t => Alg t v -> Type t -> TcM t (Env (Type t))
@@ -293,6 +259,352 @@ appPoly (PPrd ps) t = TPrd <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly (PSum ps) t = TSum <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly x@PMeta{} t = fail $! "Ambiguous type '" ++ render (TApp x t) ++ "'"
 
+--------------------------------------------------------------------------------
+-- REWRITER
+
+rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t (AProg t v)
+rewrite defns = mapM rwStrat $! Map.toList toRewrite
+  where
+    !toRewrite = Map.filter notRefl defns
+    notRefl (_, RwRefl) = False
+    notRefl _           = True
+
+rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t (ADef t v)
+rwStrat (i, (ef, rw)) = do
+  !sc <- lookupVar i
+  case scType sc of
+    TFun (a:_) -> do
+      let initR = Rol 0
+          initT = TyAnn a $! initR
+      !af <- rwAlg rw (AnnAlg ef initR)
+      -- !aty <- roleInfer a initR
+      !(aty, gg) <- protoInfer initT af
+      return $! AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) af gg
+    _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
+
+rwAlg :: Prim v t => RwStrat t v -> ATerm t v -> TcM t (ATerm t v)
+rwAlg (RwSeq s1 s2) a = rwAlg s1 a >>= rwAlg s2
+rwAlg RwRefl        a = pure a
+rwAlg (Unroll i) (AnnAlg (Rec f m s) r1) = do
+  rf <- (`AnnAlg` r1) <$!> unroll f m s i
+  pure rf
+rwAlg Unroll{} t = fail $! "Cannot unroll: " ++ render t
+rwAlg (Annotate s) ef = go ef
+  where
+    go (AnnAlg e r) = do
+      a <- annotate r s e
+      pure a
+    go a = fail $ "Cannot annotate. Already annotated: " ++ render a
+
+
+--------------------------------------------------------------------------------
+-- PROTOCOLS AND ROLES
+
+rAnn :: Pretty t => Type t -> Role -> Either [Char] (AType t)
+rAnn t (RId i)
+  = pure $! TyAnn t i
+rAnn t (RAlt rs)
+  = TyAlt <$!> mapM (rAnn t) rs
+rAnn (TSum ts _) (RBrn i r) | len > i
+  = TyBrn i len <$!> rAnn (ts !! i) r
+  where
+    !len = length ts
+rAnn (TPrd ts _) (RPrd rs)
+  | length ts == length rs
+  = TyPrd <$!> zipWithM rAnn ts rs
+rAnn l r
+  = Left $ "Cannot annotate type '" ++ render l ++ "' with '" ++ render r ++ "'"
+
+rGet :: (Eq a, Pretty a, IsCompound a)
+     => AType a
+     -> TcM a (Role, Type a)
+rGet (TyAnn t i) = pure (RId i, t)
+rGet (TyBrn i _ a) = do
+  ts <- mapM (const (TMeta <$> fresh)) [0..i-1]
+  n <- fresh
+  (r, t) <- rGet a
+  pure (RBrn i r, TSum (ts ++ [t]) $ Just n)
+rGet (TyAlt []) = error $ "Panic! empty alternative in 'rGet'"
+rGet (TyAlt (x:xs)) = do
+  (r , t) <- rGet x
+  (rs, ts) <- unzip <$!> mapM rGet xs
+  sb <- foldM' (`unify` t) (SEnv Map.empty Map.empty) $! ts
+  pure (RAlt $ r : rs, subst (sndE sb) t)
+rGet (TyPrd xs) = do
+  (rs, ts) <- unzip <$!> mapM rGet xs
+  pure $! (RPrd rs, TPrd ts Nothing)
+rGet (TyApp f r t) = pure $! (r, TApp f t)
+rGet TyMeta{} = error $ "Panic, ambiguous annotated type!"
+
+-- Pre: ATerm must be well-typed, and role match its input type.
+roleTrack :: ATerm t v -> Role -> Role
+roleTrack p (RAlt ts)   = RAlt $! map (roleTrack p) ts
+roleTrack AnnId t        = t
+roleTrack (AnnAlg _ r) _ = RId r
+roleTrack (AnnComp es) t = go (reverse es) t
+  where
+    go l (RAlt (th : ts))
+      | all (== th) ts = go l th
+    go [] t' = t'
+    go (x:xs) t' = go xs $! roleTrack x t'
+roleTrack (AnnPrj i) (RPrd ts) = ts !! (fromInteger i)
+roleTrack (AnnPrj _) r = r
+roleTrack (AnnSplit es) t = RPrd $! map (`roleTrack` t) es
+roleTrack (AnnCase es) (RBrn i a)
+  = let !e = es !! i
+    in roleTrack e a
+roleTrack (AnnCase es) r
+  = rAlt $! map (`roleTrack` r) es
+roleTrack (AnnInj i) t
+  = RBrn (fromInteger i) t
+roleTrack _ _
+  = error $! "Panic! Ill-typed term reached "
+
+tyAlt :: Eq t => [AType t] -> AType t
+tyAlt (t:ts)
+  | all (== t) ts = t
+tyAlt ts = TyAlt ts
+
+tryChoice :: AType t -> Maybe (RoleId, [AType t])
+tryChoice (TyAnn (TSum ts _) r)
+  = Just (r, zipWith (`TyBrn` len) [0..] $! map (`TyAnn` r) ts)
+  where
+    !len = length ts
+tryChoice (TyBrn i j t)
+  | Just (r, ts) <- tryChoice t
+  = Just (r, map (TyBrn i j) ts)
+tryChoice (TyPrd ts)
+  | Just (r, ts1) <- go ts = Just (r, map TyPrd ts1)
+  where
+    go [] = Nothing
+    go (x : xs)
+      | Just (r, bs) <- tryChoice x = Just (r, map (:xs) bs)
+      | Just (r, xs') <- go xs = Just (r, map (x:) xs')
+      | otherwise = Nothing
+tryChoice _ = Nothing
+
+protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
+protocol sc t = snd <$> protoInfer (ascDom sc) t
+
+protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (AType t, Global t)
+
+--      A_i |= p ~ G_i : B_i
+--      -----------------------------------------------------
+--      A_1 \oplus A_2 |= p ~ G_1 \oplus G_2 : B_1 \oplus B_2
+protoInfer (TyAlt as) p = do
+  (bs, ps) <- unzip <$!> mapM (`protoInfer` p) as
+  pure $! (tyAlt bs, Brn ps)
+-- Post : all rules A |= p ~ G : B from now on can assume A is not A_1 \oplus A_2,
+-- so G must be a single global type, not a global type branch!
+
+protoInfer a p = do
+  (b, t) <- inferGTy a p
+  pure (b, Leaf t)
+
+requiresChoice :: RoleId -> AType t -> ATerm t v -> Bool
+requiresChoice r (TyAnn _ r') (AnnCase _)
+  | r == r' = True
+requiresChoice r a (AnnComp (e:_)) = requiresChoice r a e
+requiresChoice r a (AnnSplit es) = any (requiresChoice r a) es
+requiresChoice _ _ _ = False
+
+inferGTy :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (AType t, GTy t)
+
+inferGTy (TyAnn (TApp f a) r) p =
+  appPoly f a >>= \b -> inferGTy (TyAnn b r) p
+-- Early choice:
+--
+--      A ~>^r Sum A_i       A_i |= p ~ G_i : B_i
+--      -----------------------------------------------------
+--      A |= p ~ G_1 \oplus G_2 : B_1 \oplus B_2
+inferGTy a p
+  | Just (r, as) <- tryChoice a, requiresChoice r a p = do
+  (bs, gs) <- unzip <$!> mapM (`inferGTy` p) as
+  let !g  = Choice r rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
+      !rs = Set.toList $! Set.unions (map getRoles gs) Set.\\ Set.singleton r
+  pure $! (tyAlt bs, g)
+-- Post: no role contains sum types
+
+-- Message
+inferGTy a (AnnAlg e r) = do
+  !ty <- TMeta <$!> fresh
+  !(_, ti) <- rGet a -- Metavariables in branches should not be used in return
+                    -- type, we are not in a choice here!
+  !s  <- tcTerm e (ti `tFun` ty)
+  let !ty' = subst s ty
+
+  g <- msg a r
+  pure (TyAnn ty' r, g GEnd)
+
+-- Identity
+inferGTy a AnnId = pure (a, GEnd)
+
+-- Composition
+inferGTy a (AnnComp es) = go $ reverse es
+  where
+    go [] = pure (a, GEnd)
+    go (p:ps) = do
+      (t , g)  <- aux (length ps > 0) p
+      (t', gb) <- protoInfer t (AnnComp $! reverse ps)
+      pure (t', seqG g gb)
+    aux True (AnnSplit ts) = dupBranches a ts
+    aux _     p = inferGTy a p
+
+
+-- Projection
+inferGTy (TyAnn (TPrd ts _) r) (AnnPrj i)
+  | n < length ts = pure (TyAnn (ts !! n) r, GEnd)
+  where
+    n = fromInteger i
+inferGTy (TyPrd ts) (AnnPrj i)
+  | n < length ts = pure (ts !! n, GEnd)
+  where
+    n = fromInteger i
+inferGTy _ AnnPrj{}
+  | otherwise     = fail "Typecheck.inferGTy: ill-typed term in projection"
+
+-- Split
+inferGTy a (AnnSplit es) = do
+  (rs, gs) <- unzip <$!> mapM (inferGTy a) es
+  pure $ (TyPrd rs, gSeq gs)
+  --let !t  = liftPrd rs
+  --    !g  = seqChoices gs
+  --pure $ (t, g)
+  --where
+  --  liftPrd []     = TyPrd [] -- XXX: should never happen
+  --  liftPrd (t:ts) = goP ts [] t
+
+  --  goP ts ps (TyAlt rs) = TyAlt $ map (goP ts ps) rs
+  --  goP []     ps t      = TyPrd (t : ps)
+  --  goP (t:ts) ps p      = goP ts (p : ps) t
+
+  --  seqChoices []     = GEnd
+  --  seqChoices (g:gs) = goG gs g
+
+  --  goG [] g = g
+  --  goG l@(g1:gs) g =
+  --    case g of
+  --      Choice r rs alts
+  --        -> Choice r rs $! mapAlt (\ _ g2 -> gSeq [g2, goG gs g1]) alts
+  --      Comm m gn -> Comm m $! goG l gn
+  --      GRec r gn -> GRec r $! goG l gn
+  --      GSeq gl   -> gSeq [GSeq (init gl), goG l (last gl)]
+  --      GVar v    -> GVar v
+  --      GEnd      -> goG gs g1
+
+-- Split
+inferGTy a (AnnInj i) =
+  pure (tagAlts (fromInteger i) a, GEnd)
+  where
+    tagAlts j (TyAlt ts) = TyAlt $! map (tagAlts j) ts
+    tagAlts j b = TyBrn j (-1) b
+
+-- Case
+inferGTy (TyBrn i _ a) (AnnCase ps)
+  | length ps > i = inferGTy a (ps !! i)
+inferGTy r AnnCase{}
+  = fail $! "Typecheck.inferGTy reached case expression in an un-tagged role: "
+    ++ render r
+
+inferGTy _ AnnFmap{}
+  = fail $ "Unimplemented"
+
+
+needBranch :: (Pretty t, Eq t, IsCompound t) => [AType t] -> TcM t Int
+needBranch ts = do
+  (ri, _) <- unzip <$!> mapM rGet ts
+  return $! go 0 ri
+  where
+    go i (r : rsn) =
+      case getAlts r of
+        (r1 : rs1)
+          | all (roleIds r1 ==) $ map roleIds rs1 -> go (i+1) rsn
+          | otherwise -> i
+        _ -> go (i+1) rsn
+    go i [] = i
+    getAlts (RAlt rs) = concatMap getAlts rs
+    getAlts r = [r]
+
+
+dupBranches :: forall t v. Prim v t => AType t -> [ATerm t v] -> TcM t (AType t, GTy t)
+dupBranches a es = do
+  (rs, gs) <- unzip <$!> mapM (inferGTy a) es
+  i <- needBranch rs
+  let r1 = take i rs
+      rs2 = drop i rs
+      g1 = take i gs
+      gs2 = drop i gs
+      !t = liftPrd r1 rs2
+      !g = seqChoices g1 gs2
+  pure $ (t, g)
+  where
+    liftPrd r1 []     = TyPrd r1 -- XXX: should never happen
+    liftPrd r1 (t:ts) = goP ts r1 t
+
+    goP ts ps (TyAlt rs) = TyAlt $ map (goP ts ps) rs
+    goP []     ps t      = TyPrd (t : ps)
+    goP (t:ts) ps p      = goP ts (p : ps) t
+
+    seqChoices g1 []     = gSeq g1
+    seqChoices g1 (g:gs) = gSeq $ g1 ++ [goG gs g]
+
+    goG [] g = g
+    goG l@(g1:gs) g =
+      case g of
+        Choice r rs alts
+          -> Choice r rs $! mapAlt (\ _ g2 -> gSeq [g2, goG gs g1]) alts
+        Comm m gn -> Comm m $! goG l gn
+        GRec r gn -> GRec r $! goG l gn
+        GSeq gl   -> gSeq [GSeq (init gl), goG l (last gl)]
+        GVar v    -> GVar v
+        GEnd      -> goG gs g1
+
+
+
+-- Pre: no sum types, no alts
+msg :: Pretty t => AType t -> RoleId -> TcM t (GTy t -> GTy t)
+msg (TyAnn t  ri   ) ro
+  | ri == ro = pure id
+  | otherwise = comm
+  where
+    comm = pure $! Comm (Msg [ri] [ro] t Nothing)
+msg (TyBrn _ _ a) ro = msg a ro
+msg (TyPrd ts   ) ro = foldl' (.) id <$!> mapM (`msg` ro) ts
+msg t@TyAlt{}     _  = fail $! "Typecheck.msg: Found type alternative: " ++ render t
+msg t@TyApp{}     _  = fail $! "Typecheck.msg: Found functor application: " ++ render t
+msg t@TyMeta{}    _  = fail $! "Typecheck.msg: Ambiguous annotated type: " ++ render t
+
+seqG :: Pretty t => GTy t -> Global t -> GTy t
+seqG (Choice r rs gs1) g@(Brn g2)
+  = Choice r lrs $! mapAlt (\ (Lbl l) gt -> seqG gt (g2 !! l)) gs1
+  where
+    !rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
+    !lrs = Set.toList rs'
+seqG c@Choice{}      (BSeq gs g)    = gSeq $! (seqG c $ Brn gs) : g
+seqG (Comm m g1)     g2             = Comm m $! seqG g1 g2
+seqG (GRec v g1)     g2             = GRec v $! seqG g1 g2
+seqG g@GVar{}        _              = g
+seqG GEnd            (Leaf g2)      = g2
+seqG g1              (Leaf g2)      = gSeq $! [g1, g2]
+seqG g1              g2             = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
+  where
+    m = "Panic! Ill-formed sequencing of \
+        \global types in Language.Alg.Typecheck.seqG"
+
+gSeq :: [GTy t] -> GTy t
+gSeq ls =
+  case  filter notEnd ls of
+    [] -> GEnd
+    [x] -> x
+    (Comm i g1 : gs) -> Comm i $! gSeq $ g1 : gs
+    ls' -> GSeq ls'
+  where
+    notEnd GEnd = False
+    notEnd _    = True
+
+
+
+{-
 -- p |- A -> B, where A is given, infer B
 roleInfer :: Prim v t => ATerm t v -> AType t -> TcM t (AType t)
 roleInfer p (TyAlt ts)   = TyAlt <$!> mapM (roleInfer p) ts
@@ -343,16 +655,6 @@ roleInfer e t
   = fail $! "Cannot type-check '" ++ render e ++ "' against annotated type '" ++
     render t ++ "'"
 
-gSeq :: [GTy t] -> GTy t
-gSeq ls =
-  case  filter notEnd ls of
-    [] -> GEnd
-    [x] -> x
-    (Comm i g1 : gs) -> Comm i $! gSeq $ g1 : gs
-    ls' -> GSeq ls'
-  where
-    notEnd GEnd = False
-    notEnd _    = True
 
 infixl 4 |>
 
@@ -443,3 +745,5 @@ protoInfer _  AnnInj{}        = pure $! Leaf GEnd
 protoInfer ti (AnnAlg _ r   ) = msg ti r
 protoInfer _   AnnId          = pure $! Leaf GEnd
 protoInfer _  AnnFmap{}       = fail "Unimplemented"
+
+-}

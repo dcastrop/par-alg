@@ -70,6 +70,7 @@ genProg = mapM go >=> (pure . Map.fromList)
       return $!
         Map.fromList $!
         map (\r1 -> (r1, EAbs (Just x) $! ERet (EVar x))) $!
+        Set.toList $
         roleIds r
 
 data ETerm t v
@@ -209,7 +210,7 @@ type Gen t v = Role -> CodeGen (ParProg t v)
 remember :: Role -> CodeGen (ParProg t v, ParProg t v)
 remember r = do
   x <- fresh
-  (Map.fromList *** Map.fromList) . unzip <$!> mapM (go x) (roleIds r)
+  (Map.fromList *** Map.fromList) . unzip <$!> mapM (go x) (Set.toList $! roleIds r)
   where
     go x r1 = do
       return $! ((r1, EAbs (Just x) (ERet (EVar x))), (r1, EAbs Nothing (ERet (EVar x))))
@@ -274,12 +275,6 @@ getF :: (Ord k, Fresh f) => k -> Map k (EFun t v) -> f (EFun t v)
 getF i m
   | Just c <- Map.lookup i m = pure c
   | otherwise               = (\x -> EAbs (Just x) $! ERet $! EVar x) <$!> fresh
-
-roleIds :: Role -> [RoleId]
-roleIds (RId r) = [r]
-roleIds (RPrd rs) = concatMap roleIds rs
-roleIds (RAlt rs) = concatMap roleIds rs
-roleIds (RBrn _ r) = roleIds r
 
 -- type Lt t = LT Id (Type t) ()
 --

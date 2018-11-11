@@ -20,6 +20,8 @@ module Language.Alg.Syntax
   , tPrd
   , tFun
   , Def(..)
+  , TyDef(..)
+  , TyEnv
   , Prog(..)
   ) where
 
@@ -27,6 +29,7 @@ import Control.Arrow ( (***) )
 import Data.Set ( Set )
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Data.Map.Strict ( Map )
 
 import Language.Common.Id
 import Language.Common.Subst
@@ -253,3 +256,10 @@ newtype Prog t v
   = Prog { getDefns :: [Def t v]
          }
   deriving Show
+
+data TyDef t
+  = AnnF (Func t) -- Functors
+  | AnnT (Type t) -- Types
+  | AnnA (Type t) -- Atoms
+
+type TyEnv t = Map Id (TyDef t)

@@ -36,23 +36,25 @@ par ms {
   }
 };
 
+
+// atom fun1 : int -> int + int;
 //
-// atom fun1 : int -> int;
-//
-// atom fun2 : int -> int;
+// atom fun2 : int -> int + int;
 //
 // atom fun3 : int -> int;
 //
-// atom fun4 : int * int -> int;
+// atom fun4 : int -> int;
+// atom fun5 : int * int -> int;
 //
-// fun dec : int + int -> int
-//   = fun4 . (fun1 ||| fun2) &&& (fun1 ||| fun3);
+// fun dec : int -> int
+//   = fun5 . ((fun3 ||| fun4 . fun1) &&& ((fun3 ||| fun4) . fun2));
 //
 // par dec {
 //   annotate {
 //     fun1;
 //     fun2;
 //     fun3;
-//     fun4
+//     fun4;
+//     fun5
 //   }
 // };
