@@ -20,7 +20,7 @@ poly L = K () + K int * I;
 //
 // fun length : L Nat -> L ()
 //    = id +++ id *** const ();
-//
+
 atom split : Rec L -> P Rec L;
 
 atom merge : P Rec L -> Rec L;
@@ -29,11 +29,30 @@ fun ms : Rec L -> Rec L
   = rec [P] merge split;
 
 par ms {
-  unroll 2;
+  unroll 3;
   annotate {
     merge;
     rec [P] merge split
   }
 };
 
-
+//
+// atom fun1 : int -> int;
+//
+// atom fun2 : int -> int;
+//
+// atom fun3 : int -> int;
+//
+// atom fun4 : int * int -> int;
+//
+// fun dec : int + int -> int
+//   = fun4 . (fun1 ||| fun2) &&& (fun1 ||| fun3);
+//
+// par dec {
+//   annotate {
+//     fun1;
+//     fun2;
+//     fun3;
+//     fun4
+//   }
+// };

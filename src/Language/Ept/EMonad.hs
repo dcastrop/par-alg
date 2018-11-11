@@ -18,6 +18,7 @@ module Language.Ept.EMonad
   , genProg
   , generate
   , renderPCode
+  , roleTrack
   ) where
 
 import Control.Arrow ( (***) )
@@ -373,3 +374,27 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                              (pretty ", ")
                              $! map pretty a
                            ]
+
+-- XXX: Refactor somewhere!!
+roleTrack :: ATerm t v -> Role -> Role
+roleTrack p (RAlt ts)   = RAlt $! map (roleTrack p) ts
+roleTrack AnnId t        = t
+roleTrack (AnnAlg _ r) _ = RId r
+roleTrack (AnnComp es) t = go (reverse es) t
+  where
+    go l (RAlt (th : ts))
+      | all (== th) ts = go l th
+    go [] t' = t'
+    go (x:xs) t' = go xs $! roleTrack x t'
+roleTrack (AnnPrj i) (RPrd ts) = ts !! (fromInteger i)
+roleTrack (AnnPrj _) r = r
+roleTrack (AnnSplit es) t = RPrd $! map (`roleTrack` t) es
+roleTrack (AnnCase es) (RBrn i a)
+  = let !e = es !! i
+    in roleTrack e a
+roleTrack (AnnCase es) r
+  = RAlt $! map (`roleTrack` r) es
+roleTrack (AnnInj i) t
+  = RBrn (fromInteger i) t
+roleTrack _ _
+  = error $! "Panic! Ill-typed term reached "

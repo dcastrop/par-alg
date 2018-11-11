@@ -21,7 +21,7 @@ module Language.Alg.Typecheck
 
 import Control.Monad ( zipWithM )
 import qualified Data.Set as Set
-import Data.List ( foldl1' )
+import Data.List ( foldl1', transpose )
 import Data.Map.Strict ( Map )
 import Data.Traversable ( mapM )
 import qualified Data.Map.Strict as Map
@@ -320,7 +320,12 @@ roleInfer p@(AnnPrj i) (TyAnn (TPrd ts _) r)
   | otherwise
   = fail $! "Cannot infer annotated type of '" ++ render p ++ "'"
 roleInfer (AnnSplit es) t
-  = TyPrd <$!> mapM (`roleInfer` t) es
+  = tyPrd <$!> mapM (`roleInfer` t) es
+  where
+    tyPrd alts@((TyAlt _) : _) = TyAlt $! map TyPrd $! transpose $ map unAlts alts
+    tyPrd ts = TyPrd ts
+    unAlts (TyAlt ts) = ts
+    unAlts _ = error "Panic! unexpected case in 'roleInfer.unAlts'"
 roleInfer (AnnCase es) (TyBrn i _ a _)
   = let !e = es !! i
     in roleInfer e a
@@ -388,7 +393,7 @@ msg (TyAnn t  ri   ) ro
     comm = Comm <$!> pure (Msg [ri] [ro] t Nothing) <*> pure GEnd
 msg (TyBrn _ _ a _) ro = msg a ro
 msg (TyAlt ts     ) ro = Brn <$!> mapM (`msg` ro) ts
-msg (TyPrd ts     ) ro = foldl1' seqP <$!> mapM (`msg` ro) ts
+msg (TyPrd ts     ) ro = foldl1' seqP <$!> mapM (`msg` ro) ts -- TODO: Wrong, merge choices here
 msg t@TyApp{}       _  = fail $! "Found functor application: " ++ render t
 msg (TyMeta i)      _  = fail $! "Ambiguous annotated type" ++ render i
 
