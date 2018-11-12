@@ -1,0 +1,6 @@
+fun test0 : int + int -> int + int
+  = inj[0] ||| inj[1];
+
+par test0 {
+  annotate{}
+};
