@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wwarn#-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -11,20 +11,18 @@ module Language.Ept.EMonad
   , EFun(..)
   , EMonad(..)
   , EProg(..)
-  , mcomp
-  , ecomp
-  , msg
+  , cmsg
   , gen
+  , genAlt
   , genProg
   , generate
   , renderPCode
   , roleTrack
   ) where
 
-import Control.Arrow ( (***) )
 import Control.Monad.RWS.Strict
 import Data.Map ( Map )
-import qualified Data.List as List
+import Data.List ( scanl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
@@ -32,46 +30,22 @@ import qualified Data.Set as Set
 
 import Language.Common.Id
 import Language.Alg.Syntax
+import Language.Alg.Typecheck
 import Language.Alg.Internal.TcM
 import Language.Alg.Internal.Ppr
 import Language.Par.Role
 import Language.Par.Term
+import Language.Par.Type
 import Language.Par.Prog
 -- import Language.SessionTypes.Common hiding (Role)
 
-renderPCode :: Prim v t => Map Id (ParProg t v) -> String
-renderPCode
-  = renderString
-  . layoutSmart defaultLayoutOptions
-  . vsep
-  . map pprPDefns
-  . Map.toList
-  where
-    pprPDefns (i, p) = nest 4 $! vsep [ hsep [pretty i, pretty "="]
-                                     , vsep $! map pprCRole $! Map.toList p
-                                     , line
-                                     ]
-    pprCRole (r, m) = hsep [pretty r, pretty "|->", pretty m]
-
 generate :: Prim v t => TcSt t -> AProg t v -> IO (Int, Map Id (ParProg t v))
-generate tcst p = return (st, a)
+generate tcst p = return (nextVar st, a)
   where
-    (a, st, _w) = runRWS (genProg p) () (initCGSt tcst)
+    (a, st, _w) = runRWS (genProg p) () tcst
 
-initCGSt :: TcSt t -> Int
-initCGSt _st = 1
-
-genProg :: Prim v t => AProg t v -> CodeGen (Map Id (ParProg t v))
-genProg = mapM go >=> (pure . Map.fromList)
-  where
-    go (AnnEDef i _ t _) = put 1 >> (i,) <$!> gen t emptyK (RId $! mkRole 0)
-    emptyK r = do
-      x <- fresh
-      return $!
-        Map.fromList $!
-        map (\r1 -> (r1, EAbs (Just x) $! ERet (EVar x))) $!
-        Set.toList $
-        roleIds r
+genProg :: Prim v t => AProg t v -> TcM t (Map Id (ParProg t v))
+genProg = undefined
 
 data ETerm t v
   = EVar !Int
@@ -95,27 +69,27 @@ data EMonad t v
   | EBrn !RoleId ![EMonad t v]
   deriving (Show, Eq)
 
-mcomp :: EFun t v -> EFun t v -> EFun t v
-mcomp (EAbs x m) f = EAbs x (eBnd m f)
+ecomp :: EFun t v -> EFun t v -> EFun t v
+ecomp (EAbs x m) f = EAbs x (ebnd m f)
 
-eBnd :: EMonad t v -> EFun t v -> EMonad t v
-eBnd m@(ERet (EApp Var{} _)) f = EBnd m f
-eBnd m@(ERet (EApp Comp{} _)) f = EBnd m f
-eBnd m@(ERet (EApp Split{} _)) f = EBnd m f
-eBnd m@(ERet (EApp Case{} _)) f = EBnd m f
-eBnd m@(ERet (EApp Fmap{} _)) f = EBnd m f
-eBnd m@(ERet (EApp Rec{} _)) f = EBnd m f
-eBnd   (ERet t     ) f = app f t
-eBnd m (EAbs x (ERet (EVar y)))
+ebnd :: EMonad t v -> EFun t v -> EMonad t v
+ebnd m@(ERet (EApp Var{} _)) f = EBnd m f
+ebnd m@(ERet (EApp Comp{} _)) f = EBnd m f
+ebnd m@(ERet (EApp Split{} _)) f = EBnd m f
+ebnd m@(ERet (EApp Case{} _)) f = EBnd m f
+ebnd m@(ERet (EApp Fmap{} _)) f = EBnd m f
+ebnd m@(ERet (EApp Rec{} _)) f = EBnd m f
+ebnd   (ERet t     ) f = app f t
+ebnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
-eBnd (EBnd m f1)  f2   = EBnd m (f1 `mcomp` f2)
-eBnd m               f = EBnd m f
+ebnd (EBnd m f1)  f2   = EBnd m (f1 `ecomp` f2)
+ebnd m               f = EBnd m f
 
 app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
   where
     go (ERet v') = ERet $! sbst v'
-    go (EBnd m1 f) = eBnd (go m1) (substF f)
+    go (EBnd m1 f) = ebnd (go m1) (substF f)
     go (ESnd r v') = ESnd r $! sbst v'
     go m1@ERcv{} = m1
     go (ECh v' r fs) = ECh (sbst v') r $! map substF fs
@@ -137,162 +111,149 @@ app (EAbs i m) v = go m
 data EProg t v
   = EptEnv { getEnv :: ParProg t v }
 
-
-type CodeGen = RWS () [String] Int
 type ParProg t v = Map RoleId (EFun t v)
 
-resetVars :: [CodeGen a] -> CodeGen [a]
-resetVars [] = return []
-resetVars (mh : mt) = do
-  x <- get
-  h <- mh
-  put x
-  t <- resetVars mt
-  return $ h : t
+hAbs :: TcM t (EFun t v) -> ETerm t v -> TcM t (EMonad t v)
+hAbs f t = (`app` t) <$!> f
 
+mRet :: ETerm t v -> TcM t (EMonad t v)
+mRet t = ERet <$> pure t
 
-instance Fresh CodeGen where
-  fresh = get >>= \i -> put (i+1) >> pure i
+eAbs :: (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EFun t v)
+eAbs f = newVar >>= \ x -> EAbs (Just x) <$!> f (EVar x)
 
-lookR :: RoleId -> ParProg t v -> CodeGen (EFun t v)
-lookR r m
-  | Just f <- Map.lookup r m = pure f
-  | otherwise               = do v <- fresh
-                                 pure $! EAbs (Just v) (ERet (EVar v))
+mBnd :: TcM t (EMonad t v) -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EMonad t v)
+mBnd m f = ebnd <$> m <*> eAbs f
 
-ecomp :: Map RoleId (EFun t v1)
-      -> Map RoleId (EFun t v1)
-      -> Map RoleId (EFun t v1)
-ecomp ev1 ev2
-  = Map.fromList $! concatMap go $! Set.toList $! Set.unions $! map Map.keysSet [ev1, ev2]
+mPair :: [TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mPair = go []
   where
-    go i
-      | Just f1 <- Map.lookup i ev1, Just f2 <- Map.lookup i ev2
-      = [(i, f1 `mcomp` f2)]
-      | Just f1 <- Map.lookup i ev1
-      = [(i, f1)]
-      | Just f1 <- Map.lookup i ev2
-      = [(i, f1)]
-      | otherwise
-      = []
+    go [e] [] = mRet e
+    go es  [] = mRet $! EPair $! reverse es
+    go es (m:ms) = mBnd m $ \x -> go (x : es) ms
 
-msg :: Prim v t => Role -> RoleId -> CodeGen (ParProg t v)
-msg (RId ri) ro
-  | ri == ro = fresh >>= \v -> pure $! Map.singleton ri (EAbs (Just v) (ERet (EVar v)))
-  | otherwise = do x <- fresh
-                   pure $! Map.fromList
-                     [ (ri, EAbs (Just x) (ESnd ro (EVar x) `eBnd` EAbs Nothing (ERet (EVar x))))
-                     , (ro, EAbs Nothing (ERcv ri))
-                     ]
-msg (RPrd as) ro
-  = do es <- envs
-       z  <- fresh
-       (fm, vs) <- m (EVar z) es
-       pure $! Map.insert ro (EAbs (Just z) $! fm (ERet $! EPair vs))
-         $! foldl1 ecomp es
+mSplit :: [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EFun t v)
+mSplit fs = eAbs $ \x -> mPair $! map ($! x) fs
+
+eDiscard :: TcM t (EMonad t v) -> TcM t (EFun t v)
+eDiscard m = EAbs Nothing <$!> m
+
+mThen :: TcM t (EMonad t v) -> TcM t (EMonad t v) -> TcM t (EMonad t v)
+mThen m1 m2 = ebnd <$> m1 <*> eDiscard m2
+
+mSnd :: RoleId -> ETerm t v -> TcM t (EMonad t v)
+mSnd = (pure .) . ESnd
+
+mRcv :: RoleId -> TcM t (EMonad t v)
+mRcv = pure . ERcv
+
+mCh :: ETerm t v -> [RoleId] -> [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mCh t rs fs = ECh t rs <$> mapM eAbs fs
+
+mBrn :: RoleId -> [TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mBrn r ms = EBrn r <$> sequence ms
+
+mComp :: TcM t (EFun t v) -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EFun t v)
+mComp m1 f1 = liftM2 ecomp m1 (eAbs f1)
+
+fId :: TcM t (EFun t v)
+fId = eAbs $ \x -> mRet x
+
+--------------------------------------------------------------------------------
+-- Translation
+
+-- Pre: no alternative or choice
+cmsg :: RoleId -> RoleId -> AType t -> TcM t (EFun t v)
+cmsg r r2 (TyAnn _ r1)
+  | r == r1 && r /= r2 = eAbs $ \ x -> mSnd r2 x `mThen` mRet x
+  | r /= r1 && r == r2 = eDiscard $ mRcv r1
+  | otherwise       = fId
+cmsg r r2 (TyPrd rs)
+  | r == r2    = prd
+  | otherwise = eAbs $ \x -> hAbs prd x `mThen` mRet x
   where
-    m z es = foldM' (\ (m',rs) ev ->
-                     fresh >>= \ x ->
-                      pure ( eBnd (app (ev Map.! ro) z) . EAbs (Just x) . m'
-                           , EVar x:rs
-                           )
-                  ) (id, []) es
-    envs = mapM (`msg` ro) as
-msg (RBrn i a) ro
-  = msg a ro >>= \ ev -> Map.insert ro <$!> (m <$!> fresh <*> lookR ro ev) <*> pure ev
+    prd = mSplit $! map (hAbs . cmsg r r2) rs
+cmsg r r2 (TyBrn i _ r1)
+  | r == r2    = mComp next $ \ x -> mRet $ EInj i x
+  | otherwise = next
   where
-    m x f = f `mcomp` EAbs (Just x) (ERet (EInj i (EVar x)))
-msg t _
-  = fail $! "Cannot generate code for distributed type '" ++ render t ++ "'"
+    next = cmsg r r2 r1
+cmsg _ _ TyAlt {} = fail "Error! Cannot generate message from alternative \
+                         \to role. Choices must be resolved earlier."
+cmsg _ _ TyApp {} = fail "Error! Cannot generate message from functor \
+                         \to role. Choices must be resolved earlier."
+cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
+                          \to role. Choices must be resolved earlier."
 
-type Gen t v = Role -> CodeGen (ParProg t v)
+data EAlt t v = ELeaf (EFun t v) | ENode [EAlt t v]
 
-remember :: Role -> CodeGen (ParProg t v, ParProg t v)
-remember r = do
-  x <- fresh
-  (Map.fromList *** Map.fromList) . unzip <$!> mapM (go x) (Set.toList $! roleIds r)
+genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EAlt t v)
+genAlt r e (TyAlt rs) = ENode <$!> mapM (genAlt r e) rs
+genAlt r e r1         = ELeaf <$!> gen r e r1
+
+gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EFun t v)
+gen r p (TyAnn (TApp f a) r1) =
+  appPoly f a >>= \b -> gen r p (TyAnn b r1)
+
+gen r e r1
+  | r `Set.notMember` (termRoles e `Set.union` typeRoles r1)
+  = fId
+
+gen r p a
+  | Just (r1, as) <- tryChoice a
+  , requiresChoice r1 a p
+  = if r1 == r
+    then do -- I do the choice
+      -- bs <- mapM (gen r p) as
+      let !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
+      eAbs $ \ x -> mCh x rs $ map (hAbs . gen r p) as
+    else do -- I do the branching
+      eAbs $ \x -> mBrn r $ map ((`hAbs` x) . gen r p) as
+
+gen r (AnnAlg e r2) r1
+  | r == r2    = cmsg r r2 r1 `mComp` \ x -> mRet (EApp e x)
+  | otherwise = cmsg r r2 r1
+
+gen _ AnnId _ = fId
+
+gen r (AnnComp es) r1 = go (reverse es) r1
   where
-    go x r1 = do
-      return $! ((r1, EAbs (Just x) (ERet (EVar x))), (r1, EAbs Nothing (ERet (EVar x))))
+    go []    _  = fId
+    go (h:t) r2 = do
+      (r3, _) <- inferGTy r2 h
+      gen r h r2 `mComp` hAbs (go t r3)
 
-gen :: Prim v t
-    => ATerm t v
-    -> Gen t v
-    -> Gen t v
-gen (AnnAlg e r) k a = do
-  m <- msg a r
-  f <- (\x -> Map.singleton r (EAbs (Just x) $! ERet (EApp e (EVar x)))) <$!> fresh
-  c <- k (RId r)
-  return $! m `ecomp` f `ecomp` c
-gen AnnId k r = k r
-gen (AnnComp es) k r = List.foldl' (flip gen) k es r
-gen (AnnPrj i) k (RPrd rs)
-  | length rs > (fromInteger i) = k (rs !! fromInteger i)
-gen (AnnPrj i) k r@(RId ri) = do
-  f <- (\x -> Map.singleton ri (EAbs (Just x) $! ERet (EApp (Proj i) (EVar x)))) <$!> fresh
-  (f `ecomp`) <$!> k r
-gen (AnnPrj _i) _k _r
-  = fail $! "Panic: ill-typed term in code generation. proj[i] to a \
-           \ product of size < i"
--- XXX: fix same role occurring in many branches!
--- Idea: annotate roles with "branch within split". I.e. role + context info.
--- assume end roles in "es" disjoint for the moment
-gen (AnnSplit es) k r = remember r >>= \(rmb, rst) -> go rst es [] >>= \k' -> return $! rmb `ecomp` k'
+gen r (AnnPrj i) (TyAnn _ r1)
+  | r == r1 = eAbs $ \x -> mRet (EApp (Proj i) x)
+gen r (AnnPrj i) (TyPrd rs)
+  | size > 1 = eAbs $ \x -> mRet (EApp (Proj n) x)
   where
-    go _rst []     rs = k $! RPrd $! reverse rs
-    go rst (x:xs) rs = gen x k1 r
-      where
-        k1 b = go rst xs (b:rs) >>= \k2 -> return (rst `ecomp` k2)
-gen (AnnInj i) k r = k (RBrn (fromInteger i) r)
-gen (AnnCase es) k (RBrn i r)
-  | length es > i = gen (es !! i) k r
-gen (AnnCase es) k (RId r) = do
-      evs <- resetVars $! map (\ e -> gen e k (RId r)) es
-      let rs = List.nub (concatMap Map.keys evs)
-      ev <- foldM' (\e r2 -> do
-                      x <- fresh
-                      return $!
-                        Map.insert r2 (EAbs (Just x) $! EBrn r $! map (getC x r2) evs) e
-                  ) Map.empty rs
-      case rs List.\\ [r] of
-        []  -> k (RId r)
-        rs1 -> do
-          x <- fresh
-          (\kk -> Map.insert r kk ev) <$!>
-            (EAbs (Just x) <$!> (ECh (EVar x) rs1 <$!> mapM (getF r) evs))
+    n = idxs !! fromInteger i
+    idxs = scanl' (+) 0 $ map containsR rs
+    size = last idxs
+    containsR r'
+      | r `Set.member` typeRoles r' = 1
+      | otherwise                   = 0
+gen _ AnnPrj{} _ = fId
 
-gen (AnnCase _es) _k _r
-  = fail $! "Panic: ill-typed term in code generation. case applied to a \
-           \ sum of size < i"
-gen AnnFmap{} _ _ = error "Panic! Unsupported annotated fmap!"
+gen r e@(AnnSplit ps) r1 = do
+  (r2, _) <- inferGTy r1 e -- Check the output roles
+  if r `Set.member` typeRoles r2
+    then prd
+    else eAbs $ \x -> hAbs prd x `mThen` mRet x
+  where
+    prd = mSplit $! map (\p -> hAbs $ gen r p r1) ps
 
-getC :: Ord k => Int -> k -> Map k (EFun t v) -> EMonad t v
-getC x i m
-  | Just c <- Map.lookup i m = app c (EVar x)
-  | otherwise               = ERet $! EVar x
+gen _ AnnInj{} _ = fId
 
-getF :: (Ord k, Fresh f) => k -> Map k (EFun t v) -> f (EFun t v)
-getF i m
-  | Just c <- Map.lookup i m = pure c
-  | otherwise               = (\x -> EAbs (Just x) $! ERet $! EVar x) <$!> fresh
+gen r (AnnCase es) (TyBrn i _ a) = gen r (es !! i) a
+gen _ AnnCase{} _ = fail "EMonad.gen: case expression reached a non-branch type"
+gen _ AnnFmap{} _ = fail "EMonad.gen: functors not (yet) supported"
 
--- type Lt t = LT Id (Type t) ()
---
--- data LScheme t = LForall Id (Lt t) (Type t)
---
--- type Gamma t = Map Id (Type t)
---
--- data ESt t = ESt { nextId   :: Int
---                  , fDefns   :: !(TyEnv t)
---                  , gamma    :: !(Gamma t)
---                  }
---
--- type LtM t = RWS () [String] (ESt t)
---
--- checkETerm :: Prim t v => EMonad t v -> LtM t (t)
---
--- sessionInfer :: Prim t v => EMonad t v -> LtM t (LScheme t)
--- sessionInfer (ERet v) = fresh >>= \l -> ForAll l (LVar l) <$!> checkETerm v
+
+--------------------------------------------------------------------------------
+-- Typing endpoint code: TODO
+
 
 --------------------------------------------------------------------------------
 -- Prettyprinting instances
@@ -370,26 +331,16 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                              $! map pretty a
                            ]
 
--- XXX: Refactor somewhere!!
-roleTrack :: ATerm t v -> Role -> Role
-roleTrack p (RAlt ts)   = RAlt $! map (roleTrack p) ts
-roleTrack AnnId t        = t
-roleTrack (AnnAlg _ r) _ = RId r
-roleTrack (AnnComp es) t = go (reverse es) t
+renderPCode :: Prim v t => Map Id (ParProg t v) -> String
+renderPCode
+  = renderString
+  . layoutSmart defaultLayoutOptions
+  . vsep
+  . map pprPDefns
+  . Map.toList
   where
-    go l (RAlt (th : ts))
-      | all (== th) ts = go l th
-    go [] t' = t'
-    go (x:xs) t' = go xs $! roleTrack x t'
-roleTrack (AnnPrj i) (RPrd ts) = ts !! (fromInteger i)
-roleTrack (AnnPrj _) r = r
-roleTrack (AnnSplit es) t = RPrd $! map (`roleTrack` t) es
-roleTrack (AnnCase es) (RBrn i a)
-  = let !e = es !! i
-    in roleTrack e a
-roleTrack (AnnCase es) r
-  = RAlt $! map (`roleTrack` r) es
-roleTrack (AnnInj i) t
-  = RBrn (fromInteger i) t
-roleTrack _ _
-  = error $! "Panic! Ill-typed term reached "
+    pprPDefns (i, p) = nest 4 $! vsep [ hsep [pretty i, pretty "="]
+                                     , vsep $! map pprCRole $! Map.toList p
+                                     , line
+                                     ]
+    pprCRole (r, m) = hsep [pretty r, pretty "|->", pretty m]

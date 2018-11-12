@@ -3,8 +3,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Par.Type
   ( AType(..)
+  , typeRoles
   ) where
 
+import Data.Set ( Set )
+import qualified Data.Set as Set
 import Data.Text.Prettyprint.Doc
 
 import Language.Alg.Syntax
@@ -19,6 +22,14 @@ data AType t
   | TyApp  !(Func t) !Role !(Type t) -- F@R a
   | TyMeta !Int                      -- Metavar
   deriving (Eq, Show)
+
+typeRoles :: AType t -> Set RoleId
+typeRoles (TyAnn _ r) = Set.singleton r
+typeRoles (TyBrn _ _ a) = typeRoles a
+typeRoles (TyAlt as) = Set.unions $ map typeRoles as
+typeRoles (TyPrd as) = Set.unions $ map typeRoles as
+typeRoles (TyApp _ r _) = roleIds r
+typeRoles (TyMeta _) = Set.empty
 
 -------------------------------------------
 

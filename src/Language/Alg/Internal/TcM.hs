@@ -10,6 +10,7 @@ module Language.Alg.Internal.TcM
   ( TcM
   , TcSt (..)
   , newRole
+  , newVar
   , altRole
   , execTcM
   , runTcM
@@ -62,6 +63,7 @@ foldM' f z (x:xs) = do
 
 data TcSt t = TcSt { nextId   :: Int
                    , nextRole :: Int
+                   , nextVar  :: Int
                    , knownIds :: !(Map String Id)
                    , fDefns   :: !(Map Id (Func t))
                    , tDefns   :: !(Map Id (Type t))
@@ -71,6 +73,7 @@ data TcSt t = TcSt { nextId   :: Int
 initSt :: Parser.St t -> TcSt t
 initSt s = TcSt { nextId = Parser.nextId s
                 , nextRole = 1
+                , nextVar = 0
                 , knownIds = Parser.knownIds s
                 , fDefns = Map.empty
                 , tDefns = Map.empty
@@ -82,6 +85,12 @@ newRole = do
   st@TcSt { nextRole = i } <- get
   put st { nextRole = i + 1 }
   return $! Rol i
+
+newVar :: TcM t Int
+newVar = do
+  st@TcSt { nextVar = i } <- get
+  put st { nextVar = i + 1 }
+  return i
 
 altRole :: [TcM t a] -> TcM t [a]
 altRole = foldM' go [] . reverse

@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module Language.Par.Term
   ( ATerm (..)
+  , termRoles
   , annotate
   , unroll -- XXX!!! REFACTOR!!
   ) where
@@ -25,6 +26,16 @@ data ATerm t v
   | AnnCase ![ATerm t v]
   | AnnFmap !(Func t) !Role !(Alg t v)
   deriving Show
+
+termRoles :: ATerm t v -> Set RoleId
+termRoles (AnnAlg _ r)    = Set.singleton r
+termRoles (AnnComp es)    = Set.unions $! map termRoles es
+termRoles (AnnSplit es)   = Set.unions $! map termRoles es
+termRoles (AnnCase es)    = Set.unions $! map termRoles es
+termRoles AnnId {}        = Set.empty
+termRoles AnnPrj{}        = Set.empty
+termRoles AnnInj{}        = Set.empty
+termRoles (AnnFmap _ r _) = roleIds r
 
 annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t (ATerm t v)
 annotate r s = ann

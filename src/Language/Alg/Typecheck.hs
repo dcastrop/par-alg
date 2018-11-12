@@ -18,6 +18,9 @@ module Language.Alg.Typecheck
   , appPoly
 
   , protocol
+  , inferGTy
+  , tryChoice
+  , requiresChoice
   , rAnn
   , rGet
   , roleTrack
@@ -421,7 +424,7 @@ inferGTy a p
   | Just (r, as) <- tryChoice a, requiresChoice r a p = do
   (bs, gs) <- unzip <$!> mapM (`inferGTy` p) as
   let !g  = Choice r rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
-      !rs = Set.toList $! Set.unions (map getRoles gs) Set.\\ Set.singleton r
+      !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
   pure $! (tyAlt bs, g)
 -- Post: no role contains sum types
 
