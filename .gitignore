@@ -2,3 +2,6 @@
 par-lang.cabal
 *~
 *.swp
+*.aux
+*.hp
+*.prof
