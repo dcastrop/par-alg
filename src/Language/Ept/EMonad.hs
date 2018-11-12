@@ -22,6 +22,7 @@ module Language.Ept.EMonad
 
 import Control.Monad.RWS.Strict
 import Data.Map ( Map )
+import Data.Set ( Set )
 import Data.List ( scanl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
@@ -49,10 +50,20 @@ genProg defs = Map.fromList <$!> mapM genDef defs
   where
     keep m = get >>= \st -> m <* put st
     genDef (AnnEDef f sc p _)
-      = ((f,) . Map.fromList) <$!> mapM (\r -> (r,) <$> keep (gen r p aty)) rs
+      = ((f,) . Map.fromList)
+      <$!> mapM (\r ->
+                   (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
+                ) rs
       where
         aty = ascDom sc
         rs = Set.toList $! typeRoles aty `Set.union` termRoles p
+
+close :: RoleId -> AType t -> TcM t (EAlt t v)
+close r (TyAlt ts) = ENode <$> mapM (close r) ts
+close r (TyBrn i _ a)
+  | r `Set.member` typeRoles a = ELeaf <$> eAbs (\x -> mRet (EApp (Inj $ toInteger i) x))
+close _ _ = ELeaf <$> fId
+
 
 data ETerm t v
   = EVar !Int
@@ -64,6 +75,7 @@ data ETerm t v
   deriving (Show, Eq)
 
 eApp :: Alg t v -> ETerm t v -> ETerm t v
+eApp Id  t = t
 eApp (Proj i) (EPair ps)
   | length ps > 1 = ps !! fromInteger i
 eApp e p = EApp e p
@@ -82,10 +94,41 @@ data EMonad t v
   | EBrn !RoleId ![EMonad t v]
   deriving (Show, Eq)
 
+fvsT :: ETerm t v -> Set Int
+fvsT (EVar i) = Set.singleton i
+fvsT (EPair ts) = Set.unions $ map fvsT ts
+fvsT (EInj _ t) = fvsT t
+fvsT (EApp _ t) = fvsT t
+fvsT _ = Set.empty
+
+
+fvsM :: EMonad t v -> Set Int
+fvsM (ERet t) = fvsT t
+fvsM (EBnd m1 f2) = fvsM m1 `Set.union` fvsF f2
+fvsM (ESnd _ t) = fvsT t
+fvsM (ECh t _ fs) = Set.unions $ fvsT t : map fvsF fs
+fvsM (EBrn _ ms) = Set.unions $ map fvsM ms
+fvsM ERcv{} = Set.empty
+
+fvsF :: EFun t v -> Set Int
+fvsF (EAbs i m2) = fvsM m2 Set.\\ maybe Set.empty Set.singleton i
+
 ecomp :: EFun t v -> EFun t v -> EFun t v
 ecomp (EAbs x m) f = EAbs x (ebnd m f)
 
+retM :: EMonad t v -> EMonad t v -> EMonad t v
+retM ERet{} m = m
+retM (EBnd m1 (EAbs x m2)) m = EBnd m1 (EAbs x $ retM m2 m)
+retM (ECh e rs fs) m = ECh e rs $ map (`ecomp` EAbs Nothing m) fs
+retM (EBrn r ms) m = EBrn r $ map (`retM` m) ms
+retM m m1 = EBnd m $ EAbs Nothing m1
+
 ebnd :: EMonad t v -> EFun t v -> EMonad t v
+ebnd m (EAbs Nothing  m1@ERet{}) = retM m m1
+ebnd m (EAbs (Just i) m1@ERet{})
+  | i `Set.notMember` fvsM m1 = retM m m1
+ebnd m (EAbs (Just i) m1)
+  | i `Set.notMember` fvsM m1 = EBnd m $ EAbs Nothing m1
 ebnd m@(ERet (EApp Var{} _)) f = EBnd m f
 ebnd m@(ERet (EApp Comp{} _)) f = EBnd m f
 ebnd m@(ERet (EApp Split{} _)) f = EBnd m f
@@ -255,11 +298,9 @@ gen r (AnnAlg e r2) r1
   | r == r2    = cmsg r r2 r1 `mComp` \ x -> mRet (eApp e x)
   | otherwise = cmsg r r2 r1
 
-gen _ AnnId _ = fId
-
-gen r (AnnComp es) r1 = go (reverse es) r1
+gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
   where
-    go []    _  = fId
+    go []    _ = fId
     go (h:t) r2 = do
       (r3, _) <- inferGTy r2 h
       seqAltsF <$!> gen r h r2
@@ -276,25 +317,37 @@ gen r (AnnPrj i) (TyPrd rs)
     containsR r'
       | r `Set.member` typeRoles r' = 1
       | otherwise                   = 0
-gen _ AnnPrj{} _ = fId
+gen _ (AnnPrj i) _ = eAbs $ \x -> mRet $ EApp (Inj i) x
 
-gen r e@(AnnSplit ps) r1 = do
-  (r2, _) <- inferGTy r1 e -- Check the output roles
-  if r `Set.member` typeRoles r2
-    then prd
-    else eAbs $ \x -> hAbs prd x `mThen` mRet x
+gen r (AnnSplit ps) r1 = do
+  prd
   where
     prd = mSplit $! map (\p -> hAbs $ gen r p r1) ps'
     ps'
       | r `Set.member` typeRoles r1 = ps
       | otherwise = filter ((r `Set.member`) . termRoles) ps
 
-gen _ AnnInj{} _ = fId
-
 gen r (AnnCase es) (TyBrn i _ a) = gen r (es !! i) a
+
+gen _  _ (TyBrn i _ _) = eAbs $ \x -> mRet $ EApp (Inj $ toInteger i) x
+gen _ AnnInj{} _ = fId
+gen _ AnnId _ = fId
+
 gen _ AnnCase{} _ = fail "EMonad.gen: case expression reached a non-branch type"
 gen _ AnnFmap{} _ = fail "EMonad.gen: functors not (yet) supported"
 
+
+keepCtx :: Prim v t
+        => RoleId
+        -> AType t
+        -> ATerm t v
+        -> TcM t (EFun t v)
+        -> TcM t (EFun t v)
+keepCtx r r1 e m = do
+  (r2, _) <- inferGTy r1 e -- Check the output roles
+  if r `Set.member` typeRoles r2
+    then m
+    else eAbs $ \x -> hAbs m x `mThen` mRet x
 
 --------------------------------------------------------------------------------
 -- Typing endpoint code: TODO
@@ -342,7 +395,11 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                             ]
     where
       go (EBnd (ERet t) (EAbs (Just v1) m2))
-        = hsep [pretty "let", pretty v1, pretty "=", pretty t] : go m2
+        = hsep [ pretty "let"
+               , hcat [pretty "v", pretty v1]
+               , pretty "="
+               , pretty t
+               ] : go m2
       go (EBnd m1 (EAbs Nothing m2))
         = hsep [pretty m1] : go m2
       go (EBnd m1 (EAbs (Just v1) m2))
