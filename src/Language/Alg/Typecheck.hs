@@ -300,11 +300,11 @@ rwAlg (Annotate s) ef = go ef
 --------------------------------------------------------------------------------
 -- PROTOCOLS AND ROLES
 
-rAnn :: Pretty t => Type t -> Role -> Either [Char] (AType t)
+rAnn :: (Eq t, Pretty t) => Type t -> Role -> Either [Char] (AType t)
 rAnn t (RId i)
   = pure $! TyAnn t i
 rAnn t (RAlt rs)
-  = TyAlt <$!> mapM (rAnn t) rs
+  = tyAlt <$!> mapM (rAnn t) rs
 rAnn (TSum ts _) (RBrn i r) | len > i
   = TyBrn i len <$!> rAnn (ts !! i) r
   where
@@ -404,7 +404,7 @@ protoInfer a p = do
 requiresChoice :: RoleId -> AType t -> ATerm t v -> Bool
 requiresChoice r (TyAnn _ r') (AnnCase _)
   | r == r' = True
-requiresChoice r a (AnnComp (e:_)) = requiresChoice r a e
+requiresChoice r a (AnnComp es ) = any (requiresChoice r a) es
 requiresChoice r a (AnnSplit es) = any (requiresChoice r a) es
 requiresChoice _ _ _ = False
 
@@ -496,7 +496,7 @@ inferGTy a (AnnSplit es) = do
 inferGTy a (AnnInj i) =
   pure (tagAlts (fromInteger i) a, GEnd)
   where
-    tagAlts j (TyAlt ts) = TyAlt $! map (tagAlts j) ts
+    tagAlts j (TyAlt ts) = tyAlt $! map (tagAlts j) ts
     tagAlts j b = TyBrn j (-1) b
 
 -- Case
@@ -518,7 +518,7 @@ needBranch ts = do
     go i (r : rsn) =
       case getAlts r of
         (r1 : rs1)
-          | all (roleIds r1 ==) $ map roleIds rs1 -> go (i+1) rsn
+          | all (r1 ==) $ rs1 -> go (i+1) rsn
           | otherwise -> i
         _ -> go (i+1) rsn
     go i [] = i
@@ -541,7 +541,7 @@ dupBranches a es = do
     liftPrd r1 []     = TyPrd r1 -- XXX: should never happen
     liftPrd r1 (t:ts) = goP ts r1 t
 
-    goP ts ps (TyAlt rs) = TyAlt $ map (goP ts ps) rs
+    goP ts ps (TyAlt rs) = tyAlt $ map (goP ts ps) rs
     goP []     ps t      = TyPrd (t : ps)
     goP (t:ts) ps p      = goP ts (p : ps) t
 
@@ -601,149 +601,3 @@ gSeq ls =
   where
     notEnd GEnd = False
     notEnd _    = True
-
-
-
-{-
--- p |- A -> B, where A is given, infer B
-roleInfer :: Prim v t => ATerm t v -> AType t -> TcM t (AType t)
-roleInfer p (TyAlt ts)   = TyAlt <$!> mapM (roleInfer p) ts
-roleInfer AnnId t        = pure t
-roleInfer (AnnAlg e r) t = do
-  !ty <- TMeta <$!> fresh
-  let !(_, ti) = rGet t
-  !s  <- tcTerm e (ti `tFun` ty)
-  let !ty' = subst s ty
-  return $! TyAnn ty' r
-roleInfer (AnnComp es) t = go (reverse es) t
-  where
-    go l (TyAlt (th : ts))
-      | all (== th) ts = go l th
-    go [] t' = pure t'
-    go (x:xs) t' = roleInfer x t' >>= go xs
-roleInfer p@(AnnPrj i) (TyPrd ts)
-  | length ts > (fromInteger i)
-  = pure $! ts !! (fromInteger i)
-  | otherwise
-  = fail $! "Cannot infer annotated type of '" ++ render p ++ "'"
-roleInfer p@(AnnPrj i) (TyAnn (TPrd ts _) r)
-  | length ts > (fromInteger i)
-  = pure $! TyAnn (ts !! (fromInteger i)) r
-  | otherwise
-  = fail $! "Cannot infer annotated type of '" ++ render p ++ "'"
-roleInfer (AnnSplit es) t
-  = tyPrd <$!> mapM (`roleInfer` t) es
-  where
-    tyPrd alts@((TyAlt _) : _) = TyAlt $! map TyPrd $! transpose $ map unAlts alts
-    tyPrd ts = TyPrd ts
-    unAlts (TyAlt ts) = ts
-    unAlts _ = error "Panic! unexpected case in 'roleInfer.unAlts'"
-roleInfer (AnnCase es) (TyBrn i _ a _)
-  = let !e = es !! i
-    in roleInfer e a
-roleInfer (AnnCase es) (TyAnn (TSum ts _) r)
-  = TyAlt <$!> (mapM (\ (e, t) -> roleInfer e (TyAnn t r)) $! zip es ts)
-roleInfer (AnnInj i) t
-  = do !vs <- mapM (const (TMeta <$!> fresh)) [0..i-1]
-       !v <- fresh
-       pure $! TyBrn (fromInteger i) vs t (Left v) -- XXX: generate metavars!!!
-roleInfer AnnFmap{} _
-  = error "Panic! fmap should be unrolled before reaching this point"
-roleInfer e (TyAnn (TApp f a) r)
-  = appPoly f a >>= \b -> roleInfer e (TyAnn b r)
-roleInfer e t
-  = fail $! "Cannot type-check '" ++ render e ++ "' against annotated type '" ++
-    render t ++ "'"
-
-
-infixl 4 |>
-
-(|>) :: Pretty t => GTy t -> Global t -> GTy t
-Choice r rs gs1 |> g@(Brn g2)
-  = Choice r lrs $! mapAlt (\ (Lbl l) gt -> gt |> g2 !! l) gs1
-  where
-    !rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
-    !lrs = Set.toList rs'
-c@Choice{}      |> BSeq gs g   = gSeq $! (c |> Brn gs) : g
-Comm m g1       |> g2          = Comm m $! g1 |> g2
-GRec v g1       |> g2          = GRec v $! g1 |> g2
-g@GVar{}        |> _           = g
-GEnd            |> Leaf g2     = g2
-GSeq gs         |> Leaf g      = gSeq $! gs ++ [g]
-g1              |> g2          = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
-  where
-    m = "Panic! Ill-formed sequencing of \
-        \global types in Language.Alg.Typecheck.|>"
-
-seqP :: Pretty t => Global t -> Global t -> Global t
-seqP (Leaf g1)  g2       = Leaf $! g1 |> g2
-seqP (Brn gs1) (Brn gs2) = Brn $! zipWith seqP gs1 gs2
-seqP (Brn gs1) (BSeq gs2 gs) = BSeq (zipWith seqP gs1 gs2) gs
-seqP g1        (Leaf GEnd) = g1
-seqP (Brn gs1) (Leaf g2) = BSeq gs1 [g2]
-seqP (BSeq gs1 gss) (Leaf g2) = BSeq gs1 (gss ++ [g2])
-seqP g1       g2         = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
-  where
-    m = "Panic! Ill-formed sequencing of \
-        \global types in Language.Alg.Typecheck.seqP"
-
-msg :: Pretty t => AType t -> RoleId -> TcM t (Global t)
-msg (TyAnn t  ri   ) ro
-  | ri == ro = pure $! Leaf GEnd
-  | otherwise = Leaf <$!> comm
-  where
-    comm = Comm <$!> pure (Msg [ri] [ro] t Nothing) <*> pure GEnd
-msg (TyBrn _ _ a _) ro = msg a ro
-msg (TyAlt ts     ) ro = Brn <$!> mapM (`msg` ro) ts
-msg (TyPrd ts     ) ro = foldl1' seqP <$!> mapM (`msg` ro) ts -- TODO: Wrong, merge choices here
-msg t@TyApp{}       _  = fail $! "Found functor application: " ++ render t
-msg (TyMeta i)      _  = fail $! "Ambiguous annotated type" ++ render i
-
-protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
-protocol sc t = protoInfer (ascDom sc) t
-
-protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (Global t)
-
-protoInfer (TyAlt ti) e
-  = Brn <$!> mapM (\t -> protoInfer t e) ti
-
-protoInfer (TyAnn (TApp f a) ri) e
-  = appPoly f a >>= \b -> protoInfer (TyAnn b ri) e
-
-protoInfer ti    (AnnComp es ) = go (reverse es) ti
-  where
-    go [] t = protoInfer t (AnnId :: ATerm t v)
-    go (e:es') t = seqP <$!> protoInfer t e <*> (roleInfer e t >>= go es')
-
-protoInfer ti (AnnSplit es  ) = (Leaf . gSeq) <$!> mapM go es
-  where
-    go e = protoInfer ti e >>= \x ->
-      case x of
-        Leaf g -> return g
-        _ -> error $ "Panic! protocol inference \
-                    \ cannot return branching if the input is \
-                    \ not a branching global type"
-
-protoInfer (TyAnn (TSum ts _) ri) (AnnCase es)
-  = do !gs <- zipWithM getGT as es
-       let !rs = Set.toList $! Set.unions (map getRoles gs) Set.\\ Set.singleton ri
-       return $! Leaf $! Choice ri rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
-  where
-    as = map (`TyAnn` ri) ts
-    getGT a e = protoInfer a e >>= \(Leaf i) -> pure i
-
-protoInfer (TyBrn i _ a _) (AnnCase es)
-  | length es > i
-  = protoInfer a (es !! i)
-
-protoInfer t  p@AnnCase{}     = fail $! "The input to annotated case '"
-  ++ render p ++ "' cannot be distributed into annotated type '"
-  ++ render t ++ "'"
-
-protoInfer _  AnnPrj{}        = pure $! Leaf GEnd
-protoInfer _  AnnInj{}        = pure $! Leaf GEnd
-protoInfer ti (AnnAlg _ r   ) = msg ti r
-protoInfer _   AnnId          = pure $! Leaf GEnd
-protoInfer _  AnnFmap{}       = fail "Unimplemented"
-
--}

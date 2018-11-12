@@ -8,11 +8,7 @@ module Language.Par.Term
 import Control.Monad.RWS.Strict
 import Data.Set ( Set )
 import qualified Data.Set as Set
-import Data.Text.Prettyprint.Doc ( Pretty(..)
-                                 , hcat
-                                 , hsep
-                                 , punctuate
-                                 , brackets )
+import Data.Text.Prettyprint.Doc hiding ( annotate )
 
 import Language.Alg.Syntax
 import Language.Alg.Internal.Ppr
@@ -85,13 +81,13 @@ instance (Pretty v, Pretty t) => Pretty (ATerm t v) where
   pretty (AnnAlg e r) = hcat [ pprParens e, pretty "@", pretty r]
   pretty AnnId        = pretty "id"
   pretty (AnnComp es)
-    = hsep $ punctuate (pretty " .") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " .") $ fmap pprParens es
   pretty (AnnPrj i)  = hcat [pretty "proj", brackets (pretty i)]
   pretty (AnnSplit es)
-    = hsep $ punctuate (pretty " &&&") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " &&&") $ fmap pprParens es
   pretty (AnnInj i)   = hcat [pretty "inj", brackets (pretty i)]
   pretty (AnnCase es)
-    = hsep $ punctuate (pretty " |||") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " |||") $ fmap pprParens es
   pretty (AnnFmap f r g) = hcat [ brackets ( hcat [ pprParens f
                                                   , pretty "@"
                                                   , pretty r]
