@@ -419,8 +419,8 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                                      map pretty r
                                    ]
                             , encloseSep
-                               (pretty "( ")
-                               (pretty " )")
+                               (pretty "[ ")
+                               (pretty " ]")
                                (pretty ", ")
                                $! map pretty a
                             ]
@@ -429,8 +429,8 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                                   , pretty r
                                   ]
                            , encloseSep
-                             (pretty "( ")
-                             (pretty " )")
+                             (pretty "[ ")
+                             (pretty " ]")
                              (pretty ", ")
                              $! map pretty a
                            ]

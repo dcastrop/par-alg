@@ -41,7 +41,7 @@ instance IsCompound (Alg t v) where
   isCompound Comp{}  = True
   isCompound Split{} = True
   isCompound Case{}  = True
-  isCompound Rec{}   = False
+  isCompound Rec{}   = True
   isCompound _       = False
 
 pprParens :: (Pretty a, IsCompound a) => a -> Doc ann
