@@ -12,7 +12,7 @@ import Language.Alg.Typecheck
 import Language.Alg.Internal.TcM
 import Language.Alg.Internal.Ppr
 import Language.Par.Prog
--- import Language.Ept.EMonad
+import Language.Ept.EMonad
 
 logInfo :: String -> IO ()
 logInfo = whenLoud . putStrLn
@@ -30,12 +30,12 @@ compile _ f = do
   t <- parseFile f
   output $ render $ snd t
   logInfo "...typechecking"
-  (_tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
+  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   output $ renderProg fnDefns
---  logInfo "...compiling to monadic code"
---  (_, parProg) <- generate tcSt fnDefns
---  output $ renderPCode parProg
+  logInfo "...compiling to monadic code"
+  (_, parProg) <- generate tcSt fnDefns
+  output $ renderPCode parProg
 
 compileAll :: Flags -> IO ()
 compileAll f@Flags { files = fl } = mapM_ (compile f) fl

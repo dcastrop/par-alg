@@ -45,7 +45,14 @@ generate tcst p = return (nextVar st, a)
     (a, st, _w) = runRWS (genProg p) () tcst
 
 genProg :: Prim v t => AProg t v -> TcM t (Map Id (ParProg t v))
-genProg = undefined
+genProg defs = Map.fromList <$!> mapM genDef defs
+  where
+    keep m = get >>= \st -> m <* put st
+    genDef (AnnEDef f sc p _)
+      = ((f,) . Map.fromList) <$!> mapM (\r -> (r,) <$> keep (gen r p aty)) rs
+      where
+        aty = ascDom sc
+        rs = Set.toList $! typeRoles aty `Set.union` termRoles p
 
 data ETerm t v
   = EVar !Int
@@ -55,6 +62,12 @@ data ETerm t v
   | EInj !Int !(ETerm t v)
   | EApp !(Alg t v) !(ETerm t v)
   deriving (Show, Eq)
+
+eApp :: Alg t v -> ETerm t v -> ETerm t v
+eApp (Proj i) (EPair ps)
+  | length ps > 1 = ps !! fromInteger i
+eApp e p = EApp e p
+
 
 data EFun t v
   = EAbs !(Maybe Int) !(EMonad t v)
@@ -102,7 +115,7 @@ app (EAbs i m) v = go m
     sbst x@EUnit  = x
     sbst (EPair es) = EPair $! map sbst es
     sbst (EInj j e) = EInj j $! sbst e
-    sbst (EApp f x) = EApp f (sbst x)
+    sbst (EApp f x) = eApp f (sbst x)
 
     substF f@(EAbs j m1)
       | i == j = f
@@ -172,7 +185,18 @@ cmsg r r2 (TyPrd rs)
   | r == r2    = prd
   | otherwise = eAbs $ \x -> hAbs prd x `mThen` mRet x
   where
-    prd = mSplit $! map (hAbs . cmsg r r2) rs
+    prd = mSplit $! zipWith (\i r3 -> hAbs $ mComp (eAbs $ \x -> mRet (project i x))
+                              (hAbs $ cmsg r r2 r3)) idxs rs
+
+    project i x
+      | size <= 1 = x
+      | otherwise = eApp (Proj i) x
+
+    idxs = scanl' (+) 0 $ map containsR rs
+    size = last idxs
+    containsR r'
+      | r `Set.member` typeRoles r' = 1
+      | otherwise                   = 0
 cmsg r r2 (TyBrn i _ r1)
   | r == r2    = mComp next $ \ x -> mRet $ EInj i x
   | otherwise = next
@@ -188,8 +212,25 @@ cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
 data EAlt t v = ELeaf (EFun t v) | ENode [EAlt t v]
 
 genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EAlt t v)
-genAlt r e (TyAlt rs) = ENode <$!> mapM (genAlt r e) rs
+genAlt r e (TyAlt rs@(r1:_))
+  | all (== r1) rs = genAlt r e r1
+  | otherwise    = ENode <$!> mapM (genAlt r e) rs
 genAlt r e r1         = ELeaf <$!> gen r e r1
+
+seqAltsF :: EFun t v -> EAlt t v -> EFun t v
+seqAltsF mf1 (ELeaf mf2) = ecomp mf1 mf2
+seqAltsF (EAbs x m1) e = EAbs x $! seqAlts m1 e
+
+seqAlts :: EMonad t v -> EAlt t v -> EMonad t v
+seqAlts m1 (ELeaf mf2)  = EBnd m1 mf2
+seqAlts m1 (ENode alts) = go m1
+  where
+    go (ECh  v r as) = ECh v r $! zipWith seqAltsF as alts
+    go (EBrn r   ms) = EBrn r $! zipWith seqAlts ms alts
+    go (EBnd m2 (EAbs y m3)) = EBnd m2 $! EAbs y $! go m3
+    go ERet{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
+    go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
+    go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
@@ -208,10 +249,10 @@ gen r p a
       let !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
       eAbs $ \ x -> mCh x rs $ map (hAbs . gen r p) as
     else do -- I do the branching
-      eAbs $ \x -> mBrn r $ map ((`hAbs` x) . gen r p) as
+      eAbs $ \x -> mBrn r1 $ map ((`hAbs` x) . gen r p) as
 
 gen r (AnnAlg e r2) r1
-  | r == r2    = cmsg r r2 r1 `mComp` \ x -> mRet (EApp e x)
+  | r == r2    = cmsg r r2 r1 `mComp` \ x -> mRet (eApp e x)
   | otherwise = cmsg r r2 r1
 
 gen _ AnnId _ = fId
@@ -221,12 +262,13 @@ gen r (AnnComp es) r1 = go (reverse es) r1
     go []    _  = fId
     go (h:t) r2 = do
       (r3, _) <- inferGTy r2 h
-      gen r h r2 `mComp` hAbs (go t r3)
+      seqAltsF <$!> gen r h r2
+        <*> genAlt r (AnnComp $! reverse t) r3
 
 gen r (AnnPrj i) (TyAnn _ r1)
-  | r == r1 = eAbs $ \x -> mRet (EApp (Proj i) x)
+  | r == r1 = eAbs $ \x -> mRet (eApp (Proj i) x)
 gen r (AnnPrj i) (TyPrd rs)
-  | size > 1 = eAbs $ \x -> mRet (EApp (Proj n) x)
+  | size > 1 = eAbs $ \x -> mRet (eApp (Proj n) x)
   where
     n = idxs !! fromInteger i
     idxs = scanl' (+) 0 $ map containsR rs
@@ -242,7 +284,10 @@ gen r e@(AnnSplit ps) r1 = do
     then prd
     else eAbs $ \x -> hAbs prd x `mThen` mRet x
   where
-    prd = mSplit $! map (\p -> hAbs $ gen r p r1) ps
+    prd = mSplit $! map (\p -> hAbs $ gen r p r1) ps'
+    ps'
+      | r `Set.member` typeRoles r1 = ps
+      | otherwise = filter ((r `Set.member`) . termRoles) ps
 
 gen _ AnnInj{} _ = fId
 
@@ -296,8 +341,10 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                               ++ [pretty "}"]
                             ]
     where
+      go (EBnd (ERet t) (EAbs (Just v1) m2))
+        = hsep [pretty "let", pretty v1, pretty "=", pretty t] : go m2
       go (EBnd m1 (EAbs Nothing m2))
-        = hsep [pretty "_ <-", pretty m1] : go m2
+        = hsep [pretty m1] : go m2
       go (EBnd m1 (EAbs (Just v1) m2))
         = hsep [ hcat [pretty "v", pretty v1]
                , pretty "<-"

@@ -29,10 +29,9 @@ fun ms : Rec L -> Rec L
   = rec [P] merge split;
 
 par ms {
-  unroll 4;
+  unroll 3;
   annotate {
-    merge;
-    rec [P] merge split
+    merge
   }
 };
 
