@@ -1,14 +1,15 @@
+{-# LANGUAGE BangPatterns #-}
 module Language.Par.Term
   ( ATerm (..)
+  , termRoles
   , annotate
+  , unroll -- XXX!!! REFACTOR!!
   ) where
 
 import Control.Monad.RWS.Strict
-import Data.Text.Prettyprint.Doc ( Pretty(..)
-                                 , hcat
-                                 , hsep
-                                 , punctuate
-                                 , brackets )
+import Data.Set ( Set )
+import qualified Data.Set as Set
+import Data.Text.Prettyprint.Doc hiding ( annotate )
 
 import Language.Alg.Syntax
 import Language.Alg.Internal.Ppr
@@ -16,58 +17,52 @@ import Language.Alg.Internal.TcM
 import Language.Par.Role
 
 data ATerm t v
-  = AnnAlg (Alg t v) RoleId
+  = AnnAlg !(Alg t v) !RoleId
   | AnnId
-  | AnnComp [ATerm t v]
-  | AnnPrj Integer
-  | AnnSplit [ATerm t v]
-  | AnnInj Integer
-  | AnnCase [ATerm t v]
-  | AnnFmap (Func t) Role (Alg t v)
+  | AnnComp ![ATerm t v]
+  | AnnPrj !Integer
+  | AnnSplit ![ATerm t v]
+  | AnnInj !Integer
+  | AnnCase ![ATerm t v]
+  | AnnFmap !(Func t) !Role !(Alg t v)
   deriving Show
 
-annotate :: (Pretty v, Pretty t) => Alg t v -> TcM t (ATerm t v)
-annotate (Comp es    ) = AnnComp <$> mapM annotate es
-annotate  Id           = pure AnnId
-annotate (Proj i     ) = pure $ AnnPrj i
-annotate (Split es   ) = AnnSplit <$> mapM annotate es
-annotate (Inj i      ) = pure $ AnnInj i
-annotate (Case es    ) = AnnCase <$> mapM annotate es
-annotate (Fmap f e   ) = appPoly f e >>= annotate
-annotate (Rec f e1 e2) = ask >>= unrollAnnotate f e1 e2
-annotate t             = AnnAlg t <$> newRole
+termRoles :: ATerm t v -> Set RoleId
+termRoles (AnnAlg _ r)    = Set.singleton r
+termRoles (AnnComp es)    = Set.unions $! map termRoles es
+termRoles (AnnSplit es)   = Set.unions $! map termRoles es
+termRoles (AnnCase es)    = Set.unions $! map termRoles es
+termRoles AnnId {}        = Set.empty
+termRoles AnnPrj{}        = Set.empty
+termRoles AnnInj{}        = Set.empty
+termRoles (AnnFmap _ r _) = roleIds r
 
-unrollAnnotate :: (Pretty v, Pretty t)
+annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t (ATerm t v)
+annotate r s = ann
+  where
+    ann t
+      | t `Set.member` s = AnnAlg t <$!> newRole
+    ann (Comp es    ) = AnnComp <$!> mapM ann es
+    ann  Id           = pure AnnId
+    ann (Proj i     ) = pure $! AnnPrj i
+    ann (Split es   ) = AnnSplit <$!> mapM ann es
+    ann (Inj i      ) = pure $ AnnInj i
+    ann (Case es    ) = AnnCase <$!> (mapM ann es)
+    ann (Fmap f e   ) = appPoly f e >>= ann
+    ann t             = pure $! AnnAlg t r
+
+unroll :: (Pretty v, Pretty t)
           => Func t
           -> Alg t v
           -> Alg t v
           -> Int
-          -> TcM t (ATerm t v)
-unrollAnnotate f e1 e2 n
-   | n <= 0     = AnnAlg (Rec f e1 e2) <$> newRole
+          -> TcM  t (Alg t v)
+unroll f e1 e2 n
+   | n <= 0     = pure $! Rec f e1 e2
    | otherwise = do
-       ae1 <- annotate e1
-       ae2 <- annotate e2
-       ae  <- annApp f (unrollAnnotate f e1 e2 (n-1))
-       pure $ AnnComp [ae1, ae, ae2]
-
-acomp :: ATerm t v -> ATerm t v -> ATerm t v
-acomp (AnnComp es1) (AnnComp es2) = AnnComp $ es1 ++ es2
-acomp (AnnComp es1) e = AnnComp $ es1 ++ [e]
-acomp e (AnnComp es2) = AnnComp $ e : es2
-acomp e1 e2 = AnnComp [e1, e2]
-
-annApp :: (Pretty t, Pretty v) => Func t -> TcM t (ATerm t v) -> TcM t (ATerm t v)
-annApp  PK{}     _ = pure AnnId
-annApp (PV v)    t = lookupPoly v >>= (`annApp` t)
-annApp PI        t = t
-annApp (PPrd ps) t
-  = AnnSplit . map (\(i, x) -> x `acomp` AnnPrj i)
-  . zip [0..] <$> mapM (`annApp` t) ps
-annApp (PSum ps) t
-  = AnnCase . map (\(i, x) -> AnnInj i `acomp` x)
-  . zip [0..] <$> mapM (`annApp` t) ps
-annApp x@PMeta{} _ = fail $ "Ambiguous type '" ++ render x ++ "'"
+       !fm <- unroll f e1 e2 $! n-1
+       !ae <- appPoly f fm
+       pure $! Comp [e1, ae, e2]
 
 appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> TcM t (Alg t v)
 appPoly  PK{}     _ = pure Id
@@ -97,13 +92,13 @@ instance (Pretty v, Pretty t) => Pretty (ATerm t v) where
   pretty (AnnAlg e r) = hcat [ pprParens e, pretty "@", pretty r]
   pretty AnnId        = pretty "id"
   pretty (AnnComp es)
-    = hsep $ punctuate (pretty " .") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " .") $ fmap pprParens es
   pretty (AnnPrj i)  = hcat [pretty "proj", brackets (pretty i)]
   pretty (AnnSplit es)
-    = hsep $ punctuate (pretty " &&&") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " &&&") $ fmap pprParens es
   pretty (AnnInj i)   = hcat [pretty "inj", brackets (pretty i)]
   pretty (AnnCase es)
-    = hsep $ punctuate (pretty " |||") $ fmap pprParens es
+    = hang 2 $ vsep $ punctuate (pretty " |||") $ fmap pprParens es
   pretty (AnnFmap f r g) = hcat [ brackets ( hcat [ pprParens f
                                                   , pretty "@"
                                                   , pretty r]

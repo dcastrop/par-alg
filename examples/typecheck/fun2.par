@@ -2,30 +2,59 @@
 //   = id;
 
 poly P = K (() + int) + I * I;
-//
-fun testInOut : Rec P -> Rec P
-  = in . out;
-
-fun testInOut : P Rec P -> P Rec P
-   = out . in;
-
 poly L = K () + K int * I;
 
-poly N = K () + I;
-type Nat = Rec N;
-
-fun length : int + int -> int + int
-   = id +++ id;
-
-fun length : L Nat -> L ()
-   = id +++ id *** const ();
-
+//
+// fun testInOut : Rec P -> Rec P
+//   = in . out;
+//
+// fun testInOut : P Rec P -> P Rec P
+//    = out . in;
+//
+//
+// poly N = K () + I;
+// type Nat = Rec N;
+//
+// fun length : int + int -> int + int
+//    = id +++ id;
+//
+// fun length : L Nat -> L ()
+//    = id +++ id *** const ();
 
 atom split : Rec L -> P Rec L;
-
 
 atom merge : P Rec L -> Rec L;
 
 fun ms : Rec L -> Rec L
   = rec [P] merge split;
 
+par ms {
+  unroll 2;
+  annotate {
+    merge;
+    rec [P] merge split
+  }
+};
+
+
+// atom fun1 : int -> int + int;
+//
+// atom fun2 : int -> int + int;
+//
+// atom fun3 : int -> int;
+//
+// atom fun4 : int -> int;
+// atom fun5 : int * int -> int;
+//
+// fun dec : int -> int
+//   = fun5 . ((fun3 ||| fun4 . fun1) &&& ((fun3 ||| fun4) . fun2));
+//
+// par dec {
+//   annotate {
+//     fun1;
+//     fun2;
+//     fun3;
+//     fun4;
+//     fun5
+//   }
+// };

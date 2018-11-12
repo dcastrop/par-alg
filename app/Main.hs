@@ -9,7 +9,10 @@ import System.Console.CmdArgs
 
 import Language.Alg.C
 import Language.Alg.Typecheck
+import Language.Alg.Internal.TcM
+import Language.Alg.Internal.Ppr
 import Language.Par.Prog
+import Language.Ept.EMonad
 
 logInfo :: String -> IO ()
 logInfo = whenLoud . putStrLn
@@ -20,31 +23,33 @@ logError = putStrLn
 output :: String -> IO ()
 output = whenNormal . putStrLn
 
-compile :: FilePath -> IO ()
-compile f = do
+compile :: Flags -> FilePath -> IO ()
+compile _ f = do
   logInfo $ "Compiling: " ++ f
   logInfo "...parsing"
   t <- parseFile f
+  output $ render $ snd t
   logInfo "...typechecking"
-  (numRoles, _tyDefns, fnDefns) <- uncurry typecheck t
+  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   output $ renderProg fnDefns
+  logInfo "...compiling to monadic code"
+  (_, parProg) <- generate tcSt fnDefns
+  output $ renderPCode parProg
 
 compileAll :: Flags -> IO ()
-compileAll = mapM_ compile . files
+compileAll f@Flags { files = fl } = mapM_ (compile f) fl
 
 data Flags
   = Flags
-  { recursion_depth :: Int
-  , num_procs :: Int
+  { num_procs :: Int
   , files :: [FilePath]
   } deriving (Show, Data, Typeable)
 
 flags :: String -> Flags
 flags p
   = Flags
-  { recursion_depth = 3 &= help "Unroll recursive functions up to a maximum depth"
-  , num_procs = 1 &= help "Maximum number of roles"
+  { num_procs = 1 &= help "Maximum number of roles"
   , files = def &= args &= typFile
   }
   &= verbosity
