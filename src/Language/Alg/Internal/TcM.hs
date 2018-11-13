@@ -11,6 +11,7 @@ module Language.Alg.Internal.TcM
   , TcSt (..)
   , newRole
   , newVar
+  , sameVar
   , altRole
   , execTcM
   , runTcM
@@ -90,6 +91,11 @@ newVar :: TcM t Int
 newVar = do
   st@TcSt { nextVar = i } <- get
   put st { nextVar = i + 1 }
+  return i
+
+sameVar :: TcM t Int
+sameVar = do
+  TcSt { nextVar = i } <- get
   return i
 
 altRole :: [TcM t a] -> TcM t [a]

@@ -368,23 +368,30 @@ tyAlt (t:ts)
   | all (== t) ts = t
 tyAlt ts = TyAlt ts
 
-tryChoice :: AType t -> Maybe (RoleId, [AType t])
-tryChoice (TyAnn (TSum ts _) r)
+tryChoice :: AType t -> ATerm t v -> Maybe (RoleId, [AType t])
+tryChoice a p
+  | Just (r, as) <- canBranch a
+  , requiresChoice r a p
+  = Just (r, as)
+tryChoice _ _ = Nothing
+
+canBranch :: AType t -> Maybe (RoleId, [AType t])
+canBranch (TyAnn (TSum ts _) r)
   = Just (r, zipWith (`TyBrn` len) [0..] $! map (`TyAnn` r) ts)
   where
     !len = length ts
-tryChoice (TyBrn i j t)
-  | Just (r, ts) <- tryChoice t
+canBranch (TyBrn i j t)
+  | Just (r, ts) <- canBranch t
   = Just (r, map (TyBrn i j) ts)
-tryChoice (TyPrd ts)
+canBranch (TyPrd ts)
   | Just (r, ts1) <- go ts = Just (r, map TyPrd ts1)
   where
     go [] = Nothing
     go (x : xs)
-      | Just (r, bs) <- tryChoice x = Just (r, map (:xs) bs)
+      | Just (r, bs) <- canBranch x = Just (r, map (:xs) bs)
       | Just (r, xs') <- go xs = Just (r, map (x:) xs')
       | otherwise = Nothing
-tryChoice _ = Nothing
+canBranch _ = Nothing
 
 protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
 protocol sc t = snd <$> protoInfer (ascDom sc) t
@@ -421,7 +428,7 @@ inferGTy (TyAnn (TApp f a) r) p =
 --      -----------------------------------------------------
 --      A |= p ~ G_1 \oplus G_2 : B_1 \oplus B_2
 inferGTy a p
-  | Just (r, as) <- tryChoice a, requiresChoice r a p = do
+  | Just (r, as) <- canBranch a, requiresChoice r a p = do
   (bs, gs) <- unzip <$!> mapM (`inferGTy` p) as
   let !g  = Choice r rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
       !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
