@@ -29,6 +29,8 @@ module Language.Alg.Internal.TcM
   , polyDefined
   , typeDefined
   , exprDefined
+  , getDefnId
+  , lookupDefnId
   , foldM'
   , (<$!>)
   , TypeOf (..)
@@ -64,20 +66,23 @@ foldM' f z (x:xs) = do
   z' <- f z x
   z' `seq` foldM' f z' xs
 
-data TcSt t = TcSt { nextId    :: Int
-                   , nextRole  :: Int
-                   , nextVar   :: Int
-                   , chanId    :: Int
-                   , channelsL :: !(Map (Role, Role, Type t) Int)
-                   , channelsR :: !(Map Int (Role, Role, Type t))
-                   , knownIds  :: !(Map String Id)
-                   , fDefns    :: !(Map Id (Func t))
-                   , tDefns    :: !(Map Id (Type t))
-                   , gamma     :: !(Map Id (Scheme t))
-                   }
+data TcSt t v = TcSt { nextId    :: Int
+                     , nextRole  :: Int
+                     , nextVar   :: Int
+                     , chanId    :: Int
+                     , channelsL :: !(Map (Role, Role, Type t) Int)
+                     , channelsR :: !(Map Int (Role, Role, Type t))
+                     , defnId    :: Int
+                     , defnsL    :: !(Map (Alg t v) Id)
+                     , defnsR    :: !(Map Int (Alg t v))
+                     , knownIds  :: !(Map String Id)
+                     , fDefns    :: !(Map Id (Func t))
+                     , tDefns    :: !(Map Id (Type t))
+                     , gamma     :: !(Map Id (Scheme t))
+                     }
 
 
-getChannelId :: (Pretty t, Ord t) => (Role, Role, Type t) -> TcM t Int
+getChannelId :: (Pretty t, Ord t) => (Role, Role, Type t) -> TcM t v Int
 getChannelId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
   where
     insert (st@TcSt { chanId = i, channelsL = ch, channelsR = chi })
@@ -87,40 +92,60 @@ getChannelId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
                            , channelsR = Map.insert i t chi
                            })
 
-lookupChannelId :: Ord t => Int -> TcM t (Role, Role, Type t)
+lookupChannelId :: Ord t => Int -> TcM t v (Role, Role, Type t)
 lookupChannelId t = get >>= (pure . (Map.! t) . channelsR )
 
-initSt :: Parser.St t -> TcSt t
+getDefnId :: Prim v t => Alg t v -> TcM t v Id
+getDefnId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
+  where
+    insert (st@TcSt { defnId = i, defnsL = ch, defnsR = chi })
+      | Just v <- Map.lookup t ch = (v, st)
+      | otherwise = (vv, st { defnId = j
+                                  , defnsL = Map.insert t vv ch
+                                  , defnsR = Map.insert (getId vv) t chi
+                                  })
+      where
+        (j, vv) = mkAux t
+        mkAux (Var v) = (i, v)
+        mkAux _ = (i+1, mkId i $ "defn" ++ show i)
+
+lookupDefnId :: Prim v t => Int -> TcM t v (Alg t v)
+lookupDefnId t = get >>= (pure . (Map.! t) . defnsR )
+
+initSt :: Parser.St t -> TcSt t v
 initSt s = TcSt { nextId = Parser.nextId s
                 , nextRole = 1
                 , nextVar = 0
                 , chanId = 0
                 , channelsL = Map.empty
                 , channelsR = Map.empty
+                , defnId = 0
+                , defnsL = Map.empty
+                , defnsR = Map.empty
                 , knownIds = Parser.knownIds s
                 , fDefns = Map.empty
                 , tDefns = Map.empty
                 , gamma = Map.empty
                 }
 
-newRole :: TcM t Role
+newRole :: TcM t v Role
 newRole = do
   st@TcSt { nextRole = i } <- get
   put st { nextRole = i + 1 }
   return $! Rol i
 
-newVar :: TcM t Int
+newVar :: TcM t v Int
 newVar = do
   st@TcSt { nextVar = i } <- get
   put st { nextVar = i + 1 }
   return i
 
-sameVar :: TcM t Int
+sameVar :: TcM t v Int
 sameVar = do
   TcSt { nextVar = i } <- get
   return i
 
-altRole :: [TcM t a] -> TcM t [a]
+altRole :: [TcM t v a] -> TcM t v [a]
 altRole = foldM' go [] . reverse
   where
     go l m = do
@@ -129,72 +154,72 @@ altRole = foldM' go [] . reverse
       put st { nextRole = i }
       return $ x : l
 
-type TcM t = RWS () () (TcSt t)
+type TcM t v = RWS () () (TcSt t v)
 
-execTcM :: Parser.St t -> TcM t a -> IO (TcSt t)
+execTcM :: Parser.St t -> TcM t v a -> IO (TcSt t v)
 execTcM s m = {- mapM_ putStrLn w *> -} pure st
   where (st, _w) = execRWS m () (initSt s)
 
-runTcM :: Parser.St t -> TcM t a -> IO (a, TcSt t)
+runTcM :: Parser.St t -> TcM t v a -> IO (a, TcSt t v)
 runTcM s m = {- mapM_ putStrLn w *> -} pure (a, st)
   where (a, st, _w) = runRWS m () (initSt s)
 
-lookupVar :: Id -> TcM t (Scheme t)
+lookupVar :: Id -> TcM t v (Scheme t)
 lookupVar x = Map.lookup x . gamma <$!> get >>= \ i ->
   case i of
     Just sc -> return sc
     Nothing -> fail $! "Variable not in scope: " ++ getLbl x
 
 
-newPoly :: Id -> Func t -> TcM t ()
+newPoly :: Id -> Func t -> TcM t v ()
 newPoly i f = modify $! \st ->
   st { fDefns = Map.insert i f $! fDefns st }
 
-newType :: Id -> Type t -> TcM t ()
+newType :: Id -> Type t -> TcM t v ()
 newType i f = modify $! \st ->
   st { tDefns = Map.insert i f $! tDefns st }
 
-newFun :: Id -> Scheme t -> TcM t ()
+newFun :: Id -> Scheme t -> TcM t v ()
 newFun i f = modify $! \st ->
   st { gamma = Map.insert i f $! gamma st }
 
-polyDefined :: Id -> TcM t ()
+polyDefined :: Id -> TcM t v ()
 polyDefined i = get >>= \st ->
   maybe (fail $! "Undefined functor: " ++ render i)
   (const $! return ())
   $! i `Map.lookup` fDefns st
 
-lookupPoly :: Id -> TcM t (Func t)
+lookupPoly :: Id -> TcM t v (Func t)
 lookupPoly i = get >>= \st ->
   maybe (fail $! "Undefined functor '" ++ render i ++ "'") pure
   $! i `Map.lookup` fDefns st
 
-typeDefined :: Id -> TcM t ()
+typeDefined :: Id -> TcM t v ()
 typeDefined i = get >>= \st ->
   maybe (fail $! "Undefined type: " ++ render i)
   (const $! return ())
   $! i `Map.lookup` tDefns st
 
-exprDefined :: Id -> TcM t ()
+exprDefined :: Id -> TcM t v ()
 exprDefined i = get >>= \st ->
   maybe (fail $! "Undefined expression: " ++ render i)
   (const $! return ())
   $! i `Map.lookup` gamma st
 
-localTc :: TcM t a -> TcM t a
+localTc :: TcM t v a -> TcM t v a
 localTc m = do
   st <- get
   x <- m
   put st
   return x
 
-instance Fresh (TcM t) where
+instance Fresh (TcM t v) where
   fresh = do
     s@TcSt{nextId=i} <- get
     put s{nextId=i+1}
     return i
 
-instance IdGen (TcM t) where
+instance IdGen (TcM t v) where
   newId i = modify $! \st ->
     st { knownIds = Map.insert (getLbl i) i $! knownIds st }
   lookupId s = do
@@ -204,7 +229,7 @@ instance IdGen (TcM t) where
 class IdGen m => Generalise m a where
   genTv :: LazyMap.Map Int String -> a -> m (Set Id, a)
 
-generalise :: Ftv t => Type t -> TcM t (Scheme t)
+generalise :: Ftv t => Type t -> TcM t v (Scheme t)
 generalise x = uncurry ForAll <$!> genTv env x
   where env = instMeta $! Set.map getLbl $! ftv x
 
@@ -221,7 +246,7 @@ instance Generalise m t => Generalise m (Poly t) where
 unzipT :: (a, b) -> (c, d) -> ((a,c), (b,d))
 unzipT (a, b) (c, d) = ((a,c), (b,d))
 
-instance Generalise (TcM t) (Type t) where
+instance Generalise (TcM t v) (Type t) where
   genTv env = go
     where
       go e@TPrim{}   = pure (Set.empty, e)
@@ -235,7 +260,7 @@ instance Generalise (TcM t) (Type t) where
       go (TRec f)    = second TRec <$!> genTv env f
       go (TMeta i)   = (Set.singleton &&& TVar) <$!> freshId (env LazyMap.! i)
 
-skolemise :: Ftv t => Scheme t -> TcM t (Type t)
+skolemise :: Ftv t => Scheme t -> TcM t v (Type t)
 skolemise ForAll{scVars=vs, scType=ty}
   = (`subst` ty) . Map.fromList
   <$!> mapM (\i -> (getId i,) . TMeta <$!> fresh) (Set.toList vs)
@@ -260,10 +285,10 @@ instMeta fvs = LazyMap.fromList $ zip [0..] sup
   where sup = tyVarSupplier fvs
 
 class TypeOf t v a | a -> t where
-  getType :: Env (Type a) -> v -> TcM t a
+  getType :: Env (Type a) -> v -> TcM t v a
 
 class KindChecker t where
-  checkKind :: Set Id -> t -> TcM a ()
+  checkKind :: Set Id -> t -> TcM a b ()
 
 type Prim v t = ( KindChecker t
                 , Eq t

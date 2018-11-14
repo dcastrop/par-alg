@@ -43,13 +43,16 @@ import Language.Par.Type
 import Language.Par.Prog
 -- import Language.SessionTypes.Common hiding (Role)
 
-generate :: Prim v t => TcSt t -> AProg t v -> IO (Int, Map Id (ParProg t v))
+generate :: Prim v t => TcSt t v -> AProg t v -> IO (Int, Map Id (ParProg t v))
 generate tcst p = return (nextVar st, a)
   where
     (a, st, _w) = runRWS (genProg p) () tcst
 
-genProg :: Prim v t => AProg t v -> TcM t (Map Id (ParProg t v))
-genProg defs = Map.fromList <$!> mapM genDef defs
+genProg :: Prim v t => AProg t v -> TcM t v (Map Id (ParProg t v))
+genProg defs = do
+  par <- Map.fromList <$!> mapM genDef defs
+  hsDefs <- (defnsR <$> get) >>= Map.traverseWithKey convertToHs
+  pure par
   where
     keep m = sameVar >>= \v -> m <* modify (\st -> st { nextVar = v })
     genDef (AnnEDef f sc p _)
@@ -63,10 +66,10 @@ genProg defs = Map.fromList <$!> mapM genDef defs
         aty = ascDom sc
         rs = Set.toList $! typeRoles aty `Set.union` termRoles p
 
-close :: RoleId -> AType t -> TcM t (EAlt t v)
+close :: RoleId -> AType t -> TcM t v (EAlt t v)
 close r (TyAlt ts) = ENode <$> mapM (close r) ts
-close r (TyBrn i _ a)
-  | r `Set.member` typeRoles a = ELeaf <$> eAbs sameVar (\x -> mRet (EApp (Inj $ toInteger i) x))
+close r (TyBrn i j a)
+  | r `Set.member` typeRoles a = ELeaf <$> eAbs sameVar (\x -> mRet (EInj i j x))
 close _ _ = ELeaf <$> fId
 
 
@@ -75,15 +78,18 @@ data ETerm t v
   | EVal !v
   | EUnit
   | EPair ![ETerm t v]
-  | EInj !Int !(ETerm t v)
-  | EApp !(Alg t v) !(ETerm t v)
+  | EProj !Int !Int !(ETerm t v)
+  | EInj !Int !Int !(ETerm t v)
+  | EApp !Id !(ETerm t v)
   deriving (Show, Eq)
 
-eApp :: Alg t v -> ETerm t v -> ETerm t v
-eApp Id  t = t
-eApp (Proj i) (EPair ps)
-  | length ps > 1 = ps !! fromInteger i
-eApp e p = EApp e p
+eApp :: Prim v t => Alg t v -> ETerm t v -> TcM t v (ETerm t v)
+eApp Id  t = pure t
+eApp (Proj i _) (EPair ps)
+  | length ps > 1 = pure $ ps !! i
+eApp (Proj i j) t = pure $ EProj i j t
+eApp (Inj i j) t = pure $ EInj i j t
+eApp e p = EApp <$> getDefnId e <*> pure p
 
 
 data EFun t v
@@ -104,7 +110,7 @@ data EMonad t v
 fvsT :: ETerm t v -> Set Int
 fvsT (EVar i) = Set.singleton i
 fvsT (EPair ts) = Set.unions $ map fvsT ts
-fvsT (EInj _ t) = fvsT t
+fvsT (EInj _ _ t) = fvsT t
 fvsT (EApp _ t) = fvsT t
 fvsT _ = Set.empty
 
@@ -131,12 +137,7 @@ retM (EBrn sf ms) m = EBrn sf $ map (`retM` m) ms
 retM m m1 = EBnd m $ EAbs Nothing m1
 
 ebnd :: EMonad t v -> EFun t v -> EMonad t v
-ebnd m@(ERet (EApp Var{} _)) f = EBnd m f
-ebnd m@(ERet (EApp Comp{} _)) f = EBnd m f
-ebnd m@(ERet (EApp Split{} _)) f = EBnd m f
-ebnd m@(ERet (EApp Case{} _)) f = EBnd m f
-ebnd m@(ERet (EApp Fmap{} _)) f = EBnd m f
-ebnd m@(ERet (EApp Rec{} _)) f = EBnd m f
+ebnd m@(ERet EApp{}) f = EBnd m f
 ebnd   (ERet t     ) f = app f t
 ebnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
@@ -164,8 +165,9 @@ app (EAbs i m) v = go m
     sbst x@EVal{} = x
     sbst x@EUnit  = x
     sbst (EPair es) = EPair $! map sbst es
-    sbst (EInj j e) = EInj j $! sbst e
-    sbst (EApp f x) = eApp f (sbst x)
+    sbst (EInj j k e) = EInj j k $! sbst e
+    sbst (EProj j k e) = EProj j k $! sbst e
+    sbst (EApp f x) = EApp f (sbst x)
 
     substF f@(EAbs j m1)
       | i == j = f
@@ -176,61 +178,61 @@ data EProg t v
 
 type ParProg t v = Map RoleId (EFun t v)
 
-hAbs :: TcM t (EFun t v) -> ETerm t v -> TcM t (EMonad t v)
+hAbs :: TcM t v (EFun t v) -> ETerm t v -> TcM t v (EMonad t v)
 hAbs f t = (`app` t) <$!> f
 
-mRet :: ETerm t v -> TcM t (EMonad t v)
+mRet :: ETerm t v -> TcM t v (EMonad t v)
 mRet t = ERet <$> pure t
 
-eAbs :: TcM t Int -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EFun t v)
+eAbs :: TcM t v Int -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 eAbs var f = var >>= \ x -> EAbs (Just x) <$!> f (EVar x)
 
-mBnd :: TcM t Int -> TcM t (EMonad t v) -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EMonad t v)
+mBnd :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
 mBnd var m f = ebnd <$> m <*> eAbs var f
 
-mPair :: TcM t Int -> [TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mPair :: TcM t v Int -> [TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
 mPair var = go []
   where
     go [e] [] = mRet e
     go es  [] = mRet $! EPair $! reverse es
     go es (m:ms) = mBnd var m $ \x -> go (x : es) ms
 
-mSplit :: TcM t Int -> [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EFun t v)
+mSplit :: TcM t v Int -> [ETerm t v -> TcM t v (EMonad t v)] -> TcM t v (EFun t v)
 mSplit var fs = eAbs sameVar $ \x -> mPair var $! map ($! x) fs
 
-eDiscard :: TcM t (EMonad t v) -> TcM t (EFun t v)
+eDiscard :: TcM t v (EMonad t v) -> TcM t v (EFun t v)
 eDiscard m = EAbs Nothing <$!> m
 
-mThen :: TcM t (EMonad t v) -> TcM t (EMonad t v) -> TcM t (EMonad t v)
+mThen :: TcM t v (EMonad t v) -> TcM t v (EMonad t v) -> TcM t v (EMonad t v)
 mThen m1 m2 = ebnd <$> m1 <*> eDiscard m2
 
-mSnd :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> ETerm t v -> TcM t (EMonad t v)
+mSnd :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> ETerm t v -> TcM t v (EMonad t v)
 mSnd r1 r2 ty tm = ESnd <$> (getChannelId (r1, r2, ty)) <*> pure tm
 
-mRcv :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> TcM t (EMonad t v)
+mRcv :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> TcM t v (EMonad t v)
 mRcv r2 r1 ty = ERcv <$> getChannelId (r1, r2, ty)
 
-mCh :: (Ord t, Pretty t) => RoleId -> ETerm t v -> [RoleId] -> [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mCh :: (Ord t, Pretty t) => RoleId -> ETerm t v -> [RoleId] -> [ETerm t v -> TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
 mCh r1 t rs fs = ECh <$> mapM getChannelId chs <*> pure t <*> mapM (eAbs sameVar) fs
   where
     chs = zip3 (repeat r1) rs $ repeat (TSum (map (const TUnit) fs) Nothing)
 
-mBrn :: (Ord t, Pretty t) => RoleId -> RoleId -> [TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mBrn :: (Ord t, Pretty t) => RoleId -> RoleId -> [TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
 mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
   where
     unit = TSum (map (const TUnit) ms) Nothing
 
-mComp :: TcM t (EFun t v) -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EFun t v)
+mComp :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 mComp m1 f1 = liftM2 ecomp m1 (eAbs sameVar f1)
 
-fId :: TcM t (EFun t v)
+fId :: TcM t v (EFun t v)
 fId = eAbs sameVar $ \x -> mRet x
 
 --------------------------------------------------------------------------------
 -- Translation
 
 -- Pre: no alternative or choice
-cmsg :: (Ord t, Pretty t) => RoleId -> RoleId -> AType t -> TcM t (EFun t v)
+cmsg :: Prim v t => RoleId -> RoleId -> AType t -> TcM t v (EFun t v)
 cmsg r r2 (TyAnn ty r1)
   | r == r1 && r /= r2 = eAbs sameVar $ \ x -> mSnd r r2 ty x `mThen` mRet x
   | r /= r1 && r == r2 = eDiscard $ mRcv r r1 ty
@@ -241,21 +243,21 @@ cmsg r r2 (TyPrd rs)
   where
     prd var = mSplit var $!
               zipWith (\i r3 -> hAbs $
-                        mComp (eAbs sameVar $ \x -> mRet (project i x))
+                        mComp (eAbs sameVar $ \x -> project i x >>= mRet)
                               (hAbs $ cmsg r r2 r3)
                       ) idxs rs
 
     project i x
-      | size <= 1 = x
-      | otherwise = eApp (Proj i) x
+      | size <= 1 = pure x
+      | otherwise = eApp (Proj i size) x
 
     idxs = scanl' (+) 0 $ map containsR rs
     size = last idxs
     containsR r'
       | r `Set.member` typeRoles r' = 1
       | otherwise                   = 0
-cmsg r r2 (TyBrn i _ r1)
-  | r == r2    = mComp next $ \ x -> mRet $ EInj i x
+cmsg r r2 (TyBrn i j r1)
+  | r == r2    = mComp next $ \ x -> mRet $ EInj i j x
   | otherwise = next
   where
     next = cmsg r r2 r1
@@ -269,7 +271,7 @@ cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
 data EAlt t v = ELeaf (EFun t v) | ENode [EAlt t v]
 
 
-genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EAlt t v)
+genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EAlt t v)
 genAlt r e (TyAlt rs@(r1:_))
   | all (== r1) rs = genAlt r e r1
   | otherwise    = ENode <$!> mapM (genAlt r e) rs
@@ -294,15 +296,15 @@ doChoice :: (Ord t, Pretty t)
          => RoleId
          -> RoleId
          -> [RoleId]
-         -> [TcM t (EFun t v)]
-         -> TcM t (EFun t v)
+         -> [TcM t v (EFun t v)]
+         -> TcM t v (EFun t v)
 doChoice r r1 rs fs =
     if r1 == r
     -- I do the choice
     then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
     else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
-gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EFun t v)
+gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
   appPoly f a >>= \b -> gen r p (TyAnn b r1)
 
@@ -316,7 +318,7 @@ gen r p a
   where !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
 
 gen r (AnnAlg e r2) r1
-  | r == r2    = cmsg r r2 r1 `mComp` \ x -> mRet (eApp e x)
+  | r == r2    = cmsg r r2 r1 `mComp` \ x -> eApp e x >>= mRet
   | otherwise = cmsg r r2 r1
 
 gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
@@ -346,18 +348,18 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
               !rs = Set.toList $! r `Set.delete` (Set.unions $ typeRoles a : map termRoles t)
           genN a = go t a
 
-gen r (AnnPrj i) (TyAnn _ r1)
-  | r == r1 = eAbs sameVar $ \x -> mRet (eApp (Proj i) x)
-gen r (AnnPrj i) (TyPrd rs)
-  | size > 1 = eAbs sameVar $ \x -> mRet (eApp (Proj n) x)
+gen r (AnnPrj i j) (TyAnn _ r1)
+  | r == r1 = eAbs sameVar $ \x -> eApp (Proj i j) x >>= mRet
+gen r (AnnPrj i _) (TyPrd rs)
+  | size > 1 = eAbs sameVar $ \x -> eApp (Proj n size) x >>= mRet
   where
-    n = idxs !! fromInteger i
+    n = idxs !! i
     idxs = scanl' (+) 0 $ map containsR rs
     size = last idxs
     containsR r'
       | r `Set.member` typeRoles r' = 1
       | otherwise                   = 0
-gen _ (AnnPrj i) _ = eAbs sameVar $ \x -> mRet $ EApp (Inj i) x
+gen _ (AnnPrj _ _) _ = eAbs sameVar $ \x -> mRet x
 
 gen r (AnnSplit ps) r1 = do
   prd
@@ -369,7 +371,7 @@ gen r (AnnSplit ps) r1 = do
 
 gen r (AnnCase es) (TyBrn i _ a) = gen r (es !! i) a
 
-gen _  _ (TyBrn i _ _) = eAbs sameVar $ \x -> mRet $ EApp (Inj $ toInteger i) x
+gen _  _ (TyBrn i j _) = eAbs sameVar $ \x -> mRet $ EInj i j x
 gen _ AnnInj{} _ = fId
 gen _ AnnId _ = fId
 
@@ -381,8 +383,8 @@ keepCtx :: Prim v t
         => RoleId
         -> AType t
         -> ATerm t v
-        -> TcM t (EFun t v)
-        -> TcM t (EFun t v)
+        -> TcM t v (EFun t v)
+        -> TcM t v (EFun t v)
 keepCtx r r1 e m = do
   (r2, _) <- inferGTy r1 e -- Check the output roles
   if r `Set.member` typeRoles r2
@@ -400,19 +402,23 @@ instance IsCompound (ETerm t v) where
   isCompound EVar {} = False
   isCompound EUnit{} = False
   isCompound EVal {} = False
-  isCompound EPair{} = False
+  isCompound EPair{} = True
   isCompound EInj {} = True
+  isCompound EProj{} = True
   isCompound EApp {} = True
 
 instance Prim v t => Pretty (ETerm t v) where
   pretty (EVar i) = hcat [pretty "v", pretty i]
   pretty EUnit    = parens emptyDoc
   pretty (EVal v) = pretty v
-  pretty (EPair ts) = parens $! hsep $! punctuate (pretty ", ") $! map pretty ts
-  pretty (EInj i t) = hsep [ hcat [pretty "inj", brackets $! pretty i]
-                           , pprParens t
-                           ]
-  pretty (EApp e t) = hsep [pprParens e, pprParens t]
+  pretty (EPair ts) = hsep $ hcat [pretty "Pair", pretty $ length ts] : map pprParens ts
+  pretty (EInj i j t) = hsep [ hcat [pretty "Inj", pretty i, pretty "_", pretty j]
+                             , pprParens t
+                             ]
+  pretty (EProj i j t) = hsep [ hcat [pretty "proj", pretty i, pretty "_", pretty j]
+                             , pprParens t
+                             ]
+  pretty (EApp e t) = hsep [hcat [ pretty e], pprParens t]
 
 instance Prim v t => Pretty (EFun t v) where
   pretty (EAbs i m) = nest 2 $ vsep [ hsep [ pretty "\\"
@@ -466,24 +472,35 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
              ]
       prettyCaseAlt i (EAbs v m) =
         hang 2 $ vsep
-        [ hsep [ pretty (Inj i :: Alg t v)
+        [ hsep [ toHs (Inj i (length a) :: Alg t v)
                , maybe (pretty "_") ((pretty "v" <>) . pretty) v
                , pretty "->"
                ]
         , pretty (sendTag i c m)
         ]
       sendTag _ [] k = k
-      sendTag i (cc : cs) k = ESnd cc (EApp (Inj i) EUnit) `EBnd` EAbs Nothing (sendTag i cs k)
-  pretty (EBrn r a) = hang 2 $!
-                        vsep [ hsep [ pretty "branch" <> pretty (length a)
-                                    , hcat [pretty "ch", pretty r]
-                                    ]
-                             , encloseSep
-                               (pretty "( ")
-                               (pretty " )")
-                               (pretty ", ")
-                               $! map pretty a
-                             ]
+      sendTag i (cc : cs) k = ESnd cc (EInj i (length a) EUnit) `EBnd` EAbs Nothing (sendTag i cs k)
+  pretty (EBrn r a) = hang 2 $! pprBrn
+    where
+      pprBrn =
+        hang 2 $
+        vsep [ hsep [pretty "readChan", hcat [pretty "ch", pretty r], pretty ">>="
+                    , hcat [pretty "\\ vch", pretty r, pretty " -> "] ]
+             , hsep [ pretty "case", hcat [pretty "vch", pretty r], pretty "of" ]
+             , encloseSep
+               (pretty "{ ")
+               (pretty " }")
+               (pretty "; ")
+               $! zipWith prettyCaseAlt [0..] a
+             ]
+      prettyCaseAlt i m =
+        hang 2 $ vsep
+        [ hsep [ toHs (Inj i (length a) :: Alg t v)
+               , pretty "_"
+               , pretty "->"
+               ]
+        , pretty m
+        ]
 
 renderPCode :: Prim v t => FilePath -> Map Id (ParProg t v) -> String
 renderPCode fp
@@ -498,6 +515,7 @@ renderPCode fp
       [ hsep [pretty "module", pretty $ toUpper (head fp) : tail fp, pretty "where" ]
       , line
       , pretty "import Control.Concurrent"
+      , pretty "import AlgPrelude"
       , pretty "import " <> pretty ((toUpper (head fp) : tail fp) ++ "Atoms")
       , line
       , line
@@ -521,6 +539,48 @@ renderPCode fp
                                             ]
                                      , pretty m
                                      ]
+
+-- mkPair :: Int -> Doc ann
+-- mkPair i = vsep [ nest 4 $ vsep
+--                   [ hsep [ pretty "data", hcat [pretty "Pair", pretty i], hsep $ map pretty vs ]
+--                   , hsep [ hcat [pretty "= Pair", pretty i], hsep $ map pretty vs  ]
+--                   ]
+--                 , mkProjs i
+--                 ]
+--   where
+--     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+--
+-- mkProjs :: Int -> Doc ann
+-- mkProjs i = vsep $ map mkProj [0..i-1]
+--   where
+--     mkProj j =
+--       hsep [ hcat [ pretty "proj", pretty j, pretty "_", pretty i ]
+--            , hsep $ map pretty vs
+--            , pretty "="
+--            , pretty $ vs !! j
+--            ]
+--     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+--
+-- mkSum :: Int -> Doc ann
+-- mkSum i = vsep [ nest 4 $ vsep
+--                  $ hsep [ pretty "data", hcat [pretty "Sum", pretty i], hsep $ map pretty vs ]
+--                  : pprInjs
+--                 ]
+--   where
+--     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+--     pprInjs =
+--       case mkInjs i of
+--         [] -> []
+--         (h : t) -> (pretty "=" <+> h) : map (pretty "|" <+>) t
+--
+-- mkInjs :: Int -> [Doc ann]
+-- mkInjs i = map mkInj [0..i-1]
+--   where
+--     mkInj j =
+--       hsep [ hcat [ pretty "Inj", pretty j, pretty "_", pretty i ]
+--            , pretty $ vs !! j
+--            ]
+--     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
 
 prettyChans :: EFun t v -> [Doc ann]
 prettyChans = map ((pretty "ch" <>) . pretty) . Set.toList . getChans
@@ -552,3 +612,94 @@ getChans (EAbs _ m) = go m
     go (EBrn c ms1) = Set.unions $ Set.singleton c : map go ms1
     go (ECh cs _ fs1 ) = Set.unions $ Set.fromList cs : map getChans fs1
     go _ = Set.empty
+
+toHsParens :: (Pretty a, Pretty t) => Alg t a -> Doc ann
+toHsParens x
+  | isCompound x = parens (toHs x)
+  | otherwise    = toHs x
+
+toHs :: (Pretty a, Pretty t) => Alg t a -> Doc ann
+toHs (Var  v  ) = pretty v
+toHs (Val  v)   = pretty v
+toHs (Const c)  = hsep [pretty "const", pprParens c]
+toHs Unit       = pretty "()"
+toHs (Comp es)
+  = group $! encloseSep emptyDoc emptyDoc (pretty " . ") $! fmap toHs es
+toHs Id         = pretty "id"
+toHs (Proj i j)   = hcat [pretty "proj", pretty i, pretty "_", pretty j]
+toHs (Split es)
+  = pretty "split" <> pretty (length es) <+>
+         (group $! cat $! fmap toHsParens es)
+toHs (Inj i j)    = hcat [pretty "Inj", pretty i, pretty "_", pretty j]
+toHs (Case es)
+  = pretty "join" <> pretty (length es) <+>
+  (group $! cat $! fmap toHsParens es)
+toHs (In f)     = hcat [pretty "<IN>", pretty f]
+toHs (Out f)    = hcat [pretty "<OUT>", pretty f]
+toHs _ = error "Panic! Unimplemented"
+-- toHs (Fmap f g) = error "Panic! Functors should not occur here"
+-- toHs (Rec f e1 e2)
+--   = hsep [toHs "rec", brackets (toHs f), pprParens e1, pprParens e2]
+
+convertToHsP :: Prim v t
+             => Int
+             -> Alg t v
+             -> TcM t v (Doc ann)
+convertToHsP f a
+  | isCompound a = convertToHs f a >>= pure . parens
+  | otherwise = convertToHs f a
+
+convertToHs :: forall v t ann.
+              Prim v t
+            => Int
+            -> Alg t v
+            -> TcM t v (Doc ann)
+convertToHs f a = do
+  v <- newVar
+  next (pretty "v" <> pretty v) a
+  where
+    next t = go
+      where
+        go (Var  w  ) = pure $ hsep [pretty w, t]
+        go (Val  x)   = pure $ hsep [pretty x, t]
+        go (Const c)  = pure $ toHs c -- go c >>= \t -> pure $ hsep [pretty "const", t]
+        go Unit       = pure $ hsep [pretty "()", t]
+        go (Comp es)  = rev $ reverse es
+          where
+            rev [] = pure t
+            rev (h:ts) = rev ts >>= \ hs -> next (parens hs) h
+        go Id         = pure t
+        go (Proj i j) = pure $ hsep [hcat [pretty "proj", pretty i, pretty "_", pretty j], t]
+        go (Split es)
+          = mapM go es >>= \hss -> pure $ hsep $ (pretty "Pair" <> pretty (length es)) : map parens hss
+        go (Inj i j)    = pure $ hsep [hcat [pretty "Inj", pretty i, pretty "_", pretty j], t]
+        go (Case es) = mapM (const newVar) es
+          >>= \ vss -> zipWithM mkAlt (zip [0..] vss) es  >>= \ alts ->
+          pure $ caseT alts
+          where
+            caseT as =
+              vsep [ hsep [ pretty "case", t, pretty "of" ]
+                   , encloseSep
+                     (pretty "{ ")
+                     (pretty " }")
+                     (pretty "; ")
+                     as
+                   ]
+            mkAlt (i, v) e =
+              next (pretty "v" <> pretty v) e >>=
+              \he ->
+                pure $
+                hang 2 $ vsep
+                [ hsep [ toHs (Inj i (length es) :: Alg t v)
+                       , pretty "v" <> pretty v
+                       , pretty "->"
+                       ]
+                , he
+                ]
+   --  go (In f)     = hcat [pretty "<IN>", pretty f]
+   --  go (Out f)    = hcat [pretty "<OUT>", pretty f]
+   --  go _ = error "Panic! Unimplemented"
+        go (Fmap pf g) = appPolyF pf g >>= \ e -> go e
+        go (Rec f e1 e2) = go e2 >>= \he2 -> appPolyF f (Var f) >>= \ap -> next he2 ap >>= \ hap ->
+          next hap e1
+  --   = hsep [go "rec", brackets (go f), pprParens e1, pprParens e2]

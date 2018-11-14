@@ -115,6 +115,8 @@ reservedOp     = Token.reservedOp     polyLexer
 -- stringLiteral  = Token.stringLiteral  polyLexer
 natural :: AlgParser t Integer
 natural        = Token.natural        polyLexer
+natInt :: AlgParser t Int
+natInt        = fromInteger <$> natural
 integer :: AlgParser t Integer
 integer        = Token.integer        polyLexer
 -- float          = Token.float          polyLexer
@@ -205,11 +207,11 @@ algParser pt pv
     caseParser  = singl Case  <$> try (sepBy1 sumParser (reservedOp "|||"))
     sumParser   = singl (Case . inj) <$> try (sepBy1 splitParser (reservedOp "+++"))
       where
-        inj l = map (\(i, x) -> Inj i `comp` x) $ zip [0..] l
+        inj l = map (\(i, x) -> Inj i (length l) `comp` x) $ zip [0..] l
     splitParser = singl Split <$> try (sepBy1 prodParser (reservedOp "&&&"))
     prodParser = singl (Split . proj) <$> try (sepBy1 (simpleAlg pt pv) (reservedOp "***"))
       where
-        proj l = map (\(i, x) -> x `comp` Proj i) $ zip [0..] l
+        proj l = map (\(i, x) -> x `comp` Proj i (length l)) $ zip [0..] l
 
 
 simpleAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
@@ -240,8 +242,10 @@ aAlg pt pv
     pVal  = Val <$> pv
     pUnit = parens (return Unit)
     pId   = reserved "id" >> pure Id
-    pProj = reserved "proj" >> Proj <$> brackets natural
-    pInj  = reserved "inj" >> Inj <$> brackets natural
+    pProj = reserved "proj" >>
+            uncurry Proj <$> brackets ((,) <$> natInt <*> (reservedOp "," *> natInt))
+    pInj  = reserved "inj" >>
+            uncurry Inj <$> brackets ((,) <$> natInt <*> (reservedOp "," *> natInt))
     pIn   = reserved "in" >>
       In <$> choice [try $ brackets $ polyParser pt, PMeta <$> fresh]
     pOut  = reserved "out" >>

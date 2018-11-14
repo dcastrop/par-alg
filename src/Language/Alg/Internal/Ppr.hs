@@ -114,19 +114,19 @@ instance Pretty a => Pretty (Type a) where
   pretty (TVar x)    = pretty x
   pretty TUnit       = pretty "()"
   pretty t@(TFun ts)
-    = group $! encloseSep emptyDoc emptyDoc (pretty "-> ") $!
+    = group $! encloseSep emptyDoc emptyDoc (pretty " -> ") $!
       fmap (prettyLvl (prefLvl t)) ts
   pretty t@(TSum ts Nothing)
-    = group $! encloseSep emptyDoc emptyDoc (pretty "+ ") $!
+    = group $! encloseSep emptyDoc emptyDoc (pretty " + ") $!
       fmap (prettyLvl (prefLvl t)) $ ts
   pretty t@(TSum ts (Just i))
-    = group $! encloseSep emptyDoc emptyDoc (pretty "+ ") $!
+    = group $! encloseSep emptyDoc emptyDoc (pretty " + ") $!
       (fmap (prettyLvl (prefLvl t)) $ ts) ++ [hcat [pretty "+?", pretty i]]
   pretty t@(TPrd ts Nothing)
-    = group $! encloseSep emptyDoc emptyDoc (pretty "* ") $!
+    = group $! encloseSep emptyDoc emptyDoc (pretty " * ") $!
       fmap (prettyLvl (prefLvl t)) $ ts
   pretty t@(TPrd ts (Just i))
-    = group $! encloseSep emptyDoc emptyDoc (pretty "* ") $!
+    = group $! encloseSep emptyDoc emptyDoc (pretty " * ") $!
       (fmap (prettyLvl (prefLvl t)) $ ts) ++ [hcat [pretty "*?", pretty i]]
   pretty (TApp f t)
     = hsep [pprParens f, pprParens t]
@@ -152,10 +152,10 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Comp es)
     = group $! encloseSep emptyDoc emptyDoc (pretty ". ") $! fmap pprParens es
   pretty Id         = pretty "id"
-  pretty (Proj i)   = hcat [pretty "proj", brackets (pretty i)]
+  pretty (Proj i j)   = hcat [pretty "proj", brackets (pretty i <> pretty ", " <> pretty j)]
   pretty (Split es)
     = group $! encloseSep emptyDoc emptyDoc (pretty "&&& ") $! fmap pprParens es
-  pretty (Inj i)    = hcat [pretty "inj", brackets (pretty i)]
+  pretty (Inj i j)    = hcat [pretty "inj", brackets (pretty i <> pretty ", " <> pretty j)]
   pretty (Case es)
     = group $! encloseSep emptyDoc emptyDoc (pretty "||| ") $! fmap pprParens es
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]

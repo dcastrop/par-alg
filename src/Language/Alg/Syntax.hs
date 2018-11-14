@@ -203,9 +203,9 @@ data Alg t v
   | Unit
   | Comp ![Alg t v]
   | Id
-  | Proj !Integer
+  | Proj !Int !Int
   | Split ![Alg t v]
-  | Inj !Integer
+  | Inj !Int !Int
   | Case ![Alg t v]
   | Fmap !(Func t) !(Alg t v)
   | In  !(Func t)

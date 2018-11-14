@@ -16,6 +16,7 @@ module Language.Alg.Typecheck
   , tcTerm
   , execTcM
   , appPoly
+  , appPolyF
 
   , protocol
   , inferGTy
@@ -51,7 +52,7 @@ data SEnv t = SEnv { fstE :: !(Env (Func t))
                    , sndE :: !(Env (Type t))
                    }
 
-typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t, TyEnv t, AProg t v)
+typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t v, TyEnv t, AProg t v)
 typecheck st p = go >>= \((e, p'), tcst) -> return (tcst, e, p')
   where
     go = runTcM st $ do
@@ -60,7 +61,7 @@ typecheck st p = go >>= \((e, p'), tcst) -> return (tcst, e, p')
       return (te, pr')
 
 -- Fills in metavar & type information
-checkProg :: Prim v t => Prog t v -> TcM t (TyEnv t, Map Id (Alg t v, RwStrat t v))
+checkProg :: Prim v t => Prog t v -> TcM t v (TyEnv t, Map Id (Alg t v, RwStrat t v))
 checkProg = foldM' go (Map.empty, Map.empty) . getDefns
   where
     go (e, ls) (EPar i s2)
@@ -72,7 +73,7 @@ checkProg = foldM' go (Map.empty, Map.empty) . getDefns
         Left  (i, df) -> let !l = Map.insert i df e in pure (l, f)
         Right (i, a)  -> let !l = Map.insert i (a, RwRefl) f in pure (e, l)
 
-checkDef :: Prim v t => Def t v -> TcM t (Either (Id, TyDef t) (Id, Alg t v))
+checkDef :: Prim v t => Def t v -> TcM t v (Either (Id, TyDef t) (Id, Alg t v))
 checkDef (FDef v f) = checkKind Set.empty f *> newPoly v f
                       *> pure (Left (v, AnnF f))
 checkDef (TDef v f) = checkKind Set.empty f *> newType v f
@@ -87,13 +88,13 @@ checkDef (EDef i s f) = do
 checkDef (EPar _i _s) = fail "Unimplemented: checking rewriting strategies"
 
 
-tcTerm :: Prim v t => Alg t v -> Type t -> TcM t (Env (Type t))
+tcTerm :: Prim v t => Alg t v -> Type t -> TcM t v (Env (Type t))
 tcTerm e t = typeOf (SEnv Map.empty Map.empty) e t >>= return . sndE
 
 -- FIXME: Refactor, use StateT for typeOf with environments, or (since metavars are
 -- introduced fresh), just add Env (Type t) to state. However, there is no need to
 -- keep environment of metavars after typechecking definition!
-typeOf :: Prim v t => SEnv t -> Alg t v -> Type t -> TcM t (SEnv t)
+typeOf :: Prim v t => SEnv t -> Alg t v -> Type t -> TcM t v (SEnv t)
 typeOf s (Var x      ) t
   = lookupVar x >>= skolemise >>= (`unif` t)
   where unif = unify s
@@ -121,10 +122,10 @@ typeOf s (Comp es    ) t
 typeOf s (Id         ) t = do
   !t1 <- TMeta <$!> fresh
   unify s t (t1 `tFun` t1)
-typeOf s (Proj i     ) t = do
-  !ts <- mapM (const (TMeta <$!> fresh)) [0..i]
-  !m  <- Just <$!> fresh
-  unify s t (tFun (TPrd ts m) $! last ts)
+typeOf s (Proj i  j  ) t = do
+  !ts <- mapM (const (TMeta <$!> fresh)) [0..j-1]
+  -- !m  <- Just <$!> fresh
+  unify s t (tFun (TPrd ts Nothing) $! (ts !! i))
 typeOf s e@(Split es   ) t
   | length es < 2 = fail $! "Ill-formed split: " ++ render e
   | otherwise = do
@@ -132,10 +133,10 @@ typeOf s e@(Split es   ) t
       !ts  <- mapM (const (TMeta <$!> fresh)) es
       !s'  <- unify s t (ti `tFun` TPrd ts Nothing)
       foldM' ( uncurry . typeOf) s' $! zip es $! map (tFun ti) ts
-typeOf s (Inj  i     ) t = do
-  !ts <- mapM (const (TMeta <$!> fresh)) [0..i]
-  !m  <- Just <$!> fresh
-  unify s t (tFun (last ts) (TSum ts m))
+typeOf s (Inj  i   j ) t = do
+  !ts <- mapM (const (TMeta <$!> fresh)) [0..j-1]
+  -- !m  <- Just <$!> fresh
+  unify s t (tFun (ts !! i) (TSum ts Nothing))
 typeOf s e@(Case es   ) t
   | length es < 2 = fail $! "Ill-formed case: " ++ render e
   | otherwise = do
@@ -163,7 +164,7 @@ unifyPoly :: (Eq t, Pretty t, IsCompound t)
           => SEnv t
           -> Func t
           -> Func t
-          -> TcM t (SEnv t)
+          -> TcM t v (SEnv t)
 unifyPoly s p          x@(PMeta i)
   | i `Set.member` metaVars p = fail $! "Occurs check, cannot unify '"
                                 ++ render x ++ "' with '" ++ render p ++ "'"
@@ -199,7 +200,7 @@ zipF xs ys =
     (l, JLeft  r) -> let !(ll, lr) = last l
                     in init l ++ [(TFun $! ll:r, lr)]
 
-unify :: (Eq t, Pretty t, IsCompound t) => SEnv t -> Type t -> Type t -> TcM t (SEnv t)
+unify :: (Eq t, Pretty t, IsCompound t) => SEnv t -> Type t -> Type t -> TcM t v (SEnv t)
 unify s@(SEnv fe se) t x@(TMeta i)
   | Just t' <- Map.lookup i se  = unify s t t'
   | i `Set.member` metaVars t = fail $! "Occurs check, cannot unify '"
@@ -245,7 +246,7 @@ unifyTail :: (Eq t, Pretty t, IsCompound t)
           -> MEither [Type t] [Type t]
           -> Maybe Int
           -> Maybe Int
-          -> TcM t (SEnv t)
+          -> TcM t v (SEnv t)
 unifyTail _      _   s None Nothing  Nothing  = return $! s
 unifyTail _      spr s None (Just i) mj       = unify s (spr [] mj) (TMeta i)
 unifyTail _      spr s None mi (Just j)       = unify s (spr [] mi) (TMeta j)
@@ -254,7 +255,7 @@ unifyTail msgerr _   s (JLeft _) _  Nothing   = fail (msgerr $! sndE s)
 unifyTail _      spr s (JRight l) (Just i) mj = unify s (spr l  mj) (TMeta i)
 unifyTail msgerr _   s (JRight _) Nothing  _  = fail (msgerr $! sndE s)
 
-appPoly :: Pretty t => Func t -> Type t -> TcM t (Type t)
+appPoly :: Pretty t => Func t -> Type t -> TcM t v (Type t)
 appPoly (PK t)    _ = pure t
 appPoly (PV v)    t = lookupPoly v >>= (`appPoly` t)
 appPoly PI        t = pure t
@@ -262,17 +263,26 @@ appPoly (PPrd ps) t = TPrd <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly (PSum ps) t = TSum <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly x@PMeta{} t = fail $! "Ambiguous type '" ++ render (TApp x t) ++ "'"
 
+appPolyF :: Pretty t => Func t -> Alg t v -> TcM t v (Alg t v)
+appPolyF = undefined
+-- appPolyF (PK t)    _ = Id
+-- appPolyF (PV v)    t = lookupPoly v >>= (`appPoly` t)
+-- appPolyF PI        t = pure t
+-- appPolyF (PPrd ps) t = TPrd <$!> mapM (`appPoly` t) ps <*> pure Nothing
+-- appPolyF (PSum ps) t = TSum <$!> mapM (`appPoly` t) ps <*> pure Nothing
+-- appPolyF x@PMeta{} t = fail $! "Ambiguous type '" ++ render (TApp x t) ++ "'"
+
 --------------------------------------------------------------------------------
 -- REWRITER
 
-rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t (AProg t v)
+rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t v (AProg t v)
 rewrite defns = mapM rwStrat $! Map.toList toRewrite
   where
     !toRewrite = Map.filter notRefl defns
     notRefl (_, RwRefl) = False
     notRefl _           = True
 
-rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t (ADef t v)
+rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t v (ADef t v)
 rwStrat (i, (ef, rw)) = do
   !sc <- lookupVar i
   case scType sc of
@@ -286,7 +296,7 @@ rwStrat (i, (ef, rw)) = do
         AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) (AnnComp [AnnAlg Id initR, af]) gg
     _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
 
-rwAlg :: Prim v t => RwStrat t v -> ATerm t v -> TcM t (ATerm t v)
+rwAlg :: Prim v t => RwStrat t v -> ATerm t v -> TcM t v (ATerm t v)
 rwAlg (RwSeq s1 s2) a = rwAlg s1 a >>= rwAlg s2
 rwAlg RwRefl        a = pure a
 rwAlg (Unroll i) (AnnAlg (Rec f m s) r1) = do
@@ -309,8 +319,8 @@ rAnn t (RId i)
   = pure $! TyAnn t i
 rAnn t (RAlt rs)
   = tyAlt <$!> mapM (rAnn t) rs
-rAnn (TSum ts _) (RBrn i r) | len > i
-  = TyBrn i len <$!> rAnn (ts !! i) r
+rAnn (TSum ts _) (RBrn i j r) | len > i
+  = TyBrn i j <$!> rAnn (ts !! i) r
   where
     !len = length ts
 rAnn (TPrd ts _) (RPrd rs)
@@ -321,13 +331,12 @@ rAnn l r
 
 rGet :: (Eq a, Pretty a, IsCompound a)
      => AType a
-     -> TcM a (Role, Type a)
+     -> TcM a b (Role, Type a)
 rGet (TyAnn t i) = pure (RId i, t)
-rGet (TyBrn i _ a) = do
-  ts <- mapM (const (TMeta <$> fresh)) [0..i-1]
-  n <- fresh
+rGet (TyBrn i j a) = do
+  ts <- mapM (const (TMeta <$> fresh)) [0..j-2]
   (r, t) <- rGet a
-  pure (RBrn i r, TSum (ts ++ [t]) $ Just n)
+  pure (RBrn i j r, TSum (take i ts ++ t : drop i ts) Nothing)
 rGet (TyAlt []) = error $ "Panic! empty alternative in 'rGet'"
 rGet (TyAlt (x:xs)) = do
   (r , t) <- rGet x
@@ -351,16 +360,16 @@ roleTrack (AnnComp es) t = go (reverse es) t
       | all (== th) ts = go l th
     go [] t' = t'
     go (x:xs) t' = go xs $! roleTrack x t'
-roleTrack (AnnPrj i) (RPrd ts) = ts !! (fromInteger i)
-roleTrack (AnnPrj _) r = r
+roleTrack (AnnPrj i _) (RPrd ts) = ts !! i
+roleTrack AnnPrj{} r = r
 roleTrack (AnnSplit es) t = RPrd $! map (`roleTrack` t) es
-roleTrack (AnnCase es) (RBrn i a)
+roleTrack (AnnCase es) (RBrn i _ a)
   = let !e = es !! i
     in roleTrack e a
 roleTrack (AnnCase es) r
   = rAlt $! map (`roleTrack` r) es
-roleTrack (AnnInj i) t
-  = RBrn (fromInteger i) t
+roleTrack (AnnInj i j) t
+  = RBrn i j t
 roleTrack _ _
   = error $! "Panic! Ill-typed term reached "
 
@@ -394,10 +403,10 @@ canBranch (TyPrd ts)
       | otherwise = Nothing
 canBranch _ = Nothing
 
-protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t (Global t)
+protocol :: Prim v t => AnnScheme t -> ATerm t v -> TcM t v (Global t)
 protocol sc t = snd <$> protoInfer (ascDom sc) t
 
-protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (AType t, Global t)
+protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t v (AType t, Global t)
 
 --      A_i |= p ~ G_i : B_i
 --      -----------------------------------------------------
@@ -419,7 +428,7 @@ requiresChoice r a (AnnComp es ) = any (requiresChoice r a) es
 requiresChoice r a (AnnSplit es) = any (requiresChoice r a) es
 requiresChoice _ _ _ = False
 
-inferGTy :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t (AType t, GTy t)
+inferGTy :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t v (AType t, GTy t)
 
 inferGTy (TyAnn (TApp f a) r) p =
   appPoly f a >>= \b -> inferGTy (TyAnn b r) p
@@ -463,14 +472,10 @@ inferGTy a (AnnComp es) = go $ reverse es
 
 
 -- Projection
-inferGTy (TyAnn (TPrd ts _) r) (AnnPrj i)
-  | n < length ts = pure (TyAnn (ts !! n) r, GEnd)
-  where
-    n = fromInteger i
-inferGTy (TyPrd ts) (AnnPrj i)
-  | n < length ts = pure (ts !! n, GEnd)
-  where
-    n = fromInteger i
+inferGTy (TyAnn (TPrd ts _) r) (AnnPrj i _)
+  | i < length ts = pure (TyAnn (ts !! i) r, GEnd)
+inferGTy (TyPrd ts) (AnnPrj i _)
+  | i < length ts = pure (ts !! i, GEnd)
 inferGTy _ AnnPrj{}
   | otherwise     = fail "Typecheck.inferGTy: ill-typed term in projection"
 
@@ -504,11 +509,11 @@ inferGTy a (AnnSplit es) = do
   --      GEnd      -> goG gs g1
 
 -- Split
-inferGTy a (AnnInj i) =
-  pure (tagAlts (fromInteger i) a, GEnd)
+inferGTy a (AnnInj i k) =
+  pure (tagAlts i a, GEnd)
   where
     tagAlts j (TyAlt ts) = tyAlt $! map (tagAlts j) ts
-    tagAlts j b = TyBrn j (-1) b
+    tagAlts j b = TyBrn j k b
 
 -- Case
 inferGTy (TyBrn i _ a) (AnnCase ps)
@@ -521,7 +526,7 @@ inferGTy _ AnnFmap{}
   = fail $ "Unimplemented"
 
 
-needBranch :: (Pretty t, Eq t, IsCompound t) => [AType t] -> TcM t Int
+needBranch :: (Pretty t, Eq t, IsCompound t) => [AType t] -> TcM t v Int
 needBranch ts = do
   (ri, _) <- unzip <$!> mapM rGet ts
   return $! go 0 ri
@@ -537,7 +542,7 @@ needBranch ts = do
     getAlts r = [r]
 
 
-dupBranches :: forall t v. Prim v t => AType t -> [ATerm t v] -> TcM t (AType t, GTy t)
+dupBranches :: forall t v. Prim v t => AType t -> [ATerm t v] -> TcM t v (AType t, GTy t)
 dupBranches a es = do
   (rs, gs) <- unzip <$!> mapM (inferGTy a) es
   i <- needBranch rs
@@ -573,7 +578,7 @@ dupBranches a es = do
 
 
 -- Pre: no sum types, no alts
-msg :: Pretty t => AType t -> RoleId -> TcM t (GTy t -> GTy t)
+msg :: Pretty t => AType t -> RoleId -> TcM t v (GTy t -> GTy t)
 msg (TyAnn t  ri   ) ro
   | ri == ro = pure id
   | otherwise = comm
