@@ -4,13 +4,15 @@ module Main where
 
 import Data.Typeable
 import Data.Data
+import Data.Char
 import System.Environment
 import System.Console.CmdArgs
+import System.FilePath.Posix
 
 import Language.Alg.C
 import Language.Alg.Typecheck
 import Language.Alg.Internal.TcM
-import Language.Alg.Internal.Ppr
+-- import Language.Alg.Internal.Ppr
 import Language.Par.Prog
 import Language.Ept.EMonad
 
@@ -28,14 +30,17 @@ compile _ f = do
   logInfo $ "Compiling: " ++ f
   logInfo "...parsing"
   t <- parseFile f
-  output $ render $ snd t
   logInfo "...typechecking"
   (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
-  output $ renderProg fnDefns
+  let (fnm, _ext) = splitExtension f
+  writeFile (fnm ++ ".proto") $ renderProg fnDefns
   logInfo "...compiling to monadic code"
   (_, parProg) <- generate tcSt fnDefns
-  output $ renderPCode parProg
+  writeFile (capitalise fnm ++ ".hs") $ renderPCode (capitalise $ takeBaseName f) parProg
+  where
+    capitalise [] = []
+    capitalise (h : t) = toUpper h : t
 
 compileAll :: Flags -> IO ()
 compileAll f@Flags { files = fl } = mapM_ (compile f) fl

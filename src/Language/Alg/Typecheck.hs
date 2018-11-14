@@ -281,8 +281,9 @@ rwStrat (i, (ef, rw)) = do
           initT = TyAnn a $! initR
       !af <- rwAlg rw (AnnAlg ef initR)
       -- !aty <- roleInfer a initR
-      !(aty, gg) <- protoInfer initT af
-      return $! AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) af gg
+      !(aty, gg) <- protoInfer initT $ AnnComp [AnnAlg Id initR, af]
+      return $!
+        AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) (AnnComp [AnnAlg Id initR, af]) gg
     _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
 
 rwAlg :: Prim v t => RwStrat t v -> ATerm t v -> TcM t (ATerm t v)

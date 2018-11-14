@@ -62,6 +62,7 @@ renderProg
   = renderString
   . layoutSmart defaultLayoutOptions
   . vsep
+  . (++ [line])
   . map pretty
 
 --------------------------------------------------------------------------------

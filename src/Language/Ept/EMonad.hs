@@ -1,5 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wwarn #-}
 {-# LANGUAGE BangPatterns #-}
-{-# OPTIONS_GHC -Wwarn#-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -21,6 +22,7 @@ module Language.Ept.EMonad
   ) where
 
 import Control.Monad.RWS.Strict
+import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
 import Data.List ( scanl' )
@@ -29,6 +31,7 @@ import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import Language.SessionTypes.Common ( Role(..) )
 import Language.Common.Id
 import Language.Alg.Syntax
 import Language.Alg.Typecheck
@@ -48,13 +51,15 @@ generate tcst p = return (nextVar st, a)
 genProg :: Prim v t => AProg t v -> TcM t (Map Id (ParProg t v))
 genProg defs = Map.fromList <$!> mapM genDef defs
   where
-    keep m = get >>= \st -> m <* put st
+    keep m = sameVar >>= \v -> m <* modify (\st -> st { nextVar = v })
     genDef (AnnEDef f sc p _)
-      = ((f,) . Map.fromList)
-      <$!> mapM (\r ->
-                   (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
-                ) rs
+      = case (aty, ascCod sc) of
+          (TyAnn _ ri, TyAnn _ ro)
+            | ri == ro -> ((f,) . Map.fromList) <$!> mapM genRole rs
+          _ -> fail $ "Cannot generate parallel code for function " ++
+              render f ++ ". Cannot find a 'master' role."
       where
+        genRole r = (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
         aty = ascDom sc
         rs = Set.toList $! typeRoles aty `Set.union` termRoles p
 
@@ -85,13 +90,15 @@ data EFun t v
   = EAbs !(Maybe Int) !(EMonad t v)
   deriving (Show, Eq)
 
+type ChannelId = Int
+
 data EMonad t v
   = ERet !(ETerm t v)
   | EBnd !(EMonad t v) !(EFun t v)
-  | ESnd !RoleId !(ETerm t v)
-  | ERcv !RoleId
-  | ECh  !(ETerm t v) ![RoleId] ![EFun t v]
-  | EBrn !RoleId ![EMonad t v]
+  | ESnd !ChannelId !(ETerm t v)
+  | ERcv !ChannelId
+  | ECh  ![ChannelId] !(ETerm t v) ![EFun t v]
+  | EBrn !ChannelId ![EMonad t v]
   deriving (Show, Eq)
 
 fvsT :: ETerm t v -> Set Int
@@ -106,7 +113,7 @@ fvsM :: EMonad t v -> Set Int
 fvsM (ERet t) = fvsT t
 fvsM (EBnd m1 f2) = fvsM m1 `Set.union` fvsF f2
 fvsM (ESnd _ t) = fvsT t
-fvsM (ECh t _ fs) = Set.unions $ fvsT t : map fvsF fs
+fvsM (ECh _ t fs) = Set.unions $ fvsT t : map fvsF fs
 fvsM (EBrn _ ms) = Set.unions $ map fvsM ms
 fvsM ERcv{} = Set.empty
 
@@ -119,16 +126,11 @@ ecomp (EAbs x m) f = EAbs x (ebnd m f)
 retM :: EMonad t v -> EMonad t v -> EMonad t v
 retM ERet{} m = m
 retM (EBnd m1 (EAbs x m2)) m = EBnd m1 (EAbs x $ retM m2 m)
-retM (ECh e rs fs) m = ECh e rs $ map (`ecomp` EAbs Nothing m) fs
-retM (EBrn r ms) m = EBrn r $ map (`retM` m) ms
+retM (ECh sf e fs) m = ECh sf e $ map (`ecomp` EAbs Nothing m) fs
+retM (EBrn sf ms) m = EBrn sf $ map (`retM` m) ms
 retM m m1 = EBnd m $ EAbs Nothing m1
 
 ebnd :: EMonad t v -> EFun t v -> EMonad t v
-ebnd m (EAbs Nothing  m1@ERet{}) = retM m m1
-ebnd m (EAbs (Just i) m1@ERet{})
-  | i `Set.notMember` fvsM m1 = retM m m1
-ebnd m (EAbs (Just i) m1)
-  | i `Set.notMember` fvsM m1 = EBnd m $ EAbs Nothing m1
 ebnd m@(ERet (EApp Var{} _)) f = EBnd m f
 ebnd m@(ERet (EApp Comp{} _)) f = EBnd m f
 ebnd m@(ERet (EApp Split{} _)) f = EBnd m f
@@ -138,6 +140,11 @@ ebnd m@(ERet (EApp Rec{} _)) f = EBnd m f
 ebnd   (ERet t     ) f = app f t
 ebnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
+ebnd m (EAbs Nothing  m1@ERet{}) = retM m m1
+ebnd m (EAbs (Just i) m1@ERet{})
+  | i `Set.notMember` fvsM m1 = retM m m1
+ebnd m (EAbs (Just i) m1)
+  | i `Set.notMember` fvsM m1 = EBnd m $ EAbs Nothing m1
 ebnd (EBnd m f1)  f2   = EBnd m (f1 `ecomp` f2)
 ebnd m               f = EBnd m f
 
@@ -146,10 +153,10 @@ app (EAbs i m) v = go m
   where
     go (ERet v') = ERet $! sbst v'
     go (EBnd m1 f) = ebnd (go m1) (substF f)
-    go (ESnd r v') = ESnd r $! sbst v'
+    go (ESnd c v') = ESnd c $! sbst v'
     go m1@ERcv{} = m1
-    go (ECh v' r fs) = ECh (sbst v') r $! map substF fs
-    go (EBrn r ms) = EBrn r $! map go ms
+    go (ECh c v' fs) = ECh c (sbst v') $! map substF fs
+    go (EBrn c ms) = EBrn c $! map go ms
 
     sbst v'@(EVar j)
      | i == Just j = v
@@ -197,17 +204,21 @@ eDiscard m = EAbs Nothing <$!> m
 mThen :: TcM t (EMonad t v) -> TcM t (EMonad t v) -> TcM t (EMonad t v)
 mThen m1 m2 = ebnd <$> m1 <*> eDiscard m2
 
-mSnd :: RoleId -> ETerm t v -> TcM t (EMonad t v)
-mSnd = (pure .) . ESnd
+mSnd :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> ETerm t v -> TcM t (EMonad t v)
+mSnd r1 r2 ty tm = ESnd <$> (getChannelId (r1, r2, ty)) <*> pure tm
 
-mRcv :: RoleId -> TcM t (EMonad t v)
-mRcv = pure . ERcv
+mRcv :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> TcM t (EMonad t v)
+mRcv r2 r1 ty = ERcv <$> getChannelId (r1, r2, ty)
 
-mCh :: ETerm t v -> [RoleId] -> [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EMonad t v)
-mCh t rs fs = ECh t rs <$> mapM (eAbs sameVar) fs
+mCh :: (Ord t, Pretty t) => RoleId -> ETerm t v -> [RoleId] -> [ETerm t v -> TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mCh r1 t rs fs = ECh <$> mapM getChannelId chs <*> pure t <*> mapM (eAbs sameVar) fs
+  where
+    chs = zip3 (repeat r1) rs $ repeat (TSum (map (const TUnit) fs) Nothing)
 
-mBrn :: RoleId -> [TcM t (EMonad t v)] -> TcM t (EMonad t v)
-mBrn r ms = EBrn r <$> sequence ms
+mBrn :: (Ord t, Pretty t) => RoleId -> RoleId -> [TcM t (EMonad t v)] -> TcM t (EMonad t v)
+mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
+  where
+    unit = TSum (map (const TUnit) ms) Nothing
 
 mComp :: TcM t (EFun t v) -> (ETerm t v -> TcM t (EMonad t v)) -> TcM t (EFun t v)
 mComp m1 f1 = liftM2 ecomp m1 (eAbs sameVar f1)
@@ -219,10 +230,10 @@ fId = eAbs sameVar $ \x -> mRet x
 -- Translation
 
 -- Pre: no alternative or choice
-cmsg :: RoleId -> RoleId -> AType t -> TcM t (EFun t v)
-cmsg r r2 (TyAnn _ r1)
-  | r == r1 && r /= r2 = eAbs sameVar $ \ x -> mSnd r2 x `mThen` mRet x
-  | r /= r1 && r == r2 = eDiscard $ mRcv r1
+cmsg :: (Ord t, Pretty t) => RoleId -> RoleId -> AType t -> TcM t (EFun t v)
+cmsg r r2 (TyAnn ty r1)
+  | r == r1 && r /= r2 = eAbs sameVar $ \ x -> mSnd r r2 ty x `mThen` mRet x
+  | r /= r1 && r == r2 = eDiscard $ mRcv r r1 ty
   | otherwise       = fId
 cmsg r r2 (TyPrd rs)
   | r == r2    = prd newVar
@@ -272,25 +283,24 @@ seqAlts :: EMonad t v -> EAlt t v -> EMonad t v
 seqAlts m1 (ELeaf mf2)  = EBnd m1 mf2
 seqAlts m1 (ENode alts) = go m1
   where
-    go (ECh  v r as) = ECh v r $! zipWith seqAltsF as alts
-    go (EBrn r   ms) = EBrn r $! zipWith seqAlts ms alts
+    go (ECh  c v as) = ECh c v $! zipWith seqAltsF as alts
+    go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
     go (EBnd m2 (EAbs y m3)) = EBnd m2 $! EAbs y $! go m3
     go ERet{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
     go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
     go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
 
-doChoice :: RoleId
+doChoice :: (Ord t, Pretty t)
+         => RoleId
          -> RoleId
          -> [RoleId]
          -> [TcM t (EFun t v)]
          -> TcM t (EFun t v)
 doChoice r r1 rs fs =
     if r1 == r
-    then do -- I do the choice
-      -- bs <- mapM (gen r p) as
-      eAbs sameVar $ \ x -> mCh x rs $ map hAbs fs
-    else do -- I do the branching
-      eAbs sameVar $ \x -> mBrn r1 $ map (`hAbs` x) fs
+    -- I do the choice
+    then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
+    else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
@@ -417,11 +427,15 @@ instance Prim v t => Pretty (EFun t v) where
 
 instance forall v t. Prim v t => Pretty (EMonad t v) where
   pretty (ERet t)    = hsep [pretty "return", pprParens t]
-  pretty blck@EBnd{} = hsep [ pretty "do {"
+  pretty blck@EBnd{} = hsep [ pretty "do"
                             , align $!
                               vsep $!
-                              (punctuate (pretty ";") $! go blck)
-                              ++ [pretty "}"]
+                              case go blck of
+                                [] -> error "Panic! Impossible empty monadic action"
+                                [x] -> [hsep [pretty "{", x, pretty "}"]]
+                                (h:t@(_:_)) -> hsep [pretty "{", h]
+                                        : ((map (pretty ";" <+>) t)
+                                        ++ [pretty "}"])
                             ]
     where
       go (EBnd (ERet t) (EAbs (Just v1) m2))
@@ -438,43 +452,103 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                , pretty m1] : go m2
       go m
         = [pretty m]
-  pretty (ESnd r t)  = hsep [pretty "send", pretty r, pprParens t]
-  pretty (ERcv r)    = hsep [pretty "recv", pretty r]
-  pretty (ECh t r a) = hang 2 $!
-                       vsep [ hsep [ pretty "choice"
-                                   , pprParens t
-                                   , brackets $!
-                                     hsep $!
-                                     punctuate (pretty ", ") $!
-                                     map pretty r
-                                   ]
-                            , encloseSep
-                               (pretty "[ ")
-                               (pretty " ]")
+  pretty (ESnd sf t) = hsep [pretty "writeChan", hcat [pretty "ch",pretty sf], pprParens t]
+  pretty (ERcv sf)   = hsep [pretty "readChan", hcat [pretty "ch",pretty sf]]
+  pretty (ECh c t a) = hang 2 $! pprChoice
+    where
+      pprChoice =
+        vsep [ hsep [ pretty "case", pretty t, pretty "of" ]
+             , encloseSep
+               (pretty "{ ")
+               (pretty " }")
+               (pretty "; ")
+               $! zipWith prettyCaseAlt [0..] a
+             ]
+      prettyCaseAlt i (EAbs v m) =
+        hang 2 $ vsep
+        [ hsep [ pretty (Inj i :: Alg t v)
+               , maybe (pretty "_") ((pretty "v" <>) . pretty) v
+               , pretty "->"
+               ]
+        , pretty (sendTag i c m)
+        ]
+      sendTag _ [] k = k
+      sendTag i (cc : cs) k = ESnd cc (EApp (Inj i) EUnit) `EBnd` EAbs Nothing (sendTag i cs k)
+  pretty (EBrn r a) = hang 2 $!
+                        vsep [ hsep [ pretty "branch" <> pretty (length a)
+                                    , hcat [pretty "ch", pretty r]
+                                    ]
+                             , encloseSep
+                               (pretty "( ")
+                               (pretty " )")
                                (pretty ", ")
                                $! map pretty a
-                            ]
-  pretty (EBrn r a) = hang 2 $!
-                      vsep [ hsep [ pretty "branch"
-                                  , pretty r
-                                  ]
-                           , encloseSep
-                             (pretty "[ ")
-                             (pretty " ]")
-                             (pretty ", ")
-                             $! map pretty a
-                           ]
+                             ]
 
-renderPCode :: Prim v t => Map Id (ParProg t v) -> String
-renderPCode
+renderPCode :: Prim v t => FilePath -> Map Id (ParProg t v) -> String
+renderPCode fp
   = renderString
   . layoutSmart defaultLayoutOptions
   . vsep
+  . (pprHeader ++)
   . map pprPDefns
   . Map.toList
   where
-    pprPDefns (i, p) = nest 4 $! vsep [ hsep [pretty i, pretty "="]
-                                     , vsep $! map pprCRole $! Map.toList p
-                                     , line
+    pprHeader =
+      [ hsep [pretty "module", pretty $ toUpper (head fp) : tail fp, pretty "where" ]
+      , line
+      , pretty "import Control.Concurrent"
+      , pretty "import " <> pretty ((toUpper (head fp) : tail fp) ++ "Atoms")
+      , line
+      , line
+      ]
+    pprPDefns (i, p)
+      = vsep [ hsep [pretty "--", pretty i ]
+             , hang 2 $
+               vsep [ hsep [pretty i, pretty "inp ="]
+                    , pprInit p
+                    , hang 2 $
+                      vsep $ pretty "where" : map pprCRole (Map.toList p)
+                    ]
+             , line
+             ]
+      where
+        pprCRole (r, f@(EAbs v m)) = nest 2 $ vsep
+                                     [ hsep [ hcat [pretty r]
+                                            , hsep (prettyChans f)
+                                            , hcat [pretty "v", pretty v]
+                                            , pretty "="
+                                            ]
+                                     , pretty m
                                      ]
-    pprCRole (r, m) = hsep [pretty r, pretty "|->", pretty m]
+
+prettyChans :: EFun t v -> [Doc ann]
+prettyChans = map ((pretty "ch" <>) . pretty) . Set.toList . getChans
+
+pprInit :: ParProg t v -> Doc ann
+pprInit p = hsep [ pretty "do"
+                 , align $ vsep $ (hsep [pretty "{", pprNewCh ch])
+                   : (map (pretty "; "<>)
+                      ( map pprNewCh chs
+                      ++ map pprCalls (Map.toList $ Map.delete (Rol 0) p)
+                      ++ [hsep $ pretty "r0" : prettyChans (p Map.! Rol 0) ++ [pretty "inp" ]]
+                      )) ++ [pretty "}"]
+                 ]
+  where
+    (ch : chs) = Set.toList $ getPChans p
+    pprCh = (pretty "ch" <>) . pretty
+    pprNewCh c =  hsep [pprCh c, pretty "<- newChan"]
+    pprCalls (r, c) = hsep $ pretty "_ <- forkIO $" : pretty r : map pprCh (Set.toList $ getChans c) ++ [pretty "()"]
+
+getPChans :: ParProg t v -> Set Int
+getPChans = Set.unions . map getChans . Map.elems
+
+getChans :: EFun t v -> Set Int
+getChans (EAbs _ m) = go m
+  where
+    go (EBnd m1 f) = Set.union (go m1) (getChans f)
+    go (ESnd c _) = Set.singleton c
+    go (ERcv c) = Set.singleton c
+    go (EBrn c ms1) = Set.unions $ Set.singleton c : map go ms1
+    go (ECh cs _ fs1 ) = Set.unions $ Set.fromList cs : map getChans fs1
+    go _ = Set.empty

@@ -16,6 +16,8 @@ module Language.Alg.Internal.TcM
   , execTcM
   , runTcM
   , lookupVar
+  , getChannelId
+  , lookupChannelId
   , lookupPoly
   , localTc
   , initSt
@@ -62,19 +64,39 @@ foldM' f z (x:xs) = do
   z' <- f z x
   z' `seq` foldM' f z' xs
 
-data TcSt t = TcSt { nextId   :: Int
-                   , nextRole :: Int
-                   , nextVar  :: Int
-                   , knownIds :: !(Map String Id)
-                   , fDefns   :: !(Map Id (Func t))
-                   , tDefns   :: !(Map Id (Type t))
-                   , gamma    :: !(Map Id (Scheme t))
+data TcSt t = TcSt { nextId    :: Int
+                   , nextRole  :: Int
+                   , nextVar   :: Int
+                   , chanId    :: Int
+                   , channelsL :: !(Map (Role, Role, Type t) Int)
+                   , channelsR :: !(Map Int (Role, Role, Type t))
+                   , knownIds  :: !(Map String Id)
+                   , fDefns    :: !(Map Id (Func t))
+                   , tDefns    :: !(Map Id (Type t))
+                   , gamma     :: !(Map Id (Scheme t))
                    }
+
+
+getChannelId :: (Pretty t, Ord t) => (Role, Role, Type t) -> TcM t Int
+getChannelId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
+  where
+    insert (st@TcSt { chanId = i, channelsL = ch, channelsR = chi })
+      | Just j <- Map.lookup t ch = (j, st)
+      | otherwise = (i, st { chanId = i+1
+                           , channelsL = Map.insert t i ch
+                           , channelsR = Map.insert i t chi
+                           })
+
+lookupChannelId :: Ord t => Int -> TcM t (Role, Role, Type t)
+lookupChannelId t = get >>= (pure . (Map.! t) . channelsR )
 
 initSt :: Parser.St t -> TcSt t
 initSt s = TcSt { nextId = Parser.nextId s
                 , nextRole = 1
                 , nextVar = 0
+                , chanId = 0
+                , channelsL = Map.empty
+                , channelsR = Map.empty
                 , knownIds = Parser.knownIds s
                 , fDefns = Map.empty
                 , tDefns = Map.empty
