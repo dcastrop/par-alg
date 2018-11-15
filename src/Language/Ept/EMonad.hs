@@ -19,8 +19,10 @@ module Language.Ept.EMonad
   , generate
   , renderPCode
   , roleTrack
+  , renderPrelude
   ) where
 
+import Control.Arrow ( second )
 import Control.Monad.RWS.Strict
 import Data.Char ( toUpper )
 import Data.Map ( Map )
@@ -43,16 +45,16 @@ import Language.Par.Type
 import Language.Par.Prog
 -- import Language.SessionTypes.Common hiding (Role)
 
-generate :: Prim v t => TcSt t v -> AProg t v -> IO (Int, Map Id (ParProg t v))
+generate :: Prim v t => TcSt t v -> AProg t v -> IO (Int, EProg t v)
 generate tcst p = return (nextVar st, a)
   where
     (a, st, _w) = runRWS (genProg p) () tcst
 
-genProg :: Prim v t => AProg t v -> TcM t v (Map Id (ParProg t v))
+genProg :: Prim v t => AProg t v -> TcM t v (EProg t v)
 genProg defs = do
   par <- Map.fromList <$!> mapM genDef defs
   hsDefs <- (defnsR <$> get) >>= Map.traverseWithKey convertToHs
-  pure par
+  pure $! EProg hsDefs par
   where
     keep m = sameVar >>= \v -> m <* modify (\st -> st { nextVar = v })
     genDef (AnnEDef f sc p _)
@@ -74,12 +76,13 @@ close _ _ = ELeaf <$> fId
 
 
 data ETerm t v
-  = EVar !Int
+  = EVar !Id
   | EVal !v
   | EUnit
   | EPair ![ETerm t v]
   | EProj !Int !Int !(ETerm t v)
   | EInj !Int !Int !(ETerm t v)
+  | ECase !(ETerm t v) ![(Id, ETerm t v)]
   | EApp !Id !(ETerm t v)
   deriving (Show, Eq)
 
@@ -93,7 +96,7 @@ eApp e p = EApp <$> getDefnId e <*> pure p
 
 
 data EFun t v
-  = EAbs !(Maybe Int) !(EMonad t v)
+  = EAbs !(Maybe Id) !(EMonad t v)
   deriving (Show, Eq)
 
 type ChannelId = Int
@@ -107,7 +110,7 @@ data EMonad t v
   | EBrn !ChannelId ![EMonad t v]
   deriving (Show, Eq)
 
-fvsT :: ETerm t v -> Set Int
+fvsT :: ETerm t v -> Set Id
 fvsT (EVar i) = Set.singleton i
 fvsT (EPair ts) = Set.unions $ map fvsT ts
 fvsT (EInj _ _ t) = fvsT t
@@ -115,7 +118,7 @@ fvsT (EApp _ t) = fvsT t
 fvsT _ = Set.empty
 
 
-fvsM :: EMonad t v -> Set Int
+fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
 fvsM (EBnd m1 f2) = fvsM m1 `Set.union` fvsF f2
 fvsM (ESnd _ t) = fvsT t
@@ -123,7 +126,7 @@ fvsM (ECh _ t fs) = Set.unions $ fvsT t : map fvsF fs
 fvsM (EBrn _ ms) = Set.unions $ map fvsM ms
 fvsM ERcv{} = Set.empty
 
-fvsF :: EFun t v -> Set Int
+fvsF :: EFun t v -> Set Id
 fvsF (EAbs i m2) = fvsM m2 Set.\\ maybe Set.empty Set.singleton i
 
 ecomp :: EFun t v -> EFun t v -> EFun t v
@@ -167,6 +170,7 @@ app (EAbs i m) v = go m
     sbst (EPair es) = EPair $! map sbst es
     sbst (EInj j k e) = EInj j k $! sbst e
     sbst (EProj j k e) = EProj j k $! sbst e
+    sbst (ECase t alts) = ECase (sbst t) $! map (second sbst) alts
     sbst (EApp f x) = EApp f (sbst x)
 
     substF f@(EAbs j m1)
@@ -174,7 +178,9 @@ app (EAbs i m) v = go m
       | otherwise = EAbs j $! go m1
 
 data EProg t v
-  = EptEnv { getEnv :: ParProg t v }
+  = EProg { getHs :: Map Id (Id, ETerm t v)
+          , getEnv :: Map Id (ParProg t v)
+          }
 
 type ParProg t v = Map RoleId (EFun t v)
 
@@ -185,7 +191,11 @@ mRet :: ETerm t v -> TcM t v (EMonad t v)
 mRet t = ERet <$> pure t
 
 eAbs :: TcM t v Int -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
-eAbs var f = var >>= \ x -> EAbs (Just x) <$!> f (EVar x)
+eAbs var f = var >>= \ x -> EAbs (Just $ mkV x) <$!> f (EVar $ mkV x)
+
+
+mkV :: Int -> Id
+mkV i = mkId i $ "v" ++ show i
 
 mBnd :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
 mBnd var m f = ebnd <$> m <*> eAbs var f
@@ -404,17 +414,30 @@ instance IsCompound (ETerm t v) where
   isCompound EVal {} = False
   isCompound EPair{} = True
   isCompound EInj {} = True
+  isCompound ECase{} = True
   isCompound EProj{} = True
   isCompound EApp {} = True
 
-instance Prim v t => Pretty (ETerm t v) where
-  pretty (EVar i) = hcat [pretty "v", pretty i]
+instance forall t v. Prim v t => Pretty (ETerm t v) where
+  pretty (EVar i) = pretty i
   pretty EUnit    = parens emptyDoc
   pretty (EVal v) = pretty v
   pretty (EPair ts) = hsep $ hcat [pretty "Pair", pretty $ length ts] : map pprParens ts
   pretty (EInj i j t) = hsep [ hcat [pretty "Inj", pretty i, pretty "_", pretty j]
                              , pprParens t
                              ]
+  pretty (ECase ts alts) = hang 2 $ vsep $
+    hsep [ pretty "case", pretty ts, pretty "of" ]
+    : zipWith (<+>) delim ((zipWith pprAlts [0..] alts) ++ [line])
+    where
+      nalts = length alts
+      delim = (pretty "{")
+              : take (nalts - 1) (repeat $ pretty ";")
+              ++ [pretty "}"]
+      pprAlts i (v, t) = hsep [ pretty (EInj i nalts (EVar v) :: ETerm t v)
+                              , pretty "->"
+                              , pretty t
+                              ]
   pretty (EProj i j t) = hsep [ hcat [pretty "proj", pretty i, pretty "_", pretty j]
                              , pprParens t
                              ]
@@ -429,7 +452,7 @@ instance Prim v t => Pretty (EFun t v) where
                                     ]
     where
       pprVar Nothing = pretty "_"
-      pprVar (Just v) = hcat [pretty "v", pretty v]
+      pprVar (Just v) = pretty v
 
 instance forall v t. Prim v t => Pretty (EMonad t v) where
   pretty (ERet t)    = hsep [pretty "return", pprParens t]
@@ -446,14 +469,14 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
     where
       go (EBnd (ERet t) (EAbs (Just v1) m2))
         = hsep [ pretty "let"
-               , hcat [pretty "v", pretty v1]
+               , pretty v1
                , pretty "="
                , pretty t
                ] : go m2
       go (EBnd m1 (EAbs Nothing m2))
         = hsep [pretty m1] : go m2
       go (EBnd m1 (EAbs (Just v1) m2))
-        = hsep [ hcat [pretty "v", pretty v1]
+        = hsep [ pretty v1
                , pretty "<-"
                , pretty m1] : go m2
       go m
@@ -473,7 +496,7 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
       prettyCaseAlt i (EAbs v m) =
         hang 2 $ vsep
         [ hsep [ toHs (Inj i (length a) :: Alg t v)
-               , maybe (pretty "_") ((pretty "v" <>) . pretty) v
+               , maybe (pretty "_") pretty v
                , pretty "->"
                ]
         , pretty (sendTag i c m)
@@ -502,15 +525,18 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
         , pretty m
         ]
 
-renderPCode :: Prim v t => FilePath -> Map Id (ParProg t v) -> String
-renderPCode fp
+renderPCode :: Prim v t => FilePath -> EProg t v -> String
+renderPCode fp pprog
   = renderString
-  . layoutSmart defaultLayoutOptions
-  . vsep
-  . (pprHeader ++)
-  . map pprPDefns
-  . Map.toList
+  $! layoutSmart defaultLayoutOptions
+  $! vsep
+  $! (pprHeader ++)
+  $! (map pprHs (Map.toList defs) ++)
+  $! map pprPDefns
+  $! Map.toList pd
   where
+    pd = getEnv pprog
+    defs = getHs pprog
     pprHeader =
       [ hsep [pretty "module", pretty $ toUpper (head fp) : tail fp, pretty "where" ]
       , line
@@ -520,6 +546,7 @@ renderPCode fp
       , line
       , line
       ]
+    pprHs (i, (v, d)) = hsep [pretty i, pretty v, pretty "=", pretty d]
     pprPDefns (i, p)
       = vsep [ hsep [pretty "--", pretty i ]
              , hang 2 $
@@ -534,53 +561,63 @@ renderPCode fp
         pprCRole (r, f@(EAbs v m)) = nest 2 $ vsep
                                      [ hsep [ hcat [pretty r]
                                             , hsep (prettyChans f)
-                                            , hcat [pretty "v", pretty v]
+                                            , pretty v
                                             , pretty "="
                                             ]
                                      , pretty m
                                      ]
 
--- mkPair :: Int -> Doc ann
--- mkPair i = vsep [ nest 4 $ vsep
---                   [ hsep [ pretty "data", hcat [pretty "Pair", pretty i], hsep $ map pretty vs ]
---                   , hsep [ hcat [pretty "= Pair", pretty i], hsep $ map pretty vs  ]
---                   ]
---                 , mkProjs i
---                 ]
---   where
---     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
---
--- mkProjs :: Int -> Doc ann
--- mkProjs i = vsep $ map mkProj [0..i-1]
---   where
---     mkProj j =
---       hsep [ hcat [ pretty "proj", pretty j, pretty "_", pretty i ]
---            , hsep $ map pretty vs
---            , pretty "="
---            , pretty $ vs !! j
---            ]
---     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
---
--- mkSum :: Int -> Doc ann
--- mkSum i = vsep [ nest 4 $ vsep
---                  $ hsep [ pretty "data", hcat [pretty "Sum", pretty i], hsep $ map pretty vs ]
---                  : pprInjs
---                 ]
---   where
---     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
---     pprInjs =
---       case mkInjs i of
---         [] -> []
---         (h : t) -> (pretty "=" <+> h) : map (pretty "|" <+>) t
---
--- mkInjs :: Int -> [Doc ann]
--- mkInjs i = map mkInj [0..i-1]
---   where
---     mkInj j =
---       hsep [ hcat [ pretty "Inj", pretty j, pretty "_", pretty i ]
---            , pretty $ vs !! j
---            ]
---     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+renderPrelude :: String
+renderPrelude = renderString $ layoutSmart defaultLayoutOptions $ vsep prel
+  where
+    prel =
+      [ pretty "module AlgPrelude where"
+      , line
+      , vsep $ map mkPair [0..10]
+      , vsep $ map mkSum [0..10]
+      ]
+
+mkPair :: Int -> Doc ann
+mkPair i = vsep [ nest 4 $ vsep
+                  [ hsep [ pretty "data", hcat [pretty "Pair", pretty i], hsep $ map pretty vs ]
+                  , hsep [ hcat [pretty "= Pair", pretty i], hsep $ map pretty vs  ]
+                  ]
+                , mkProjs i
+                ]
+  where
+    vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+
+mkProjs :: Int -> Doc ann
+mkProjs i = vsep $ map mkProj [0..i-1]
+  where
+    mkProj j =
+      hsep [ hcat [ pretty "proj", pretty j, pretty "_", pretty i ]
+           , parens $ (pretty "Pair" <> pretty i) <+> hsep (map pretty vs)
+           , pretty "="
+           , pretty $ vs !! j
+           ]
+    vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+
+mkSum :: Int -> Doc ann
+mkSum i = vsep [ nest 4 $ vsep
+                 $ hsep [ pretty "data", hcat [pretty "Sum", pretty i], hsep $ map pretty vs ]
+                 : pprInjs
+                ]
+  where
+    vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
+    pprInjs =
+      case mkInjs i of
+        [] -> []
+        (h : t) -> (pretty "=" <+> h) : map (pretty "|" <+>) t
+
+mkInjs :: Int -> [Doc ann]
+mkInjs i = map mkInj [0..i-1]
+  where
+    mkInj j =
+      hsep [ hcat [ pretty "Inj", pretty j, pretty "_", pretty i ]
+           , pretty $ vs !! j
+           ]
+    vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
 
 prettyChans :: EFun t v -> [Doc ann]
 prettyChans = map ((pretty "ch" <>) . pretty) . Set.toList . getChans
@@ -641,65 +678,61 @@ toHs _ = error "Panic! Unimplemented"
 -- toHs (Rec f e1 e2)
 --   = hsep [toHs "rec", brackets (toHs f), pprParens e1, pprParens e2]
 
-convertToHsP :: Prim v t
-             => Int
-             -> Alg t v
-             -> TcM t v (Doc ann)
-convertToHsP f a
-  | isCompound a = convertToHs f a >>= pure . parens
-  | otherwise = convertToHs f a
+--convertToHsP :: Prim v t
+--             => Id
+--             -> Alg t v
+--             -> TcM t v (Doc ann)
+--convertToHsP f a
+--  | isCompound a = convertToHs f a >>= pure . parens
+--  | otherwise = convertToHs f a
 
-convertToHs :: forall v t ann.
+convertToHs :: forall v t.
               Prim v t
-            => Int
+            => Id
             -> Alg t v
-            -> TcM t v (Doc ann)
-convertToHs f a = do
-  v <- newVar
-  next (pretty "v" <> pretty v) a
+            -> TcM t v (Id, ETerm t v)
+convertToHs defn x = do
+  v <- mkV <$> newVar
+  t <- toETerm x (EVar v)
+  return (v, t)
   where
-    next t = go
+    toETerm (Var  w)  t = pure (EApp w t)
+    toETerm (Val  _)  _ = error "convertToHs: Cannot apply value to variable"
+    toETerm Unit      _ = error "convertToHs: Cannot apply value to variable"
+    toETerm (Const c) _ = pure $ go c -- toETerm c >>= \t -> pure $ hsep [pretty "const", t]
       where
-        go (Var  w  ) = pure $ hsep [pretty w, t]
-        go (Val  x)   = pure $ hsep [pretty x, t]
-        go (Const c)  = pure $ toHs c -- go c >>= \t -> pure $ hsep [pretty "const", t]
-        go Unit       = pure $ hsep [pretty "()", t]
-        go (Comp es)  = rev $ reverse es
-          where
-            rev [] = pure t
-            rev (h:ts) = rev ts >>= \ hs -> next (parens hs) h
-        go Id         = pure t
-        go (Proj i j) = pure $ hsep [hcat [pretty "proj", pretty i, pretty "_", pretty j], t]
-        go (Split es)
-          = mapM go es >>= \hss -> pure $ hsep $ (pretty "Pair" <> pretty (length es)) : map parens hss
-        go (Inj i j)    = pure $ hsep [hcat [pretty "Inj", pretty i, pretty "_", pretty j], t]
-        go (Case es) = mapM (const newVar) es
-          >>= \ vss -> zipWithM mkAlt (zip [0..] vss) es  >>= \ alts ->
-          pure $ caseT alts
-          where
-            caseT as =
-              vsep [ hsep [ pretty "case", t, pretty "of" ]
-                   , encloseSep
-                     (pretty "{ ")
-                     (pretty " }")
-                     (pretty "; ")
-                     as
-                   ]
-            mkAlt (i, v) e =
-              next (pretty "v" <> pretty v) e >>=
-              \he ->
-                pure $
-                hang 2 $ vsep
-                [ hsep [ toHs (Inj i (length es) :: Alg t v)
-                       , pretty "v" <> pretty v
-                       , pretty "->"
-                       ]
-                , he
-                ]
-   --  go (In f)     = hcat [pretty "<IN>", pretty f]
-   --  go (Out f)    = hcat [pretty "<OUT>", pretty f]
-   --  go _ = error "Panic! Unimplemented"
-        go (Fmap pf g) = appPolyF pf g >>= \ e -> go e
-        go (Rec f e1 e2) = go e2 >>= \he2 -> appPolyF f (Var f) >>= \ap -> next he2 ap >>= \ hap ->
-          next hap e1
-  --   = hsep [go "rec", brackets (go f), pprParens e1, pprParens e2]
+        go (Var w) = EVar w
+        go (Val v) = EVal v
+        go Unit    = EUnit
+        go _       = error "convertToHs: Not a value"
+    toETerm (Comp es) t = rev es t
+      where
+        rev []     tm = pure tm
+        rev (h:ts) tm = rev ts tm >>= \ hs -> toETerm h hs
+    toETerm Id       t = pure t
+    toETerm (Proj i j) t =
+      case t of
+        EPair ts -> pure (ts !! i)
+        _        -> pure $ EProj i j t
+    toETerm (Split es) t
+      = EPair <$> mapM (`toETerm` t) es
+    toETerm (Inj i j) t  = pure $ EInj i j t
+    toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
+    toETerm (Case es) t = do
+      vs <- mapM (const newVar) es
+      (ECase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
+    toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
+    toETerm (Rec pf e1 e2) t
+      = toETerm e2 t >>=
+        \ spl -> appPolyF pf (Var defn) >>= \ mpr ->
+          toETerm mpr spl >>= \ ar ->
+          toETerm e1 ar
+--           next hap e1
+    toETerm _ _ = error "Panic! Unimplemented: In/Out"
+
+-- convertToHs f a = do
+--   v <- newVar
+--   next (pretty "v" <> pretty v) a
+--   where
+--     next t = go
+--       where

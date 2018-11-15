@@ -263,14 +263,14 @@ appPoly (PPrd ps) t = TPrd <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly (PSum ps) t = TSum <$!> mapM (`appPoly` t) ps <*> pure Nothing
 appPoly x@PMeta{} t = fail $! "Ambiguous type '" ++ render (TApp x t) ++ "'"
 
-appPolyF :: Pretty t => Func t -> Alg t v -> TcM t v (Alg t v)
-appPolyF = undefined
--- appPolyF (PK t)    _ = Id
--- appPolyF (PV v)    t = lookupPoly v >>= (`appPoly` t)
--- appPolyF PI        t = pure t
--- appPolyF (PPrd ps) t = TPrd <$!> mapM (`appPoly` t) ps <*> pure Nothing
--- appPolyF (PSum ps) t = TSum <$!> mapM (`appPoly` t) ps <*> pure Nothing
--- appPolyF x@PMeta{} t = fail $! "Ambiguous type '" ++ render (TApp x t) ++ "'"
+appPolyF :: Prim v t => Func t -> Alg t v -> TcM t v (Alg t v)
+appPolyF (PK _)    _ = pure Id
+appPolyF (PV v)    t = lookupPoly v >>= (`appPolyF` t)
+appPolyF PI        t = pure t
+appPolyF (PPrd ps) t = fprod <$!> mapM (`appPolyF` t) ps
+appPolyF (PSum ps) t = fsum  <$!> mapM (`appPolyF` t) ps
+appPolyF (PMeta i) t = fail $! "Ambiguous type '?"
+                       ++ render i ++ " " ++ render t ++ "'"
 
 --------------------------------------------------------------------------------
 -- REWRITER

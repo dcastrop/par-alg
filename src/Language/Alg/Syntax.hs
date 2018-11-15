@@ -8,6 +8,8 @@ module Language.Alg.Syntax
   , Func
   , Alg(..)
   , comp
+  , fsum
+  , fprod
   , Ftv(..)
   , Mv(..)
   , Type(..)
@@ -212,6 +214,11 @@ data Alg t v
   | Out !(Func t)
   | Rec !(Func t) !(Alg t v) !(Alg t v)
   deriving (Eq, Ord, Show)
+
+fsum :: [Alg t v] -> Alg t v
+fsum ts = Case $! zipWith (comp . (`Inj` length ts)) [0..] ts
+fprod :: [Alg t v] -> Alg t v
+fprod ts = Split $! zipWith (flip comp . (`Proj` length ts)) [0..] ts
 
 instance Subst (Func t) (Alg t v) where
   subst s ( Const e     ) = Const (subst s e)

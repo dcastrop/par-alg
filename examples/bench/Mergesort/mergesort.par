@@ -1,0 +1,17 @@
+poly T = K (() + int) + I * I;
+poly L = K () + K int * I;
+
+atom split : Rec L -> T Rec L;
+
+atom merge : T Rec L -> Rec L;
+
+fun ms : Rec L -> Rec L
+  = rec [T] merge split;
+
+par ms {
+  unroll 3;
+  annotate
+    { merge
+    ; rec [T] merge split
+    }
+};

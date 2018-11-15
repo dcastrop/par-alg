@@ -5,6 +5,7 @@ module Main where
 import Data.Typeable
 import Data.Data
 import Data.Char
+import Control.Monad ( when )
 import System.Environment
 import System.Console.CmdArgs
 import System.FilePath.Posix
@@ -48,6 +49,7 @@ compileAll f@Flags { files = fl } = mapM_ (compile f) fl
 data Flags
   = Flags
   { num_procs :: Int
+  , gen_prelude :: Bool
   , files :: [FilePath]
   } deriving (Show, Data, Typeable)
 
@@ -55,6 +57,7 @@ flags :: String -> Flags
 flags p
   = Flags
   { num_procs = 1 &= help "Maximum number of roles"
+  , gen_prelude = False &= help "Generate AlgPrelude.hs"
   , files = def &= args &= typFile
   }
   &= verbosity
@@ -65,6 +68,7 @@ main :: IO ()
 main = do
   p <- getProgName
   f <- cmdArgs $ flags p
+  when (gen_prelude f) $ writeFile "AlgPrelude.hs" renderPrelude
   compileAll f
 
 usage :: String -> String
