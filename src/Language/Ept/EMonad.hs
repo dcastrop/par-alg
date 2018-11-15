@@ -93,7 +93,7 @@ fvsT (EInj _ _ t) = fvsT t
 fvsT (EProj _ _ t) = fvsT t
 fvsT (EApp i t) = Set.insert i $ fvsT t
 fvsT (ECase t ls) = Set.union (fvsT t) $ Set.unions (map (fvsT . snd) ls)
-                      Set.\\ Set.fromList (map fst ls))
+                      Set.\\ Set.fromList (map fst ls)
 fvsT EUnit = Set.empty
 fvsT EVal{} = Set.empty
 
