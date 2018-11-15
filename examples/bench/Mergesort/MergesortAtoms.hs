@@ -1,22 +1,31 @@
 module MergesortAtoms where
 
 import AlgPrelude
+import Data.Vector ( Vector )
+import qualified Data.Vector as V
 
-split :: [Int] -> Sum2 (Sum2 () Int) (Pair2 [Int] [Int])
-split [] = Inj0_2 (Inj0_2 ())
-split [x] = Inj0_2 (Inj1_2 x)
-split l   = Inj1_2 $ go l [] []
+type VInt = Vector Int
+
+split :: Vector Int -> Sum2 (Sum2 () Int) (Pair2 (Vector Int) (Vector Int))
+split l
+  | len == 0  = Inj0_2 (Inj0_2 ())
+  | len == 1  = Inj0_2 (Inj1_2 $! V.head l)
+  | otherwise = Inj1_2 $ Pair2 ll lr
   where
-    go [] l r = Pair2 l r
-    go (x:xs) l r = go xs r (x : l)
+    (ll, lr) = V.splitAt hlen l
+    len = V.length l
+    hlen = len `div` 2
 
-merge :: Sum2 (Sum2 () Int) (Pair2 [Int] [Int]) -> [Int]
-merge (Inj0_2 (Inj0_2 _)) = []
-merge (Inj0_2 (Inj1_2 x)) = [x]
+merge :: Sum2 (Sum2 () Int) (Pair2 VInt VInt) -> VInt
+merge (Inj0_2 (Inj0_2 _)) = V.empty
+merge (Inj0_2 (Inj1_2 x)) = V.singleton x
 merge (Inj1_2 (Pair2 l r)) = go l r
   where
-    go l1@(h1 : t1) l2@(h2 : t2)
-      | h1 <= h2 = h1 : go t1 l2
-      | otherwise = h2 : go l1 t2
-    go l1 l2 = l1 ++ l2
+    go xs ys = case (xs V.!? 0, ys V.!? 0) of
+      (Nothing, _) -> ys
+      (_, Nothing) -> xs
+      (Just x, Just y) -> if x < y
+        then x `V.cons` go (V.tail xs) ys
+        else y `V.cons` go xs (V.tail ys)
+
 

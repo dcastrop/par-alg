@@ -86,6 +86,17 @@ data ETerm t v
   | EApp !Id !(ETerm t v)
   deriving (Show, Eq)
 
+fvsT :: ETerm t v -> Set Id
+fvsT (EVar i) = Set.singleton i
+fvsT (EPair ts) = Set.unions $ map fvsT ts
+fvsT (EInj _ _ t) = fvsT t
+fvsT (EProj _ _ t) = fvsT t
+fvsT (EApp i t) = Set.insert i $ fvsT t
+fvsT (ECase t ls) = Set.union (fvsT t) $ Set.unions (map (fvsT . snd) ls)
+                      Set.\\ Set.fromList (map fst ls))
+fvsT EUnit = Set.empty
+fvsT EVal{} = Set.empty
+
 eApp :: Prim v t => Alg t v -> ETerm t v -> TcM t v (ETerm t v)
 eApp Id  t = pure t
 eApp (Proj i _) (EPair ps)
@@ -104,22 +115,17 @@ type ChannelId = Int
 data EMonad t v
   = ERet !(ETerm t v)
   | EBnd !(EMonad t v) !(EFun t v)
+  | ERun !(ETerm t v)
   | ESnd !ChannelId !(ETerm t v)
   | ERcv !ChannelId
   | ECh  ![ChannelId] !(ETerm t v) ![EFun t v]
   | EBrn !ChannelId ![EMonad t v]
   deriving (Show, Eq)
 
-fvsT :: ETerm t v -> Set Id
-fvsT (EVar i) = Set.singleton i
-fvsT (EPair ts) = Set.unions $ map fvsT ts
-fvsT (EInj _ _ t) = fvsT t
-fvsT (EApp _ t) = fvsT t
-fvsT _ = Set.empty
-
 
 fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
+fvsM (ERun t) = fvsT t
 fvsM (EBnd m1 f2) = fvsM m1 `Set.union` fvsF f2
 fvsM (ESnd _ t) = fvsT t
 fvsM (ECh _ t fs) = Set.unions $ fvsT t : map fvsF fs
@@ -130,7 +136,7 @@ fvsF :: EFun t v -> Set Id
 fvsF (EAbs i m2) = fvsM m2 Set.\\ maybe Set.empty Set.singleton i
 
 ecomp :: EFun t v -> EFun t v -> EFun t v
-ecomp (EAbs x m) f = EAbs x (ebnd m f)
+ecomp (EAbs x m) f = EAbs x (EBnd m f)
 
 retM :: EMonad t v -> EMonad t v -> EMonad t v
 retM ERet{} m = m
@@ -156,6 +162,7 @@ app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
   where
     go (ERet v') = ERet $! sbst v'
+    go (ERun v') = ERun $! sbst v'
     go (EBnd m1 f) = ebnd (go m1) (substF f)
     go (ESnd c v') = ESnd c $! sbst v'
     go m1@ERcv{} = m1
@@ -189,6 +196,9 @@ hAbs f t = (`app` t) <$!> f
 
 mRet :: ETerm t v -> TcM t v (EMonad t v)
 mRet t = ERet <$> pure t
+
+mRun :: ETerm t v -> TcM t v (EMonad t v)
+mRun t = ERun <$> pure t
 
 eAbs :: TcM t v Int -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 eAbs var f = var >>= \ x -> EAbs (Just $ mkV x) <$!> f (EVar $ mkV x)
@@ -233,7 +243,7 @@ mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
     unit = TSum (map (const TUnit) ms) Nothing
 
 mComp :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
-mComp m1 f1 = liftM2 ecomp m1 (eAbs sameVar f1)
+mComp m1 f1 = liftM2 ecomp m1 (eAbs newVar f1)
 
 fId :: TcM t v (EFun t v)
 fId = eAbs sameVar $ \x -> mRet x
@@ -299,6 +309,7 @@ seqAlts m1 (ENode alts) = go m1
     go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
     go (EBnd m2 (EAbs y m3)) = EBnd m2 $! EAbs y $! go m3
     go ERet{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
+    go ERun{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
     go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
     go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
 
@@ -328,7 +339,7 @@ gen r p a
   where !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
 
 gen r (AnnAlg e r2) r1
-  | r == r2    = cmsg r r2 r1 `mComp` \ x -> eApp e x >>= mRet
+  | r == r2    = cmsg r r2 r1 `mComp` \ x -> eApp e x >>= mRun
   | otherwise = cmsg r r2 r1
 
 gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
@@ -481,6 +492,7 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                , pretty m1] : go m2
       go m
         = [pretty m]
+  pretty (ERun t)  = hsep [pretty "evaluate", parens $! hsep [pretty "force", pprParens t]]
   pretty (ESnd sf t) = hsep [pretty "writeChan", hcat [pretty "ch",pretty sf], pprParens t]
   pretty (ERcv sf)   = hsep [pretty "readChan", hcat [pretty "ch",pretty sf]]
   pretty (ECh c t a) = hang 2 $! pprChoice
@@ -538,9 +550,12 @@ renderPCode fp pprog
     pd = getEnv pprog
     defs = getHs pprog
     pprHeader =
-      [ hsep [pretty "module", pretty $ toUpper (head fp) : tail fp, pretty "where" ]
+      [ pretty "{-# OPTIONS_GHC -threaded #-}"
+      , hsep [pretty "module", pretty $ toUpper (head fp) : tail fp, pretty "where" ]
       , line
       , pretty "import Control.Concurrent"
+      , pretty "import Control.Exception"
+      , pretty "import Control.DeepSeq"
       , pretty "import AlgPrelude"
       , pretty "import " <> pretty ((toUpper (head fp) : tail fp) ++ "Atoms")
       , line
@@ -571,7 +586,11 @@ renderPrelude :: String
 renderPrelude = renderString $ layoutSmart defaultLayoutOptions $ vsep prel
   where
     prel =
-      [ pretty "module AlgPrelude where"
+      [ pretty "{-# LANGUAGE DeriveGeneric #-}"
+      , pretty "module AlgPrelude where"
+      , line
+      , pretty "import Control.DeepSeq"
+      , pretty "import GHC.Generics (Generic, Generic1)"
       , line
       , vsep $ map mkPair [0..10]
       , vsep $ map mkSum [0..10]
@@ -580,9 +599,15 @@ renderPrelude = renderString $ layoutSmart defaultLayoutOptions $ vsep prel
 mkPair :: Int -> Doc ann
 mkPair i = vsep [ nest 4 $ vsep
                   [ hsep [ pretty "data", hcat [pretty "Pair", pretty i], hsep $ map pretty vs ]
-                  , hsep [ hcat [pretty "= Pair", pretty i], hsep $ map pretty vs  ]
+                  , hsep [ hcat [pretty "= Pair", pretty i], hsep $ map ((pretty "!" <>) . pretty) vs ]
+                  , pretty "deriving Generic"
                   ]
+                , line
+                , pretty "instance" <+> parens (hsep (punctuate (pretty ",") (map ((pretty "NFData" <+>) . pretty) vs)))
+                  <+> pretty "=> NFData" <+> parens (hsep $ hcat [pretty "Pair", pretty i] : map pretty vs)
+                , line
                 , mkProjs i
+                , line
                 ]
   where
     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
@@ -601,8 +626,12 @@ mkProjs i = vsep $ map mkProj [0..i-1]
 mkSum :: Int -> Doc ann
 mkSum i = vsep [ nest 4 $ vsep
                  $ hsep [ pretty "data", hcat [pretty "Sum", pretty i], hsep $ map pretty vs ]
-                 : pprInjs
-                ]
+                 : pprInjs ++ [pretty "deriving Generic"]
+               , line
+               , pretty "instance" <+> parens (hsep (punctuate (pretty ",") (map ((pretty "NFData" <+>) . pretty) vs)))
+                 <+> pretty "=> NFData" <+> parens (hsep $ hcat [pretty "Sum", pretty i] : map pretty vs)
+               , line
+               ]
   where
     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
     pprInjs =
@@ -615,7 +644,7 @@ mkInjs i = map mkInj [0..i-1]
   where
     mkInj j =
       hsep [ hcat [ pretty "Inj", pretty j, pretty "_", pretty i ]
-           , pretty $ vs !! j
+           , hcat [ pretty "!", pretty $ vs !! j ]
            ]
     vs = take i $ [ [c] | c <- ['a'..'z']] ++ [ [c] ++ show n | (n :: Integer) <- [0..], c <- ['a'..'z']]
 
