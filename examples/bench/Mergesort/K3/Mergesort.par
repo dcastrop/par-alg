@@ -9,7 +9,7 @@ fun ms : Rec L -> Rec L
   = rec [T] merge split;
 
 par ms {
-  unroll 6;
+  unroll 3;
   annotate
     {
     merge

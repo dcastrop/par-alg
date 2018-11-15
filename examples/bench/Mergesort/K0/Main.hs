@@ -23,19 +23,19 @@ range       = [ sizeLow
               , sizeLow * 4
               , sizeLow * 8
               , sizeLow * 16
+              , sizeLow * 32
+              , sizeLow * 64
               ]
 step        = sizeLow `div` 10
 numSteps    = 10
-randList n  = V.replicateM n $ randomRIO (minBound,maxBound::Int)
+randList n  = replicateM n $ randomRIO (minBound,maxBound::Int)
 sizeLow     = 10000
 sizeHigh    = sizeLow
 
 main = cmain -- msMain 100000
 
 msMain sz = do
-  print "Generating \n"
   l <- randList sz
-  print "Generated\n"
   t'init <- getTime Realtime
   ms l >>= ensure
   t'last <- getTime Realtime
@@ -47,15 +47,13 @@ config = defaultConfig {
          }
 
 cmain = do
-  putStrLn "Generating test cases"
   lss <- mapM randList range >>= ensure
-  putStrLn "Data generated"
   defaultMainWith config
-      [ bgroup "par_ms" $ map mkMsBench lss
-      , bgroup "seq_ms" $ map mkSqBench lss
-      -- , bgroup "Data.List.sort" $ map mkBench lss
+      [ bgroup "par" $ map mkMsBench lss
+      , bgroup "seq" $ map mkSqBench lss
+      , bgroup "std" $ map mkBench lss
       ]
   where
-    mkMsBench l = bench (show $ V.length l) $ nfIO $ ms l
-    mkSqBench l = bench (show $ V.length l) $ nf defn0 l
-   --  mkBench l = bench (show $ V.length l) $ nf sort l
+    mkMsBench l = bench (show $ length l) $ nfIO $ ms l
+    mkSqBench l = bench (show $ length l) $ nf defn0 l
+    mkBench l = bench (show $ length l) $ nf sort l
