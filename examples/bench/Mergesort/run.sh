@@ -1,7 +1,7 @@
 #!/bin/bash
 
 UNROLL=8
-MAX_CORES=12
+MAX_CORES=8
 
 BENCH_DIR=${PWD}
 DIRS=$(for i in `seq 0 ${UNROLL}`; do echo "K${i}"; done)

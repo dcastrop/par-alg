@@ -8,6 +8,7 @@ module Language.Alg.Internal.Parser
   , algParser
   , identifier
   , integer
+  , stringLiteral
   , initialSt
   , testSt
   , algDef
@@ -112,7 +113,8 @@ reserved       = Token.reserved       polyLexer
 reservedOp :: String -> AlgParser t ()
 reservedOp     = Token.reservedOp     polyLexer
 -- charLiteral    = Token.charLiteral    polyLexer
--- stringLiteral  = Token.stringLiteral  polyLexer
+stringLiteral :: AlgParser t String
+stringLiteral  = Token.stringLiteral  polyLexer
 natural :: AlgParser t Integer
 natural        = Token.natural        polyLexer
 natInt :: AlgParser t Int
