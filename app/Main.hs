@@ -32,12 +32,12 @@ compile _ f = do
   logInfo "...parsing"
   t <- parseFile f
   logInfo "...typechecking"
-  (tcSt@TcSt { nextRole = numRoles }, _tyDefns, fnDefns) <- uncurry typecheck t
+  (tcSt@TcSt { nextRole = numRoles }, pr1) <- uncurry typecheck t
   logInfo $ "...generated " ++ show numRoles ++ " potential distinct roles"
   let (fnm, _ext) = splitExtension f
-  writeFile (fnm ++ ".proto") $ renderProg fnDefns
+  writeFile (fnm ++ ".proto") $ renderProg $ wtPDefs pr1
   logInfo "...compiling to monadic code"
-  (_, parProg) <- generate tcSt fnDefns
+  (_, parProg) <- generate tcSt $ wtPDefs pr1
   writeFile (capitalise fnm ++ ".hs") $ renderPCode (capitalise $ takeBaseName f) parProg
   where
     capitalise [] = []

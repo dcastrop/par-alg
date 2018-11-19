@@ -25,6 +25,7 @@ module Language.Alg.Typecheck
   , rAnn
   , rGet
   , roleTrack
+  , WtProg (..)
   ) where
 
 import Control.Monad ( zipWithM )
@@ -52,13 +53,19 @@ data SEnv t = SEnv { fstE :: !(Env (Func t))
                    , sndE :: !(Env (Type t))
                    }
 
-typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t v, TyEnv t, AProg t v)
-typecheck st p = go >>= \((e, p'), tcst) -> return (tcst, e, p')
+data WtProg t v
+  = WtProg { wtTys   :: TyEnv t
+           , wtDefs  :: Map Id (Alg t v, RwStrat t v)
+           , wtPDefs :: AProg t v
+           }
+
+typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t v, WtProg t v)
+typecheck st p = (\(l,r) -> (r, l)) <$> go
   where
     go = runTcM st $ do
       !(te, pr) <- checkProg p
       !pr' <- rewrite pr
-      return (te, pr')
+      return WtProg { wtTys = te, wtDefs = pr, wtPDefs = pr' }
 
 -- Fills in metavar & type information
 checkProg :: Prim v t => Prog t v -> TcM t v (TyEnv t, Map Id (Alg t v, RwStrat t v))

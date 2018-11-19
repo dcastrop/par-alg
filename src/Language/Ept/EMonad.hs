@@ -83,6 +83,7 @@ data ETerm t v
   | EProj !Int !Int !(ETerm t v)
   | EInj !Int !Int !(ETerm t v)
   | ECase !(ETerm t v) ![(Id, ETerm t v)]
+  | ELet !Id !(ETerm t v) !(ETerm t v)
   | EApp !Id !(ETerm t v)
   deriving (Show, Eq)
 
@@ -94,17 +95,41 @@ fvsT (EProj _ _ t) = fvsT t
 fvsT (EApp i t) = Set.insert i $ fvsT t
 fvsT (ECase t ls) = Set.union (fvsT t) $ Set.unions (map (fvsT . snd) ls)
                       Set.\\ Set.fromList (map fst ls)
+
+fvsT (ELet v t1 t2) = Set.union (fvsT t1) (fvsT t2 Set.\\ Set.singleton v)
 fvsT EUnit = Set.empty
 fvsT EVal{} = Set.empty
 
-eApp :: Prim v t => Alg t v -> ETerm t v -> TcM t v (ETerm t v)
-eApp Id  t = pure t
-eApp (Proj i _) (EPair ps)
-  | length ps > 1 = pure $ ps !! i
-eApp (Proj i j) t = pure $ EProj i j t
-eApp (Inj i j) t = pure $ EInj i j t
-eApp e p = EApp <$> getDefnId e <*> pure p
+eApp :: Id -> ETerm t v -> ETerm t v
+eApp f (ECase t ps) = ECase t $ map (second $ eApp f) ps
+eApp f (ELet v t' t) = ELet v t' $ eApp f t
+eApp f t = EApp f t
 
+aApp :: Prim v t => Alg t v -> ETerm t v -> TcM t v (ETerm t v)
+aApp Id  t = pure t
+aApp (Proj i _) (EPair ps)
+  | length ps > 1 = pure $ ps !! i
+aApp (Proj i j) t = pure $ eProj i j t
+aApp (Inj i j) t = pure $ EInj i j t
+aApp e p = eApp <$> getDefnId e <*> pure p
+
+eProj :: Int -> Int -> ETerm t v -> ETerm t v
+eProj i _ (EPair ps) = ps !! i
+eProj i j e          = EProj i j e
+
+eLet :: Id -> ETerm t v -> ETerm t v -> ETerm t v
+eLet v0 (EVar v1) t1 = sbst v0 (EVar v1) t1
+eLet v t1 t2 = ELet v t1 t2
+
+eCase :: ETerm t v -> [(Id, ETerm t v)] -> ETerm t v
+eCase (ELet v t1 t2) ls = eLet v t1 $ eCase t2 ls
+eCase (ECase t ps) ls = eCase t $! map go ps
+  where
+    go (v, e) = (v, eCase e ls)
+eCase (EInj i _ t) ls = eLet v1 t t1
+  where
+    (v1, t1) = ls !! i
+eCase t ls = ECase t ls
 
 data EFun t v
   = EAbs !(Maybe Id) !(EMonad t v)
@@ -161,28 +186,37 @@ ebnd m               f = EBnd m f
 app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
   where
-    go (ERet v') = ERet $! sbst v'
-    go (ERun v') = ERun $! sbst v'
+    go (ERet v') = ERet $! msbst i v v'
+    go (ERun v') = ERun $! msbst i v v'
     go (EBnd m1 f) = ebnd (go m1) (substF f)
-    go (ESnd c v') = ESnd c $! sbst v'
+    go (ESnd c v') = ESnd c $! (msbst i v) v'
     go m1@ERcv{} = m1
-    go (ECh c v' fs) = ECh c (sbst v') $! map substF fs
+    go (ECh c v' fs) = ECh c (msbst i v v') $! map substF fs
     go (EBrn c ms) = EBrn c $! map go ms
-
-    sbst v'@(EVar j)
-     | i == Just j = v
-     | otherwise = v'
-    sbst x@EVal{} = x
-    sbst x@EUnit  = x
-    sbst (EPair es) = EPair $! map sbst es
-    sbst (EInj j k e) = EInj j k $! sbst e
-    sbst (EProj j k e) = EProj j k $! sbst e
-    sbst (ECase t alts) = ECase (sbst t) $! map (second sbst) alts
-    sbst (EApp f x) = EApp f (sbst x)
 
     substF f@(EAbs j m1)
       | i == j = f
       | otherwise = EAbs j $! go m1
+
+msbst :: Maybe Id -> ETerm t v -> ETerm t v -> ETerm t v
+msbst Nothing  _ v' = v'
+msbst (Just i) v v' = sbst i v v'
+
+sbst :: Id -> ETerm t v -> ETerm t v -> ETerm t v
+sbst i v v'@(EVar j)
+ | i == j = v
+ | otherwise = v'
+sbst _ _ x@EVal{} = x
+sbst _ _ x@EUnit  = x
+sbst i v (EPair es) = EPair $! map (sbst i v) es
+sbst i v (EInj j k e) = EInj j k $! (sbst i v) e
+sbst i v (EProj j k e) = eProj j k $! (sbst i v) e
+sbst i v (ECase t alts) = eCase (sbst i v t) $! map (second $ sbst i v) alts
+sbst i v (EApp f x) = eApp f (sbst i v x)
+sbst i v (ELet v' t1 t2)
+  | i == v' = ELet v' (sbst i v t1) t2
+  | otherwise = ELet v' (sbst i v t1) (sbst i v t2)
+
 
 data EProg t v
   = EProg { getHs :: Map Id (Id, ETerm t v)
@@ -269,7 +303,7 @@ cmsg r r2 (TyPrd rs)
 
     project i x
       | size <= 1 = pure x
-      | otherwise = eApp (Proj i size) x
+      | otherwise = aApp (Proj i size) x
 
     idxs = scanl' (+) 0 $ map containsR rs
     size = last idxs
@@ -339,7 +373,7 @@ gen r p a
   where !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
 
 gen r (AnnAlg e r2) r1
-  | r == r2    = cmsg r r2 r1 `mComp` \ x -> eApp e x >>= mRun
+  | r == r2    = cmsg r r2 r1 `mComp` \ x -> aApp e x >>= mRun
   | otherwise = cmsg r r2 r1
 
 gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
@@ -370,9 +404,9 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
           genN a = go t a
 
 gen r (AnnPrj i j) (TyAnn _ r1)
-  | r == r1 = eAbs sameVar $ \x -> eApp (Proj i j) x >>= mRet
+  | r == r1 = eAbs sameVar $ \x -> aApp (Proj i j) x >>= mRet
 gen r (AnnPrj i _) (TyPrd rs)
-  | size > 1 = eAbs sameVar $ \x -> eApp (Proj n size) x >>= mRet
+  | size > 1 = eAbs sameVar $ \x -> aApp (Proj n size) x >>= mRet
   where
     n = idxs !! i
     idxs = scanl' (+) 0 $ map containsR rs
@@ -426,6 +460,7 @@ instance IsCompound (ETerm t v) where
   isCompound EPair{} = True
   isCompound EInj {} = True
   isCompound ECase{} = True
+  isCompound ELet {} = True
   isCompound EProj{} = True
   isCompound EApp {} = True
 
@@ -449,6 +484,10 @@ instance forall t v. Prim v t => Pretty (ETerm t v) where
                               , pretty "->"
                               , pretty t
                               ]
+
+  pretty (ELet v t1 t2) = align $ vsep [ hsep [ pretty "let", pretty v, pretty "=", pretty t1 ]
+                                       , hsep [ pretty "in", pretty t2 ]
+                                       ]
   pretty (EProj i j t) = hsep [ hcat [pretty "proj", pretty i, pretty "_", pretty j]
                              , pprParens t
                              ]
@@ -725,7 +764,7 @@ convertToHs defn x = do
   t <- toETerm x (EVar v)
   return (v, t)
   where
-    toETerm (Var  w)  t = pure (EApp w t)
+    toETerm (Var  w)  t = pure (eApp w t)
     toETerm (Val  _)  _ = error "convertToHs: Cannot apply value to variable"
     toETerm Unit      _ = error "convertToHs: Cannot apply value to variable"
     toETerm (Const c) _ = pure $ go c -- toETerm c >>= \t -> pure $ hsep [pretty "const", t]
@@ -742,14 +781,14 @@ convertToHs defn x = do
     toETerm (Proj i j) t =
       case t of
         EPair ts -> pure (ts !! i)
-        _        -> pure $ EProj i j t
+        _        -> pure $ eProj i j t
     toETerm (Split es) t
       = EPair <$> mapM (`toETerm` t) es
     toETerm (Inj i j) t  = pure $ EInj i j t
     toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
     toETerm (Case es) t = do
       vs <- mapM (const newVar) es
-      (ECase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
+      (eCase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
     toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
     toETerm (Rec pf e1 e2) t
       = toETerm e2 t >>=

@@ -3,13 +3,22 @@ poly L = K () + K int * I;
 
 atom split : Rec L -> T Rec L;
 
-atom merge : T Rec L -> Rec L;
+atom merge : Rec L * Rec L -> Rec L;
+
+fun nil : () -> Rec L
+  = in . inj[0,2];
+
+fun cons : int * Rec L -> Rec L
+  = in . inj[1,2];
+
+fun singleton : int -> Rec L
+  = cons . (id &&& (nil . const ()));
 
 fun ms : Rec L -> Rec L
-  = rec [T] merge split;
+  = rec [T] ((nil ||| singleton) ||| merge) split;
 
 par ms {
-  unroll 6;
+  unroll 1;
   annotate
     {
     merge
