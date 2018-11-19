@@ -1,3 +1,2 @@
 module FFTAtoms where
-a
 
