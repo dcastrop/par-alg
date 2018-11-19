@@ -1,0 +1,24 @@
+// change int to double in implementation
+
+poly L = K () + K (int * int) * I;
+poly T = K (() + (int * int)) + I * I;
+
+atom fl : Rec L * Rec L -> Rec L;
+atom fr : Rec L * Rec L -> Rec L;
+atom fo : Rec L -> Rec L;
+atom split : Rec L -> T (Rec L);
+atom merge : T (Rec L) -> Rec L;
+
+fun fft : Rec L -> Rec L
+  = rec[T] (merge . (id +++ (fl &&& fr)) . (id +++ (id *** fo))) split;
+
+par fft {
+  unroll 2;
+  annotate {
+    fl;
+    fr;
+    fo;
+    rec[T] (merge . (id +++ (fl &&& fr)) . (id +++ (id *** fo))) split
+  }
+};
+
