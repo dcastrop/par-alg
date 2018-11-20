@@ -161,7 +161,7 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
   pretty (In f)     = hcat [pretty "in", brackets $ pretty f]
   pretty (Out f)    = hcat [pretty "out", brackets $ pretty f]
-  pretty (Rec f e1 e2)
+  pretty (Rec _ f e1 e2)
     = hsep [pretty "rec", brackets (pretty f), pprParens e1, pprParens e2]
 
 instance (Pretty t, Pretty v) => Pretty (Def t v) where
@@ -186,13 +186,15 @@ instance (Pretty t, Pretty v) => Pretty (Def t v) where
                                     , pretty ";"
                                     ]
                              ]
-  pretty (EPar f r) = hsep [ pretty "par"
-                           , pretty f
-                           , braces $!
-                             nest 4 $!
-                             vsep $!
-                             punctuate (pretty ";") $!
-                             prettyRw r
+  pretty (EPar f d r) = hsep [ pretty "par"
+                             , pretty f
+                             , pretty "="
+                             , pretty d
+                             , braces $!
+                               nest 4 $!
+                               vsep $!
+                               punctuate (pretty ";") $!
+                               prettyRw r
                            ]
   pretty (Atom f x)   = hsep [ pretty "atom"
                              , pretty f

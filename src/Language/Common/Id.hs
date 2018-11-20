@@ -7,6 +7,7 @@ module Language.Common.Id
   , IdGen(..)
   , freshId
   , knownId
+  , rename
   ) where
 
 import Data.Text.Prettyprint.Doc
@@ -41,3 +42,10 @@ freshId s = Id <$> fresh <*> pure s >>= \i -> newId i *> pure i
 
 knownId :: IdGen m => String -> m Id
 knownId s = lookupId s >>= maybe (fail $ "Unknown id '" ++ s ++ "'") pure
+
+rename :: IdGen m => Id -> m Id
+rename i = do
+  fn <- fresh
+  let nid = Id fn (getLbl i ++ show fn)
+  newId nid
+  pure nid

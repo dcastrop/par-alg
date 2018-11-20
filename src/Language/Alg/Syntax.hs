@@ -212,7 +212,7 @@ data Alg t v
   | Fmap !(Func t) !(Alg t v)
   | In  !(Func t)
   | Out !(Func t)
-  | Rec !(Func t) !(Alg t v) !(Alg t v)
+  | Rec !Id !(Func t) !(Alg t v) !(Alg t v)
   deriving (Eq, Ord, Show)
 
 fsum :: [Alg t v] -> Alg t v
@@ -221,15 +221,15 @@ fprod :: [Alg t v] -> Alg t v
 fprod ts = Split $! zipWith (flip comp . (`Proj` length ts)) [0..] ts
 
 instance Subst (Func t) (Alg t v) where
-  subst s ( Const e     ) = Const (subst s e)
-  subst s ( Comp es     ) = Comp $! map (subst s) es
-  subst s ( Split es    ) = Split $! map (subst s) es
-  subst s ( Case es     ) = Case $! map (subst s) es
-  subst s ( Fmap f e    ) = Fmap (substPoly s f) (subst s e)
-  subst s ( In  f       ) = In (substPoly s f)
-  subst s ( Out f       ) = Out (substPoly s f)
-  subst s ( Rec f e1 e2 ) = Rec (substPoly s f) (subst s e1) (subst s e2)
-  subst _ t               = t
+  subst s ( Const e       ) = Const (subst s e)
+  subst s ( Comp es       ) = Comp $! map (subst s) es
+  subst s ( Split es      ) = Split $! map (subst s) es
+  subst s ( Case es       ) = Case $! map (subst s) es
+  subst s ( Fmap f e      ) = Fmap (substPoly s f) (subst s e)
+  subst s ( In  f         ) = In (substPoly s f)
+  subst s ( Out f         ) = Out (substPoly s f)
+  subst s ( Rec n f e1 e2 ) = Rec n (substPoly s f) (subst s e1) (subst s e2)
+  subst _ t                 = t
 
 comp :: Alg t v -> Alg t v -> Alg t v
 comp (Comp xs) (Comp ys) = Comp $! xs ++ ys
@@ -255,7 +255,7 @@ data Def t v
   = FDef  !Id !(Func t)
   | TDef  !Id !(Type t)
   | EDef  !Id !(Scheme t) !(Alg t v)
-  | EPar  !Id !(RwStrat t v)
+  | EPar  !Id !Id !(RwStrat t v)
   | Atom  !Id !(Type t)
   deriving Show
 

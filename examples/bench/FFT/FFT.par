@@ -23,7 +23,7 @@ fun singleton : complex -> Rec L
 fun fft : Rec L -> Rec L
   = rec[T] (((nil ||| singleton) ||| app) . (id +++ (fl &&& fr)) . (id +++ (id *** fo))) deinterleave;
 
-par fft {
+par fftp1 = fft {
   unroll 1;
   annotate {
     fl;
@@ -31,3 +31,10 @@ par fft {
   }
 };
 
+par fftp2 = fft {
+  unroll 2;
+  annotate {
+    fl;
+    fr
+  }
+};

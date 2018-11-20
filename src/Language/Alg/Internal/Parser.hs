@@ -201,8 +201,8 @@ simpleType p
     pRec  = reserved "Rec" *> (TRec <$> simplePoly p)
     pApp  = TApp <$> simplePoly p <*> simpleType p
 
-algParser :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
-algParser pt pv
+algParser :: Show a => Id -> AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
+algParser dn pt pv
   =   singl Comp  <$> try (sepBy1 caseParser (reservedOp "."))
   <?> "Expression"
   where
@@ -211,24 +211,25 @@ algParser pt pv
       where
         inj l = map (\(i, x) -> Inj i (length l) `comp` x) $ zip [0..] l
     splitParser = singl Split <$> try (sepBy1 prodParser (reservedOp "&&&"))
-    prodParser = singl (Split . proj) <$> try (sepBy1 (simpleAlg pt pv) (reservedOp "***"))
+    prodParser = singl (Split . proj) <$> try (sepBy1 (simpleAlg dn pt pv) (reservedOp "***"))
       where
         proj l = map (\(i, x) -> x `comp` Proj i (length l)) $ zip [0..] l
 
 
-simpleAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
-simpleAlg pt pv
-  =   try (reserved "const" *> (Const <$> aAlg pt pv))
-  <|> try (reserved "rec" *> (Rec <$> brackets (polyParser pt)
-                               <*> aAlg pt pv
-                               <*> aAlg pt pv))
+simpleAlg :: Show a => Id -> AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
+simpleAlg dn pt pv
+  =   try (reserved "const" *> (Const <$> aAlg dn pt pv))
+  <|> try (reserved "rec" *> (Rec dn
+                               <$> brackets (polyParser pt)
+                               <*> aAlg dn pt pv
+                               <*> aAlg dn pt pv))
   <|> try pFmap
-  <|> aAlg pt pv
+  <|> aAlg dn pt pv
   where
-    pFmap = Fmap <$> (brackets $ polyParser pt) <*> aAlg pt pv
+    pFmap = Fmap <$> (brackets $ polyParser pt) <*> aAlg dn pt pv
 
-aAlg :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
-aAlg pt pv
+aAlg :: Show a => Id -> AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
+aAlg dn pt pv
   =   try pUnit
   <|> try pId
   <|> try pProj
@@ -237,7 +238,7 @@ aAlg pt pv
   <|> try pOut
   <|> try pVar
   <|> try pVal
-  <|> parens (algParser pt pv)
+  <|> parens (algParser dn pt pv)
   <?> "Atomic expression"
   where
     pVar  = Var <$> knownIdParser
@@ -267,25 +268,50 @@ typeDef pt =  reserved "type" *> pDef <* reservedOp ";"
 
 algDef :: Show a => AlgParser t a -> AlgParser t v -> AlgParser t (Def a v)
 algDef pt pv =  reserved "fun" *> pDef <* reservedOp ";"
-  where pDef = EDef
-               <$> newIdParser
-               <*> (reservedOp ":" *> schemeParser pt)
-               <*> (reservedOp "=" *> algParser pt pv)
+  where
+    pDef = do
+      dn <- newIdParser
+      EDef dn
+        <$> (reservedOp ":" *> schemeParser pt)
+        <*> (reservedOp "=" *> (algParser dn pt pv >>= renameRec))
+
+renameRec :: Alg a v -> AlgParser t (Alg a v)
+renameRec (Rec dn1 f e1 e2) = Rec dn1 f <$> doRename e1 <*> doRename e2
+renameRec e = doRename e
+
+doRename :: IdGen f => Alg t v -> f (Alg t v)
+doRename (Rec dn1 f e1 e2)
+  = Rec <$> rename dn1 <*> pure f <*> doRename e1 <*> doRename e2
+doRename ( Const e  ) = Const <$> doRename e
+doRename ( Comp es  ) = Comp <$> mapM doRename es
+doRename ( Split es ) = Split <$> mapM doRename es
+doRename ( Case es  ) = Case <$> mapM doRename es
+doRename ( Fmap f e ) = Fmap f <$> doRename e
+doRename   e@Var {}   = pure e
+doRename   e@Val {}   = pure e
+doRename   e@Unit{}   = pure e
+doRename   e@Id{}     = pure e
+doRename   e@Proj{}   = pure e
+doRename   e@Inj{}    = pure e
+doRename   e@In {}    = pure e
+doRename   e@Out{}    = pure e
+
 
 stratDef :: (Show a, Ord a, Ord v) => AlgParser t a -> AlgParser t v -> AlgParser t (Def a v)
 stratDef pt pv = reserved "par" *> pDef <* reservedOp ";"
   where
-    pDef = EPar
-           <$> knownIdParser
-           <*> braces (foldl' RwSeq RwRefl <$> (sepBy atomStrat $ reservedOp ";"))
-    atomStrat = choice [ try annotations
-                       , unrolling
-                       ]
-    annotations = do
+    pDef = do
+      pd <- newIdParser
+      kd <- reservedOp "=" *> knownIdParser
+      EPar pd kd
+        <$> braces (foldl' RwSeq RwRefl <$> (sepBy (atomStrat kd) $ reservedOp ";"))
+    atomStrat kd = choice [ try (annotations kd)
+                          , unrolling ]
+    annotations kd = do
       reserved "annotate"
       Annotate <$>
         braces ( foldl' (flip Set.insert) Set.empty
-                 <$> (sepBy (algParser pt pv) $ reservedOp ";")
+                 <$> (sepBy (algParser kd pt pv) $ reservedOp ";")
                )
     unrolling = do
       reserved "unroll"

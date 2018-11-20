@@ -3,8 +3,8 @@ module Language.Par.Term
   ( ATerm (..)
   , termRoles
   , annotate
-  , unroll -- XXX!!! REFACTOR!!
   ) where
+
 
 import Control.Monad.RWS.Strict
 import Data.Set ( Set )
@@ -50,19 +50,6 @@ annotate r s = ann
     ann (Case es    ) = AnnCase <$!> (mapM ann es)
     ann (Fmap f e   ) = appPoly f e >>= ann
     ann t             = pure $! AnnAlg t r
-
-unroll :: (Pretty v, Pretty t)
-          => Func t
-          -> Alg t v
-          -> Alg t v
-          -> Int
-          -> TcM t v (Alg t v)
-unroll f e1 e2 n
-   | n <= 0     = pure $! Rec f e1 e2
-   | otherwise = do
-       !fm <- unroll f e1 e2 $! n-1
-       !ae <- appPoly f fm
-       pure $! Comp [e1, ae, e2]
 
 appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> TcM t v (Alg t v)
 appPoly  PK{}     _ = pure Id

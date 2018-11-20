@@ -54,45 +54,56 @@ data SEnv t = SEnv { fstE :: !(Env (Func t))
                    }
 
 data WtProg t v
-  = WtProg { wtTys   :: TyEnv t
-           , wtDefs  :: Map Id (Alg t v, RwStrat t v)
-           , wtPDefs :: AProg t v
+  = WtProg { wtTys   :: !(TyEnv t)
+           , wtAtoms :: !(Map Id (Type t))
+           , wtDefs  :: !(Map Id (Scheme t, Alg t v))
+           , wtPDefs :: !(AProg t v)
            }
+
+emptyWtProg :: WtProg t v
+emptyWtProg = WtProg { wtTys = Map.empty
+                     , wtAtoms = Map.empty
+                     , wtDefs = Map.empty
+                     , wtPDefs = []
+                     }
 
 typecheck :: Prim v t => St t -> Prog t v -> IO (TcSt t v, WtProg t v)
 typecheck st p = (\(l,r) -> (r, l)) <$> go
   where
-    go = runTcM st $ do
-      !(te, pr) <- checkProg p
-      !pr' <- rewrite pr
-      return WtProg { wtTys = te, wtDefs = pr, wtPDefs = pr' }
+    go = runTcM st $ checkProg p
+--      !pr' <- rewrite pr pd
+--      return WtProg { wtTys = te, wtDefs = pr, wtPDefs = pr' }
 
 -- Fills in metavar & type information
-checkProg :: Prim v t => Prog t v -> TcM t v (TyEnv t, Map Id (Alg t v, RwStrat t v))
-checkProg = foldM' go (Map.empty, Map.empty) . getDefns
+checkProg :: Prim v t => Prog t v -> TcM t v (WtProg t v)
+checkProg = foldM' go emptyWtProg . getDefns
   where
-    go (e, ls) (EPar i s2)
-      | Just (a, s1) <- Map.lookup i ls = pure (e, Map.insert i (a, rwSeq s1 s2) ls)
-      | otherwise = fail $! "Undefined term: " ++ render i
-    go (e, f) d = do
+    go wtp d = do
       !x <- checkDef d
       case x of
-        Left  (i, df) -> let !l = Map.insert i df e in pure (l, f)
-        Right (i, a)  -> let !l = Map.insert i (a, RwRefl) f in pure (e, l)
+        FDef i df   -> pure wtp { wtTys = Map.insert i (AnnF df) $ wtTys wtp }
+        TDef i tf   -> pure wtp { wtTys = Map.insert i (AnnT tf) $ wtTys wtp }
+        Atom i af   -> pure wtp { wtAtoms = Map.insert i af $ wtAtoms wtp }
+        EDef i a f  -> pure wtp { wtDefs = Map.insert i (a,f) $ wtDefs wtp }
+        EPar i dfn rw
+          | Just (sc, fn) <- Map.lookup dfn (wtDefs wtp) -> do
+              eds <- (: wtPDefs wtp) <$> rewrite i sc rw fn
+              pure wtp { wtPDefs = eds }
+          | otherwise -> fail $ "Cannot find definition: " ++ render dfn
 
-checkDef :: Prim v t => Def t v -> TcM t v (Either (Id, TyDef t) (Id, Alg t v))
+checkDef :: Prim v t => Def t v -> TcM t v (Def t v)
 checkDef (FDef v f) = checkKind Set.empty f *> newPoly v f
-                      *> pure (Left (v, AnnF f))
+                      *> pure (FDef v f)
 checkDef (TDef v f) = checkKind Set.empty f *> newType v f
-                      *> pure (Left (v, AnnT f))
+                      *> pure (TDef v f)
 checkDef (Atom v t) = checkKind Set.empty t *> newFun v (ForAll Set.empty t)
-                      *> pure (Left (v, AnnA t))
+                      *> pure (Atom v t)
 checkDef (EDef i s f) = do
   checkKind (scVars s) (scType s)
   !sb <- typeOf (SEnv emptySubst emptySubst) f (scType s)
   newFun i s
-  return $! Right $! (i, subst (fstE sb) f)
-checkDef (EPar _i _s) = fail "Unimplemented: checking rewriting strategies"
+  return $! EDef i s $! subst (fstE sb) f
+checkDef p@(EPar _i _d _s) = pure p
 
 
 tcTerm :: Prim v t => Alg t v -> Type t -> TcM t v (Env (Type t))
@@ -160,7 +171,7 @@ typeOf s (In f       ) t =
   unify s t $! TApp f (TRec f) `tFun` TRec f
 typeOf s (Out f      ) t =
   unify s t $! TRec f `tFun` TApp f (TRec f)
-typeOf s (Rec f e1 e2) t = do
+typeOf s (Rec _ f e1 e2) t = do
   !a <- TMeta <$!> fresh
   !b <- TMeta <$!> fresh
   !s'  <- unify s t (a `tFun` b)
@@ -282,32 +293,26 @@ appPolyF (PMeta i) t = fail $! "Ambiguous type '?"
 --------------------------------------------------------------------------------
 -- REWRITER
 
-rewrite :: Prim v t => Map Id (Alg t v, RwStrat t v) -> TcM t v (AProg t v)
-rewrite defns = mapM rwStrat $! Map.toList toRewrite
+rewrite :: Prim v t => Id -> Scheme t -> RwStrat t v -> Alg t v -> TcM t v (ADef t v)
+rewrite i sc@(ForAll _ (TFun (a:_))) rw ef = do
+  !af        <- rwAlg rw $! AnnAlg ef initR
+  !(aty, gg) <- protoInfer initT $ AnnComp [AnnAlg Id initR, af]
+  pure $! AnnEDef
+    i
+    (AForAll (scVars sc) initT aty)
+    (AnnComp [AnnAlg Id initR, af])
+    gg
   where
-    !toRewrite = Map.filter notRefl defns
-    notRefl (_, RwRefl) = False
-    notRefl _           = True
-
-rwStrat ::  Prim v t => (Id, (Alg t v, RwStrat t v)) -> TcM t v (ADef t v)
-rwStrat (i, (ef, rw)) = do
-  !sc <- lookupVar i
-  case scType sc of
-    TFun (a:_) -> do
-      let initR = Rol 0
-          initT = TyAnn a $! initR
-      !af <- rwAlg rw (AnnAlg ef initR)
-      -- !aty <- roleInfer a initR
-      !(aty, gg) <- protoInfer initT $ AnnComp [AnnAlg Id initR, af]
-      return $!
-        AnnEDef i (AForAll (scVars sc) (TyAnn a (Rol 0)) aty) (AnnComp [AnnAlg Id initR, af]) gg
-    _ -> fail $! "The definition '" ++ render i ++ "' is not a function."
+    initR = Rol 0
+    initT = TyAnn a $! initR
+rewrite i t _rw _ef = fail $! "The definition '" ++ render i
+  ++ "' has type '" ++ render t ++ "', which is not a function ?0 -> ?1"
 
 rwAlg :: Prim v t => RwStrat t v -> ATerm t v -> TcM t v (ATerm t v)
 rwAlg (RwSeq s1 s2) a = rwAlg s1 a >>= rwAlg s2
 rwAlg RwRefl        a = pure a
-rwAlg (Unroll i) (AnnAlg (Rec f m s) r1) = do
-  rf <- (`AnnAlg` r1) <$!> unroll f m s i
+rwAlg (Unroll i) (AnnAlg (Rec d f m s) r1) = do
+  rf <- (`AnnAlg` r1) <$!> unroll d f m s i
   pure rf
 rwAlg Unroll{} t = fail $! "Cannot unroll: " ++ render t
 rwAlg (Annotate s) ef = go ef
@@ -316,6 +321,21 @@ rwAlg (Annotate s) ef = go ef
       a <- annotate r s e
       pure a
     go a = fail $ "Cannot annotate. Already annotated: " ++ render a
+
+unroll :: Prim v t
+       => Id
+       -> Func t
+       -> Alg t v
+       -> Alg t v
+       -> Int
+       -> TcM t v (Alg t v)
+unroll fn f e1 e2 n
+   | n <= 0     = pure $! Var fn
+   | otherwise = do
+       !fm <- unroll fn f e1 e2 $! n-1
+       !ae <- appPolyF f fm
+       pure $! Comp [e1, ae, e2]
+
 
 
 --------------------------------------------------------------------------------

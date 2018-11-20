@@ -45,16 +45,17 @@ import Language.Par.Type
 import Language.Par.Prog
 -- import Language.SessionTypes.Common hiding (Role)
 
-generate :: Prim v t => TcSt t v -> AProg t v -> IO (Int, EProg t v)
+generate :: Prim v t => TcSt t v -> WtProg t v -> IO (Int, EProg t v)
 generate tcst p = return (nextVar st, a)
   where
     (a, st, _w) = runRWS (genProg p) () tcst
 
-genProg :: Prim v t => AProg t v -> TcM t v (EProg t v)
+genProg :: Prim v t => WtProg t v -> TcM t v (EProg t v)
 genProg defs = do
-  par <- Map.fromList <$!> mapM genDef defs
-  hsDefs <- (defnsR <$> get) >>= Map.traverseWithKey convertToHs
-  pure $! EProg hsDefs par
+  par <- Map.fromList <$!> mapM genDef (wtPDefs defs)
+  hsDefs1 <- Map.traverseWithKey (\ i (_, a) -> convertToHs i a) (wtDefs defs)
+  hsDefs2 <- (defnsR <$> get) >>= Map.traverseWithKey convertToHs
+  pure $! EProg (Map.union hsDefs1 hsDefs2) par
   where
     keep m = sameVar >>= \v -> m <* modify (\st -> st { nextVar = v })
     genDef (AnnEDef f sc p _)
@@ -161,7 +162,7 @@ fvsF :: EFun t v -> Set Id
 fvsF (EAbs i m2) = fvsM m2 Set.\\ maybe Set.empty Set.singleton i
 
 ecomp :: EFun t v -> EFun t v -> EFun t v
-ecomp (EAbs x m) f = EAbs x (EBnd m f)
+ecomp (EAbs x m) f = EAbs x (ebnd m f)
 
 retM :: EMonad t v -> EMonad t v -> EMonad t v
 retM ERet{} m = m
@@ -171,7 +172,7 @@ retM (EBrn sf ms) m = EBrn sf $ map (`retM` m) ms
 retM m m1 = EBnd m $ EAbs Nothing m1
 
 ebnd :: EMonad t v -> EFun t v -> EMonad t v
-ebnd m@(ERet EApp{}) f = EBnd m f
+-- ebnd m@(ERet EApp{}) f = EBnd m f
 ebnd   (ERet t     ) f = app f t
 ebnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
@@ -179,8 +180,8 @@ ebnd m (EAbs Nothing  m1@ERet{}) = retM m m1
 ebnd m (EAbs (Just i) m1@ERet{})
   | i `Set.notMember` fvsM m1 = retM m m1
 ebnd m (EAbs (Just i) m1)
-  | i `Set.notMember` fvsM m1 = EBnd m $ EAbs Nothing m1
-ebnd (EBnd m f1)  f2   = EBnd m (f1 `ecomp` f2)
+  | i `Set.notMember` fvsM m1 = ebnd m $ EAbs Nothing m1
+ebnd (EBnd m f1)  f2   = ebnd m (f1 `ecomp` f2)
 ebnd m               f = EBnd m f
 
 app :: EFun t v -> ETerm t v -> EMonad t v
@@ -336,12 +337,12 @@ seqAltsF mf1 (ELeaf mf2) = ecomp mf1 mf2
 seqAltsF (EAbs x m1) e = EAbs x $! seqAlts m1 e
 
 seqAlts :: EMonad t v -> EAlt t v -> EMonad t v
-seqAlts m1 (ELeaf mf2)  = EBnd m1 mf2
+seqAlts m1 (ELeaf mf2)  = ebnd m1 mf2
 seqAlts m1 (ENode alts) = go m1
   where
     go (ECh  c v as) = ECh c v $! zipWith seqAltsF as alts
     go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
-    go (EBnd m2 (EAbs y m3)) = EBnd m2 $! EAbs y $! go m3
+    go (EBnd m2 (EAbs y m3)) = ebnd m2 $! EAbs y $! go m3
     go ERet{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
     go ERun{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
     go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
@@ -474,7 +475,7 @@ instance forall t v. Prim v t => Pretty (ETerm t v) where
                              ]
   pretty (ECase ts alts) = hang 2 $ vsep $
     hsep [ pretty "case", pretty ts, pretty "of" ]
-    : zipWith (<+>) delim ((zipWith pprAlts [0..] alts) ++ [line])
+    : zipWith (<+>) delim ((zipWith pprAlts [0..] alts))
     where
       nalts = length alts
       delim = (pretty "{")
@@ -553,7 +554,7 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
         , pretty (sendTag i c m)
         ]
       sendTag _ [] k = k
-      sendTag i (cc : cs) k = ESnd cc (EInj i (length a) EUnit) `EBnd` EAbs Nothing (sendTag i cs k)
+      sendTag i (cc : cs) k = ESnd cc (EInj i (length a) EUnit) `ebnd` EAbs Nothing (sendTag i cs k)
   pretty (EBrn r a) = hang 2 $! pprBrn
     where
       pprBrn =
@@ -576,8 +577,8 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
         , pretty m
         ]
 
-renderPCode :: Prim v t => FilePath -> EProg t v -> String
-renderPCode fp pprog
+renderPCode :: Prim v t => FilePath -> FilePath -> FilePath -> EProg t v -> String
+renderPCode prel atoms fp pprog
   = renderString
   $! layoutSmart defaultLayoutOptions
   $! vsep
@@ -595,12 +596,12 @@ renderPCode fp pprog
       , pretty "import Control.Concurrent"
       , pretty "import Control.Exception"
       , pretty "import Control.DeepSeq"
-      , pretty "import AlgPrelude"
-      , pretty "import " <> pretty ((toUpper (head fp) : tail fp) ++ "Atoms")
+      , pretty "import" <+> pretty prel
+      , pretty "import" <+> pretty atoms
       , line
       , line
       ]
-    pprHs (i, (v, d)) = hsep [pretty i, pretty v, pretty "=", pretty d]
+    pprHs (i, (v, d)) = hsep [pretty i, pretty v, pretty "=", pretty d, line ]
     pprPDefns (i, p)
       = vsep [ hsep [pretty "--", pretty i ]
              , hang 2 $
@@ -621,12 +622,12 @@ renderPCode fp pprog
                                      , pretty m
                                      ]
 
-renderPrelude :: String
-renderPrelude = renderString $ layoutSmart defaultLayoutOptions $ vsep prel
+renderPrelude :: String -> String
+renderPrelude prf = renderString $ layoutSmart defaultLayoutOptions $ vsep prel
   where
     prel =
       [ pretty "{-# LANGUAGE DeriveGeneric #-}"
-      , pretty "module AlgPrelude where"
+      , hsep [ pretty "module", pretty  prf, pretty "where" ]
       , line
       , pretty "import Control.DeepSeq"
       , pretty "import GHC.Generics (Generic, Generic1)"
@@ -742,65 +743,60 @@ toHs (Case es)
 toHs (In f)     = hcat [pretty "<IN>", pretty f]
 toHs (Out f)    = hcat [pretty "<OUT>", pretty f]
 toHs _ = error "Panic! Unimplemented"
--- toHs (Fmap f g) = error "Panic! Functors should not occur here"
--- toHs (Rec f e1 e2)
---   = hsep [toHs "rec", brackets (toHs f), pprParens e1, pprParens e2]
-
---convertToHsP :: Prim v t
---             => Id
---             -> Alg t v
---             -> TcM t v (Doc ann)
---convertToHsP f a
---  | isCompound a = convertToHs f a >>= pure . parens
---  | otherwise = convertToHs f a
 
 convertToHs :: forall v t.
               Prim v t
             => Id
             -> Alg t v
             -> TcM t v (Id, ETerm t v)
-convertToHs defn x = do
+convertToHs _ (Rec dfn pf e1 e2) = do
+  v <- mkV <$> newVar
+  spl <- toETerm e2 (EVar v)
+  mpr <- appPolyF pf (Var dfn)
+  ar <- toETerm mpr spl
+  tr <- toETerm e1 ar
+  pure (v, tr)
+convertToHs _defn x = do
   v <- mkV <$> newVar
   t <- toETerm x (EVar v)
   return (v, t)
-  where
-    toETerm (Var  w)  t = pure (eApp w t)
-    toETerm (Val  _)  _ = error "convertToHs: Cannot apply value to variable"
-    toETerm Unit      _ = error "convertToHs: Cannot apply value to variable"
-    toETerm (Const c) _ = pure $ go c -- toETerm c >>= \t -> pure $ hsep [pretty "const", t]
-      where
-        go (Var w) = EVar w
-        go (Val v) = EVal v
-        go Unit    = EUnit
-        go _       = error "convertToHs: Not a value"
-    toETerm (Comp es) t = rev es t
-      where
-        rev []     tm = pure tm
-        rev (h:ts) tm = rev ts tm >>= \ hs -> toETerm h hs
-    toETerm Id       t = pure t
-    toETerm (Proj i j) t =
-      case t of
-        EPair ts -> pure (ts !! i)
-        _        -> pure $ eProj i j t
-    toETerm (Split es) t
-      = EPair <$> mapM (`toETerm` t) es
-    toETerm (Inj i j) t  = pure $ EInj i j t
-    toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
-    toETerm (Case es) t = do
-      vs <- mapM (const newVar) es
-      (eCase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
-    toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
-    toETerm (Rec pf e1 e2) t
-      = toETerm e2 t >>=
-        \ spl -> appPolyF pf (Var defn) >>= \ mpr ->
-          toETerm mpr spl >>= \ ar ->
-          toETerm e1 ar
---           next hap e1
-    toETerm _ _ = error "Panic! Unimplemented: In/Out"
 
--- convertToHs f a = do
---   v <- newVar
---   next (pretty "v" <> pretty v) a
+toETerm :: Prim v t
+        => Alg t v
+        -> ETerm t v
+        -> TcM t v (ETerm t v)
+toETerm (Var  w)  t = pure (eApp w t)
+toETerm (Val  _)  _ = error "convertToHs: Cannot apply value to variable"
+toETerm Unit      _ = error "convertToHs: Cannot apply value to variable"
+toETerm (Const c) _ = pure $ go c -- toETerm c >>= \t -> pure $ hsep [pretty "const", t]
+  where
+    go (Var w) = EVar w
+    go (Val v) = EVal v
+    go Unit    = EUnit
+    go _       = error "convertToHs: Not a value"
+toETerm (Comp es) t = rev es t
+  where
+    rev []     tm = pure tm
+    rev (h:ts) tm = rev ts tm >>= \ hs -> toETerm h hs
+toETerm Id       t = pure t
+toETerm (Proj i j) t =
+  case t of
+    EPair ts -> pure (ts !! i)
+    _        -> pure $ eProj i j t
+toETerm (Split es) t
+  = EPair <$> mapM (`toETerm` t) es
+toETerm (Inj i j) t  = pure $ EInj i j t
+toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
+toETerm (Case es) t = do
+  vs <- mapM (const newVar) es
+  (eCase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
+toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
+toETerm (Rec dn _pf _e1 _e2) t
+  = pure $ EApp dn t
+toETerm (In  _) t = newVar >>= \i -> pure (eApp (mkId i "rin") t) -- FIXME: in/out
+toETerm (Out _) t = newVar >>= \i -> pure (eApp (mkId i "rout") t) -- FIXME: in/out
+
+-- renderAtoms :: TyEnv t ->
+-- renderAtoms = vsgo . Map.toList
 --   where
---     next t = go
---       where
+--     go ()

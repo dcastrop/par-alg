@@ -17,7 +17,7 @@ fun singleton : int -> Rec L
 fun ms : Rec L -> Rec L
   = rec [T] ((nil ||| singleton) ||| merge) split;
 
-par ms {
+par msp = ms {
   unroll 1;
   annotate
     {
