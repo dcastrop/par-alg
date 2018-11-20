@@ -18,11 +18,11 @@ fun ms : Rec L -> Rec L
   = rec [T] ((nil ||| singleton) ||| merge) split;
 
 par msp = ms {
-  unroll 1;
+  unroll 2;
   annotate
     {
     merge
     ;
-    rec [T] merge split
+    ms
     }
 };
