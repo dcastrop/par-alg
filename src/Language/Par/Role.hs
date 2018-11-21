@@ -7,6 +7,7 @@ module Language.Par.Role
   , roleIds
   , Role (..)
   , rAlt
+  , rPrd
   ) where
 
 import Data.Set ( Set )
@@ -39,6 +40,12 @@ rAlt (r:rs)
   | all (== r) rs = r
 rAlt [r] = r
 rAlt rs  = RAlt rs
+
+rPrd :: [Role] -> Role
+rPrd (r:rs)
+  | all (== r) rs = r
+rPrd [r] = r
+rPrd rs  = RPrd rs
 
 instance Preference Role where
   prefLvl RId{} = Lvl $ -1

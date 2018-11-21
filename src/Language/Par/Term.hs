@@ -36,21 +36,43 @@ termRoles AnnPrj{}        = Set.empty
 termRoles AnnInj{}        = Set.empty
 termRoles (AnnFmap _ r _) = roleIds r
 
--- annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t v (ATerm t v)
--- annotate r s = ann
---   where
---     ann t
---       | t `Set.member` s = AnnAlg t <$!> newRole
---     ann (Comp es    ) = AnnComp <$!> mapM ann es
---     ann  Id           = pure AnnId
---     ann (Proj i  j  ) = pure $! AnnPrj i j
---     ann (Split es   ) = AnnSplit <$!> mapM ann es
---     ann (Inj i   j  ) = pure $ AnnInj i j
---     ann (Case es    ) = AnnCase <$!> (mapM ann es)
---     ann (Fmap f e   ) = appPoly f e >>= ann
---     ann t             = pure $! AnnAlg t r
+annT :: ([Alg t v] -> Alg t v)
+     -> ([ATerm t v] -> ATerm t v)
+     -> [ATerm t v]
+     -> ATerm t v
+annT f _g ps@(AnnAlg _ r : _)
+  | Just es <- unAlg [] ps = AnnAlg (f es) r
+  where
+    unAlg l [] = Just $ reverse l
+    unAlg l (AnnAlg x r' : ts)
+      | r == r' = unAlg (x : l) ts
+    unAlg _ _ = Nothing
+annT _f g ts = g ts
 
-  --- XXX: Fixme: alternative with single role and no interactions
+annComp :: [ATerm t v] -> ATerm t v
+annComp = annT Comp AnnComp
+
+annSplit :: [ATerm t v] -> ATerm t v
+annSplit = annT Split AnnSplit
+
+annCase :: [ATerm t v] -> ATerm t v
+annCase = annT Case AnnCase
+
+--annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t v (ATerm t v)
+--annotate r s = ann
+--  where
+--    ann t
+--      | t `Set.member` s = AnnAlg t <$!> newRole
+--    ann (Comp es    ) = annComp <$!> mapM ann es
+--    ann  Id           = pure AnnId
+--    ann (Proj i  j  ) = pure $! AnnPrj i j
+--    ann (Split es   ) = annSplit <$!> mapM ann es
+--    ann (Inj i   j  ) = pure $ AnnInj i j
+--    ann (Case es    ) = annCase <$!> (mapM ann es)
+--    ann (Fmap f e   ) = appPoly f e >>= ann
+--    ann t             = pure $! AnnAlg t r
+
+-- XXX: Fixme: alternative with single role and no interactions
 annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t v (ATerm t v)
 annotate ri s tm = snd <$!> ann (RId ri) tm
   where
@@ -58,7 +80,7 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
       | t `Set.member` s = (\r -> (RId r, AnnAlg t r)) <$!> newRole
     ann r (Comp es    ) = go [] r (reverse es)
       where
-        go acc rn [] = pure (rn, AnnComp acc)
+        go acc rn [] = pure (rn, annComp acc)
         go acc rn (t : ts) = do
           (r1, x)  <- ann rn t
           go (x:acc) r1 ts
@@ -68,14 +90,9 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
         prjR (RPrd ts) = ts !! i
         prjR rn        = rn
     ann r (Split es   ) = ((\(a, b) -> (rPrd a, annSplit b)) . unzip) <$!> mapM (ann r) es
+
     ann r (Inj i   j  ) = pure (RBrn i j r, AnnInj i j)
     ann r (Case es    ) = ((\(a, b) -> (rAlt a, annCase b)) . unzip) <$!> mapM (ann r) es
-      where
-        rAlt r1@(x@RId{}:xs)
-          | all (== x) xs = x
-          | otherwise = RAlt r1
-        annCase ts@((AnnAlg _ ri) : xs)
-          | allAnnAlg ri xs =
 
     ann r (Fmap f e   ) = appPoly f e >>= ann r
     ann r t             = pure (RId $ oneOf r, AnnAlg t (oneOf r))

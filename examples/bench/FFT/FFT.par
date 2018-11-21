@@ -32,7 +32,7 @@ par fftp1 = fft {
 };
 
 par fftp2 = fft {
-  unroll 2;
+  unroll 3;
   annotate {
     fl;
     fr

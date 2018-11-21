@@ -32,6 +32,7 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Debug.Trace
 
 import Language.SessionTypes.Common ( Role(..) )
 import Language.Common.Id
@@ -67,7 +68,7 @@ genProg defs = do
       where
         genRole r = (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
         aty = ascDom sc
-        rs = Set.toList $! typeRoles aty `Set.union` termRoles p
+        rs = reverse $ Set.toList $! typeRoles aty `Set.union` termRoles p
 
 close :: RoleId -> AType t -> TcM t v (EAlt t v)
 close r (TyAlt ts) = ENode <$> mapM (close r) ts
@@ -325,6 +326,10 @@ cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
 
 data EAlt t v = ELeaf (EFun t v) | ENode [EAlt t v]
 
+instance Prim v t => Pretty (EAlt t v) where
+  pretty (ELeaf f) = pretty "leaf " <+> pretty f
+  pretty (ENode fs) = pretty "alts " <+> pretty fs
+
 
 genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EAlt t v)
 genAlt r e (TyAlt rs@(r1:_))
@@ -332,18 +337,18 @@ genAlt r e (TyAlt rs@(r1:_))
   | otherwise    = ENode <$!> mapM (genAlt r e) rs
 genAlt r e r1         = ELeaf <$!> gen r e r1
 
-seqAltsF :: EFun t v -> EAlt t v -> EFun t v
+seqAltsF :: Prim v t => EFun t v -> EAlt t v -> EFun t v
 seqAltsF mf1 (ELeaf mf2) = ecomp mf1 mf2
 seqAltsF (EAbs x m1) e = EAbs x $! seqAlts m1 e
 
-seqAlts :: EMonad t v -> EAlt t v -> EMonad t v
+seqAlts :: Prim v t => EMonad t v -> EAlt t v -> EMonad t v
 seqAlts m1 (ELeaf mf2)  = ebnd m1 mf2
-seqAlts m1 (ENode alts) = go m1
+seqAlts m1 n@(ENode alts) = go m1
   where
     go (ECh  c v as) = ECh c v $! zipWith seqAltsF as alts
     go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
     go (EBnd m2 (EAbs y m3)) = ebnd m2 $! EAbs y $! go m3
-    go ERet{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
+    go t@ERet{} = error $ "Panic! ill-formed sequencing of computations 'seqAlts ret'" ++ render t ++ "\n" ++ render n
     go ERun{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
     go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
     go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
@@ -382,27 +387,32 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
     go []    _ = fId
     go (h:t) r2 = do
       (r3, _) <- inferGTy r2 h
-      seqAltsF <$!> gen r h r2
-        <*> genComp r3
-        where
-          genComp (TyAlt rs@(r3:_))
-            | all (== r1) rs = genComp r3
-            | otherwise    = ENode <$!> mapM genComp rs
-          genComp r3       = ELeaf <$!> genN r3
-
-          genN (TyAnn (TApp f a) r3) =
-            appPoly f a >>= \b -> genN (TyAnn b r3)
-
-          genN r3
-            | r `Set.notMember` (Set.unions $ typeRoles r3 : map termRoles t)
-            = fId
-
-          genN a
-            | Just (rc, as) <- tryChoice a (AnnComp $ reverse t)
-            = doChoice r rc rs $! map genN as
-            where
-              !rs = Set.toList $! r `Set.delete` (Set.unions $ typeRoles a : map termRoles t)
-          genN a = go t a
+      a <- gen r h r2
+      b <- genAlt r (AnnComp $ reverse t) r3
+      _ <- trace ("\n\nr:" ++ render r ++ "\nr1:" ++ render r1 ++ "\nh:" ++ render h ++ "\nt:" ++ render t ++ "\nr2:" ++ render r2 ++"\nr3:" ++ render r3 ++ "\nA: " ++ render a ++ "\nB:" ++ render b) $ return ()
+      pure $! seqAltsF a b
+--        where
+--          genComp rr
+--            | r `Set.notMember` (Set.unions $ typeRoles rr : map termRoles t)
+--            = ELeaf <$> fId
+--          genComp (TyAlt rs@(r3:_))
+--            | all (== r3) rs = genComp r3
+--            | otherwise    = ENode <$!> mapM genComp rs
+--          genComp r3       = ELeaf <$!> genN r3
+--
+--          genN (TyAnn (TApp f a) r3) =
+--            appPoly f a >>= \b -> genN (TyAnn b r3)
+--
+--          genN r3
+--            | r `Set.notMember` (Set.unions $ typeRoles r3 : map termRoles t)
+--            = fId
+--
+--          genN a
+--            | Just (rc, as) <- tryChoice a (AnnComp $ reverse t)
+--            = doChoice r rc rs $! map genN as
+--            where
+--              !rs = Set.toList $! r `Set.delete` (Set.unions $ typeRoles a : map termRoles t)
+--          genN a = go t a
 
 gen r (AnnPrj i j) (TyAnn _ r1)
   | r == r1 = eAbs sameVar $ \x -> aApp (Proj i j) x >>= mRet

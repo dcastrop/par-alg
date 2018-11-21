@@ -449,8 +449,8 @@ protoInfer a p = do
   pure (b, Leaf t)
 
 requiresChoice :: RoleId -> AType t -> ATerm t v -> Bool
-requiresChoice r (TyAnn _ r') (AnnCase _)
-  | r == r' = True
+requiresChoice r (TyAnn _ r') t@(AnnCase _)
+  | r == r' && Set.size (Set.delete r $ termRoles t) > 0 = True
 requiresChoice r a (AnnComp es ) = any (requiresChoice r a) es
 requiresChoice r a (AnnSplit es) = any (requiresChoice r a) es
 requiresChoice _ _ _ = False
@@ -465,7 +465,7 @@ inferGTy (TyAnn (TApp f a) r) p =
 --      -----------------------------------------------------
 --      A |= p ~ G_1 \oplus G_2 : B_1 \oplus B_2
 inferGTy a p
-  | Just (r, as) <- canBranch a, requiresChoice r a p = do
+  | Just (r, as) <- tryChoice a p = do
   (bs, gs) <- unzip <$!> mapM (`inferGTy` p) as
   let !g  = Choice r rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
       !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
@@ -629,6 +629,7 @@ seqG (GRec v g1)     g2             = GRec v $! seqG g1 g2
 seqG g@GVar{}        _              = g
 seqG GEnd            (Leaf g2)      = g2
 seqG g1              (Leaf g2)      = gSeq $! [g1, g2]
+seqG (GSeq gs1)      g2             = gSeq $! init gs1 ++ [seqG (last gs1) g2]
 seqG g1              g2             = error (m ++ "\n" ++ render g1 ++ "\n\n" ++ render g2)
   where
     m = "Panic! Ill-formed sequencing of \
