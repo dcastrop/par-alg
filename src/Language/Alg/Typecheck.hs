@@ -20,6 +20,7 @@ module Language.Alg.Typecheck
 
   , protocol
   , inferGTy
+  -- , needBranch
   , tryChoice
   , requiresChoice
   , rAnn
@@ -399,11 +400,6 @@ roleTrack (AnnInj i j) t
   = RBrn i j t
 roleTrack _ _
   = error $! "Panic! Ill-typed term reached "
-
-tyAlt :: Eq t => [AType t] -> AType t
-tyAlt (t:ts)
-  | all (== t) ts = t
-tyAlt ts = TyAlt ts
 
 tryChoice :: AType t -> ATerm t v -> Maybe (RoleId, [AType t])
 tryChoice a p

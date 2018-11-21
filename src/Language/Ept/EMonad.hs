@@ -27,12 +27,12 @@ import Control.Monad.RWS.Strict
 import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
+--import Data.List ( scanl', foldl' )
 import Data.List ( scanl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Debug.Trace
 
 import Language.SessionTypes.Common ( Role(..) )
 import Language.Common.Id
@@ -68,7 +68,7 @@ genProg defs = do
       where
         genRole r = (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
         aty = ascDom sc
-        rs = reverse $ Set.toList $! typeRoles aty `Set.union` termRoles p
+        rs =  Set.toList $! typeRoles aty `Set.union` termRoles p
 
 close :: RoleId -> AType t -> TcM t v (EAlt t v)
 close r (TyAlt ts) = ENode <$> mapM (close r) ts
@@ -149,6 +149,10 @@ data EMonad t v
   | EBrn !ChannelId ![EMonad t v]
   deriving (Show, Eq)
 
+eRun :: (ETerm t v) -> EMonad t v
+eRun t@EVar{} = ERet t
+eRun t = ERun t
+
 
 fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
@@ -185,11 +189,28 @@ ebnd m (EAbs (Just i) m1)
 ebnd (EBnd m f1)  f2   = ebnd m (f1 `ecomp` f2)
 ebnd m               f = EBnd m f
 
+---ebndr :: EMonad t v -> EFun t v -> EMonad t v
+---ebndr   (ERet t     ) f = app f t
+---ebndr m (EAbs x (ERet (EVar y)))
+---  | x == Just y = m
+---ebndr m (EAbs Nothing  m1@ERet{}) = retM m m1
+---ebndr m (EAbs (Just i) m1@ERet{})
+---  | i `Set.notMember` fvsM m1 = retM m m1
+---ebndr m (EAbs (Just i) m1)
+---  | i `Set.notMember` fvsM m1 = ebndr m $ EAbs Nothing m1
+---ebndr (EBnd m f1)  f2   = ebndr m (f1 `ecompr` f2)
+---ebndr (ECh cs e ts)  f = ECh cs e $ map (`ecompr` f) ts
+---ebndr (EBrn c ts)  f = EBrn c $ map (`ebndr` f) ts
+---ebndr m f = EBnd m f
+---
+---ecompr :: EFun t v -> EFun t v -> EFun t v
+---ecompr (EAbs x m1) f = EAbs x (ebndr m1 f)
+
 app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
   where
     go (ERet v') = ERet $! msbst i v v'
-    go (ERun v') = ERun $! msbst i v v'
+    go (ERun v') = eRun $! msbst i v v'
     go (EBnd m1 f) = ebnd (go m1) (substF f)
     go (ESnd c v') = ESnd c $! (msbst i v) v'
     go m1@ERcv{} = m1
@@ -234,7 +255,7 @@ mRet :: ETerm t v -> TcM t v (EMonad t v)
 mRet t = ERet <$> pure t
 
 mRun :: ETerm t v -> TcM t v (EMonad t v)
-mRun t = ERun <$> pure t
+mRun t = eRun <$> pure t
 
 eAbs :: TcM t v Int -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 eAbs var f = var >>= \ x -> EAbs (Just $ mkV x) <$!> f (EVar $ mkV x)
@@ -245,6 +266,9 @@ mkV i = mkId i $ "v" ++ show i
 
 mBnd :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
 mBnd var m f = ebnd <$> m <*> eAbs var f
+
+-- mBndR :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
+-- mBndR var m f = ebndr <$> m <*> eAbs var f
 
 mPair :: TcM t v Int -> [TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
 mPair var = go []
@@ -280,6 +304,9 @@ mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
 
 mComp :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 mComp m1 f1 = liftM2 ecomp m1 (eAbs newVar f1)
+
+--mCompr :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
+--mCompr m1 f1 = liftM2 ecompr m1 (eAbs newVar f1)
 
 fId :: TcM t v (EFun t v)
 fId = eAbs sameVar $ \x -> mRet x
@@ -332,9 +359,7 @@ instance Prim v t => Pretty (EAlt t v) where
 
 
 genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EAlt t v)
-genAlt r e (TyAlt rs@(r1:_))
-  | all (== r1) rs = genAlt r e r1
-  | otherwise    = ENode <$!> mapM (genAlt r e) rs
+genAlt r e (TyAlt as) = ENode <$!> mapM (genAlt r e) as
 genAlt r e r1         = ELeaf <$!> gen r e r1
 
 seqAltsF :: Prim v t => EFun t v -> EAlt t v -> EFun t v
@@ -349,7 +374,7 @@ seqAlts m1 n@(ENode alts) = go m1
     go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
     go (EBnd m2 (EAbs y m3)) = ebnd m2 $! EAbs y $! go m3
     go t@ERet{} = error $ "Panic! ill-formed sequencing of computations 'seqAlts ret'" ++ render t ++ "\n" ++ render n
-    go ERun{} = error "Panic! ill-formed sequencing of computations 'seqAlts ret'"
+    go t@ERun{} = error $ "Panic! ill-formed sequencing of computations 'seqAlts run'" ++ render t ++ "\n" ++ render n
     go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
     go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
 
@@ -365,32 +390,96 @@ doChoice r r1 rs fs =
     then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
     else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
+--needBranch :: (Pretty t, Eq t, IsCompound t) => RoleId -> [AType t] -> TcM t v Int
+--needBranch rr ts = do
+--  (ri, _) <- unzip <$!> mapM rGet ts
+--  return $! go 0 ri
+--  where
+--    go i (r : rsn) =
+--      case getAlts r of
+--        (r1 : rs1)
+--          | all (r1 ==) rs1 || rr `Set.notMember` (roleIds r) -> go (i+1) rsn
+--          | otherwise -> i
+--        _ -> go (i+1) rsn
+--    go i [] = i
+--    getAlts (RAlt rs) = concatMap getAlts rs
+--    getAlts r = [r]
+
+--dupBranches :: Prim v1 t
+--            => RoleId
+--            -> AType t
+--            -> [ATerm t v1]
+--            -> TcM t v1 (EFun t v1)
+--dupBranches r a ps = do
+--  (rs, _) <- unzip <$!> mapM (inferGTy a) ps
+--  let ts = map (\ts1 -> gen r ts1 a) ps
+--  i <- needBranch r rs
+--  let t1 = take i ts
+--      ts2 = drop i ts
+--  seqChoices t1 ts2
+--  where
+--    -- no dependency on previous choices
+--    seqChoices t1 [] = foldl' (\l r1 -> l `mComp` hAbs r1) fId t1
+--    -- t : ts depend on previous choices, starting at "t"
+--    seqChoices t1 (t : ts) = foldl' (\l r1 -> l `mComp` hAbs r1) fId $ t1 ++ [goG ts t]
+--
+--    goG :: [TcM t v1 (EFun t v1)] -> TcM t v1 (EFun t v1) -> TcM t v1 (EFun t v1)
+--    goG [] g = g
+--    goG (g1:gs) g = g `mCompr` hAbs (goG gs g1)
+     -- EAbs i m <- g -- \ x -> do
+     -- m' <- case m of
+     --        ECh c v fs ->
+     --          ECh c v <$> mapM (\f -> pure f `mComp` hAbs (goG gs g1)) fs
+     --        EBrn c fs ->
+     --          EBrn c <$> mapM (\f -> mBnd newVar (pure f) $ hAbs (goG gs g1)) fs
+     --        ERet m1 -> hAbs (goG gs g1) m1
+     --        ERun {} -> EBnd m <$!> goG gs g1
+     -- pure $ EAbs i m'
+     -- t <- g
+     -- case t of
+     --   EAbs i m ->
+    --      case m of
+    --        ECh c v fs ->
+    --          ECh c v <$> mapM (\f -> pure f `mComp` goG gs g1) fs
+      -- case tm of
+      --   _ -> undefined
+        -- Choice r rs alts
+        --   -> Choice r rs $! mapAlt (\ _ g2 -> gSeq [g2, goG gs g1]) alts
+        -- Comm m gn -> Comm m $! goG l gn
+        -- GRec r gn -> GRec r $! goG l gn
+        -- GSeq gl   -> gSeq [GSeq (init gl), goG l (last gl)]
+        -- GVar v    -> GVar v
+        -- GEnd      -> goG gs g1
+
+
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
   appPoly f a >>= \b -> gen r p (TyAnn b r1)
 
-gen r e r1
-  | r `Set.notMember` (termRoles e `Set.union` typeRoles r1)
-  = fId
+-- gen r e r1
+--   | r `Set.notMember` (termRoles e `Set.union` typeRoles r1)
+--   = fId
 
 gen r p a
   | Just (r1, as) <- tryChoice a p
   = doChoice r r1 rs $! map (gen r p) as
-  where !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
+  where
+    !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
 
 gen r (AnnAlg e r2) r1
   | r == r2    = cmsg r r2 r1 `mComp` \ x -> aApp e x >>= mRun
   | otherwise = cmsg r r2 r1
 
-gen r e@(AnnComp es) r1 = keepCtx r r1 e $ go (reverse es) r1
+gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
   where
-    go []    _ = fId
-    go (h:t) r2 = do
-      (r3, _) <- inferGTy r2 h
-      a <- gen r h r2
+    go []    = fId
+    go (h:t) = do
+      a <- aux (length t > 0) h
+      (r3, _) <- inferGTy r1 h
       b <- genAlt r (AnnComp $ reverse t) r3
-      _ <- trace ("\n\nr:" ++ render r ++ "\nr1:" ++ render r1 ++ "\nh:" ++ render h ++ "\nt:" ++ render t ++ "\nr2:" ++ render r2 ++"\nr3:" ++ render r3 ++ "\nA: " ++ render a ++ "\nB:" ++ render b) $ return ()
       pure $! seqAltsF a b
+    -- aux True (AnnSplit ts) = dupBranches r r1 ts
+    aux _ p = gen r p r1
 --        where
 --          genComp rr
 --            | r `Set.notMember` (Set.unions $ typeRoles rr : map termRoles t)
@@ -485,7 +574,7 @@ instance forall t v. Prim v t => Pretty (ETerm t v) where
                              ]
   pretty (ECase ts alts) = hang 2 $ vsep $
     hsep [ pretty "case", pretty ts, pretty "of" ]
-    : zipWith (<+>) delim ((zipWith pprAlts [0..] alts))
+    : zipWith (<+>) delim ((zipWith pprAlts [0..] alts) ++ [emptyDoc])
     where
       nalts = length alts
       delim = (pretty "{")

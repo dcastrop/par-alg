@@ -21,7 +21,8 @@ par msp = ms {
   unroll 2;
   annotate
     {
-    merge
+      merge
+// ((nil ||| singleton) ||| merge)
     ;
     ms
     }

@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Par.Type
   ( AType(..)
+  , tyAlt
   , typeRoles
   ) where
 
@@ -22,6 +23,11 @@ data AType t
   | TyApp  !(Func t) !Role !(Type t) -- F@R a
   | TyMeta !Int                      -- Metavar
   deriving (Eq, Show)
+
+tyAlt :: Eq t => [AType t] -> AType t
+tyAlt (t:ts)
+  | all (== t) ts = t
+tyAlt ts = TyAlt ts
 
 typeRoles :: AType t -> Set RoleId
 typeRoles (TyAnn _ r) = Set.singleton r
