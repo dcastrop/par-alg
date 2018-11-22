@@ -27,7 +27,7 @@ import Control.Monad.RWS.Strict
 import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
-import Data.List ( scanl', foldl' )
+import Data.List ( scanl' )
 --import Data.List ( scanl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
@@ -309,8 +309,8 @@ mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
 mComp :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 mComp m1 f1 = liftM2 ecomp m1 (eAbs newVar f1)
 
-mCompr :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
-mCompr m1 f1 = liftM2 ecompr m1 (eAbs newVar f1)
+--mCompr :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
+--mCompr m1 f1 = liftM2 ecompr m1 (eAbs newVar f1)
 
 fId :: TcM t v (EFun t v)
 fId = eAbs sameVar $ \x -> mRet x
@@ -402,8 +402,8 @@ dupBranches :: Prim v1 t
             -> [ATerm t v1]
             -> TcM t v1 (EFun t v1)
 dupBranches r a ps = do
-  (rs, _) <- unzip <$!> mapM (inferGTy a) ps
-  let ts = map (\ts1 -> gen r ts1 a) ps
+  (rs, _) <- unzip <$!> mapM (inferGTy a) ps'
+  let ts = map (\ts1 -> gen r ts1 a) ps'
   i <- needBranch rs
   let t1 = take i ts
       ts2 = drop i ts
@@ -413,12 +413,14 @@ dupBranches r a ps = do
     seqChoices t1 ts2 = eAbs newVar $ \x -> do
       let ms1 = map (`hAbs` x) t1
       let ms2 = map (`hAbs` x) ts2
-      go [] ms1 ms2
+      go x [] ms1 ms2
       where
-        go [e] [] [] = mRet e
-        go es  [] [] = mRet $! EPair $! reverse es
-        go vs  [] (e:es) = mBndR newVar e $ \x -> go (x:vs) [] es
-        go vs (e:es) ts = mBnd newVar e $ \x -> go (x : vs) es ts
+        go  vi []  [] [] = mRet vi
+        go _vi [e] [] [] = mRet e
+        go _vi es  [] [] = mRet $! EPair $! reverse es
+        go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x : vs) [] es
+        go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
+    ps' = filter ((r `Set.member`) . termRoles) ps
 
      -- EAbs i m <- g -- \ x -> do
      -- m' <- case m of
@@ -472,10 +474,7 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
       (r3, _) <- inferGTy r1 h
       b <- genAlt r (AnnComp $ reverse t) r3
       pure $! seqAltsF a b
-    aux True (AnnSplit ts) = dupBranches r r1 ts'
-      where
-        ts' | r `Set.member` typeRoles r1 = ts
-            | otherwise                   = filter ((r `Set.member`) . termRoles) ts
+    --aux True (AnnSplit ts) = dupBranches r r1 ts
     aux _ p = gen r p r1
 --        where
 --          genComp rr
@@ -513,13 +512,14 @@ gen r (AnnPrj i _) (TyPrd rs)
       | otherwise                   = 0
 gen _ (AnnPrj _ _) _ = eAbs sameVar $ \x -> mRet x
 
-gen r (AnnSplit ps) r1 = do
-  prd
-  where
-    prd = mSplit newVar $! map (\p -> hAbs $ gen r p r1) ps'
-    ps'
-      | r `Set.member` typeRoles r1 = ps
-      | otherwise = filter ((r `Set.member`) . termRoles) ps
+gen r (AnnSplit ps) r1 = dupBranches r r1 ps
+--gen r (AnnSplit ps) r1 = do
+--  prd
+--  where
+--    prd = mSplit newVar $! map (\p -> hAbs $ gen r p r1) ps'
+--    ps'
+--      | r `Set.member` typeRoles r1 = ps
+--      | otherwise = filter ((r `Set.member`) . termRoles) ps
 
 gen r (AnnCase es) (TyBrn i _ a) = gen r (es !! i) a
 

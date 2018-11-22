@@ -24,17 +24,17 @@ fun fft : Rec L -> Rec L
   = rec[T] (((nil ||| singleton) ||| app) . (id +++ (fl &&& fr)) . (id +++ (id *** fo))) deinterleave;
 
 par fftp1 = fft {
-  unroll 1;
+  unroll 2;
   annotate {
     fl;
     fr
   }
 };
 
-par fftp2 = fft {
-  unroll 3;
-  annotate {
-    fl;
-    fr
-  }
-};
+// par fftp2 = fft {
+//   unroll 3;
+//   annotate {
+//     fl;
+//     fr
+//   }
+// };

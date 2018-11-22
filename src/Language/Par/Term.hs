@@ -97,7 +97,7 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
     ann r (Fmap f e   ) = appPoly f e >>= ann r
     ann r t             = pure (RId $ oneOf r, AnnAlg t (oneOf r))
       where
-        oneOf rr = head $ (filter (/= ri) $ Set.toList $ roleIds rr) ++ [ri]
+        oneOf rr = last $ ri : (filter (/= ri) $ Set.toList $ roleIds rr)
 
 appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> TcM t v (Alg t v)
 appPoly  PK{}     _ = pure Id
@@ -127,16 +127,21 @@ instance (Pretty v, Pretty t) => Pretty (ATerm t v) where
   pretty (AnnAlg e r) = hcat [ pprParens e, pretty "@", pretty r]
   pretty AnnId        = pretty "id"
   pretty (AnnComp es)
-    = hang 2 $ vsep $ punctuate (pretty " .") $ fmap pprParens es
+    = align $ vsep $ prepend (pretty " .") $ fmap (pprParens) es
   pretty (AnnPrj i j)  = hcat [pretty "proj", brackets (pretty i <> pretty "," <+> pretty j)]
   pretty (AnnSplit es)
-    = hang 2 $ vsep $ punctuate (pretty " &&&") $ fmap pprParens es
+    = align $ vsep $ prepend (pretty " &&&") $ fmap (pprParens) es
   pretty (AnnInj i j)   = hcat [pretty "inj", brackets (pretty i <> pretty "," <+> pretty j)]
   pretty (AnnCase es)
-    = hang 2 $ vsep $ punctuate (pretty " |||") $ fmap pprParens es
+    = align $ vsep $ prepend (pretty " |||") $ fmap (pprParens) es
   pretty (AnnFmap f r g) = hcat [ brackets ( hcat [ pprParens f
                                                   , pretty "@"
                                                   , pretty r]
                                            )
                                 , pprParens g
                                 ]
+
+prepend :: Doc ann -> [Doc ann] -> [Doc ann]
+prepend _d [] = []
+prepend _d [x] = [x]
+prepend  d (x:xs) = x : map (d <+>) xs
