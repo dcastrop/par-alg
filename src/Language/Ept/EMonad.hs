@@ -27,8 +27,8 @@ import Control.Monad.RWS.Strict
 import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
---import Data.List ( scanl', foldl' )
-import Data.List ( scanl' )
+import Data.List ( scanl', foldl' )
+--import Data.List ( scanl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
@@ -153,7 +153,6 @@ eRun :: (ETerm t v) -> EMonad t v
 eRun t@EVar{} = ERet t
 eRun t = ERun t
 
-
 fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
 fvsM (ERun t) = fvsT t
@@ -189,22 +188,22 @@ ebnd m (EAbs (Just i) m1)
 ebnd (EBnd m f1)  f2   = ebnd m (f1 `ecomp` f2)
 ebnd m               f = EBnd m f
 
----ebndr :: EMonad t v -> EFun t v -> EMonad t v
----ebndr   (ERet t     ) f = app f t
----ebndr m (EAbs x (ERet (EVar y)))
----  | x == Just y = m
----ebndr m (EAbs Nothing  m1@ERet{}) = retM m m1
----ebndr m (EAbs (Just i) m1@ERet{})
----  | i `Set.notMember` fvsM m1 = retM m m1
----ebndr m (EAbs (Just i) m1)
----  | i `Set.notMember` fvsM m1 = ebndr m $ EAbs Nothing m1
----ebndr (EBnd m f1)  f2   = ebndr m (f1 `ecompr` f2)
----ebndr (ECh cs e ts)  f = ECh cs e $ map (`ecompr` f) ts
----ebndr (EBrn c ts)  f = EBrn c $ map (`ebndr` f) ts
----ebndr m f = EBnd m f
----
----ecompr :: EFun t v -> EFun t v -> EFun t v
----ecompr (EAbs x m1) f = EAbs x (ebndr m1 f)
+ebndr :: EMonad t v -> EFun t v -> EMonad t v
+ebndr   (ERet t     ) f = app f t
+ebndr m (EAbs x (ERet (EVar y)))
+  | x == Just y = m
+ebndr m (EAbs Nothing  m1@ERet{}) = retM m m1
+ebndr m (EAbs (Just i) m1@ERet{})
+  | i `Set.notMember` fvsM m1 = retM m m1
+ebndr m (EAbs (Just i) m1)
+  | i `Set.notMember` fvsM m1 = ebndr m $ EAbs Nothing m1
+ebndr (EBnd m f1)  f2   = ebndr m (f1 `ecompr` f2)
+ebndr (ECh cs e ts)  f = ECh cs e $ map (`ecompr` f) ts
+ebndr (EBrn c ts)  f = EBrn c $ map (`ebndr` f) ts
+ebndr m f = EBnd m f
+
+ecompr :: EFun t v -> EFun t v -> EFun t v
+ecompr (EAbs x m1) f = EAbs x (ebndr m1 f)
 
 app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
@@ -240,7 +239,6 @@ sbst i v (ELet v' t1 t2)
   | i == v' = ELet v' (sbst i v t1) t2
   | otherwise = ELet v' (sbst i v t1) (sbst i v t2)
 
-
 data EProg t v
   = EProg { getHs :: Map Id (Id, ETerm t v)
           , getEnv :: Map Id (ParProg t v)
@@ -267,8 +265,8 @@ mkV i = mkId i $ "v" ++ show i
 mBnd :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
 mBnd var m f = ebnd <$> m <*> eAbs var f
 
--- mBndR :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
--- mBndR var m f = ebndr <$> m <*> eAbs var f
+mBndR :: TcM t v Int -> TcM t v (EMonad t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EMonad t v)
+mBndR var m f = ebndr <$> m <*> eAbs var f
 
 mPair :: TcM t v Int -> [TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
 mPair var = go []
@@ -279,6 +277,12 @@ mPair var = go []
 
 mSplit :: TcM t v Int -> [ETerm t v -> TcM t v (EMonad t v)] -> TcM t v (EFun t v)
 mSplit var fs = eAbs sameVar $ \x -> mPair var $! map ($! x) fs
+
+--mSplitA :: TcM t v Int -> [EAlt t v] -> TcM t v (EFun t v)
+--mSplitA var fs = eAbs sameVar $ \x -> mPairA var $! map ($! x) (appA fs)
+--  where
+--    appA (Leaf f) x = Leaf (hAbs f x)
+--    appA (ENode ts) x = ENode $ map (`appA` x) ts
 
 eDiscard :: TcM t v (EMonad t v) -> TcM t v (EFun t v)
 eDiscard m = EAbs Nothing <$!> m
@@ -305,8 +309,8 @@ mBrn r2 r1 ms = EBrn <$> getChannelId (r1, r2, unit) <*> sequence ms
 mComp :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
 mComp m1 f1 = liftM2 ecomp m1 (eAbs newVar f1)
 
---mCompr :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
---mCompr m1 f1 = liftM2 ecompr m1 (eAbs newVar f1)
+mCompr :: TcM t v (EFun t v) -> (ETerm t v -> TcM t v (EMonad t v)) -> TcM t v (EFun t v)
+mCompr m1 f1 = liftM2 ecompr m1 (eAbs newVar f1)
 
 fId :: TcM t v (EFun t v)
 fId = eAbs sameVar $ \x -> mRet x
@@ -351,9 +355,11 @@ cmsg _ _ TyApp {} = fail "Error! Cannot generate message from functor \
 cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
                           \to role. Choices must be resolved earlier."
 
-data EAlt t v = ELeaf (EFun t v) | ENode [EAlt t v]
+data MAlt t = ELeaf t | ENode [MAlt t]
 
-instance Prim v t => Pretty (EAlt t v) where
+type EAlt t v = MAlt (EFun t v)
+
+instance Pretty t => Pretty (MAlt t) where
   pretty (ELeaf f) = pretty "leaf " <+> pretty f
   pretty (ENode fs) = pretty "alts " <+> pretty fs
 
@@ -390,42 +396,30 @@ doChoice r r1 rs fs =
     then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
     else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
---needBranch :: (Pretty t, Eq t, IsCompound t) => RoleId -> [AType t] -> TcM t v Int
---needBranch rr ts = do
---  (ri, _) <- unzip <$!> mapM rGet ts
---  return $! go 0 ri
---  where
---    go i (r : rsn) =
---      case getAlts r of
---        (r1 : rs1)
---          | all (r1 ==) rs1 || rr `Set.notMember` (roleIds r) -> go (i+1) rsn
---          | otherwise -> i
---        _ -> go (i+1) rsn
---    go i [] = i
---    getAlts (RAlt rs) = concatMap getAlts rs
---    getAlts r = [r]
+dupBranches :: Prim v1 t
+            => RoleId
+            -> AType t
+            -> [ATerm t v1]
+            -> TcM t v1 (EFun t v1)
+dupBranches r a ps = do
+  (rs, _) <- unzip <$!> mapM (inferGTy a) ps
+  let ts = map (\ts1 -> gen r ts1 a) ps
+  i <- needBranch rs
+  let t1 = take i ts
+      ts2 = drop i ts
+  -- seqChoices t1 ts2
+  seqChoices t1 ts2
+  where
+    seqChoices t1 ts2 = eAbs newVar $ \x -> do
+      let ms1 = map (`hAbs` x) t1
+      let ms2 = map (`hAbs` x) ts2
+      go [] ms1 ms2
+      where
+        go [e] [] [] = mRet e
+        go es  [] [] = mRet $! EPair $! reverse es
+        go vs  [] (e:es) = mBndR newVar e $ \x -> go (x:vs) [] es
+        go vs (e:es) ts = mBnd newVar e $ \x -> go (x : vs) es ts
 
---dupBranches :: Prim v1 t
---            => RoleId
---            -> AType t
---            -> [ATerm t v1]
---            -> TcM t v1 (EFun t v1)
---dupBranches r a ps = do
---  (rs, _) <- unzip <$!> mapM (inferGTy a) ps
---  let ts = map (\ts1 -> gen r ts1 a) ps
---  i <- needBranch r rs
---  let t1 = take i ts
---      ts2 = drop i ts
---  seqChoices t1 ts2
---  where
---    -- no dependency on previous choices
---    seqChoices t1 [] = foldl' (\l r1 -> l `mComp` hAbs r1) fId t1
---    -- t : ts depend on previous choices, starting at "t"
---    seqChoices t1 (t : ts) = foldl' (\l r1 -> l `mComp` hAbs r1) fId $ t1 ++ [goG ts t]
---
---    goG :: [TcM t v1 (EFun t v1)] -> TcM t v1 (EFun t v1) -> TcM t v1 (EFun t v1)
---    goG [] g = g
---    goG (g1:gs) g = g `mCompr` hAbs (goG gs g1)
      -- EAbs i m <- g -- \ x -> do
      -- m' <- case m of
      --        ECh c v fs ->
@@ -478,7 +472,10 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
       (r3, _) <- inferGTy r1 h
       b <- genAlt r (AnnComp $ reverse t) r3
       pure $! seqAltsF a b
-    -- aux True (AnnSplit ts) = dupBranches r r1 ts
+    aux True (AnnSplit ts) = dupBranches r r1 ts'
+      where
+        ts' | r `Set.member` typeRoles r1 = ts
+            | otherwise                   = filter ((r `Set.member`) . termRoles) ts
     aux _ p = gen r p r1
 --        where
 --          genComp rr

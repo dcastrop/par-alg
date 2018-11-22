@@ -20,7 +20,7 @@ module Language.Alg.Typecheck
 
   , protocol
   , inferGTy
-  -- , needBranch
+  , needBranch
   , tryChoice
   , requiresChoice
   , rAnn
@@ -548,7 +548,6 @@ inferGTy r AnnCase{}
 inferGTy _ AnnFmap{}
   = fail $ "Unimplemented"
 
-
 needBranch :: (Pretty t, Eq t, IsCompound t) => [AType t] -> TcM t v Int
 needBranch ts = do
   (ri, _) <- unzip <$!> mapM rGet ts
@@ -563,7 +562,6 @@ needBranch ts = do
     go i [] = i
     getAlts (RAlt rs) = concatMap getAlts rs
     getAlts r = [r]
-
 
 dupBranches :: forall t v. Prim v t => AType t -> [ATerm t v] -> TcM t v (AType t, GTy t)
 dupBranches a es = do

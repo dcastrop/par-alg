@@ -3,7 +3,6 @@ poly L = K () + K int * I;
 
 atom split : Rec L -> T Rec L;
 
-atom merge : Rec L * Rec L -> Rec L;
 
 fun nil : () -> Rec L
   = in . inj[0,2];
@@ -14,15 +13,18 @@ fun cons : int * Rec L -> Rec L
 fun singleton : int -> Rec L
   = cons . (id &&& (nil . const ()));
 
+atom merge : Rec L * Rec L -> Rec L;
+// atom merge : T Rec L -> Rec L;
 fun ms : Rec L -> Rec L
   = rec [T] ((nil ||| singleton) ||| merge) split;
+//  = rec [T] merge split;
 
 par msp = ms {
-  unroll 2;
+  unroll 5;
   annotate
     {
-      merge
-// ((nil ||| singleton) ||| merge)
+   //   merge
+   ((nil ||| singleton) ||| merge)
     ;
     ms
     }
