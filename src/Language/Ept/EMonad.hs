@@ -76,7 +76,6 @@ close r (TyBrn i j a)
   | r `Set.member` typeRoles a = ELeaf <$> eAbs sameVar (\x -> mRet (EInj i j x))
 close _ _ = ELeaf <$> fId
 
-
 data ETerm t v
   = EVar !Id
   | EVal !v
@@ -402,12 +401,12 @@ dupBranches :: Prim v1 t
             -> [ATerm t v1]
             -> TcM t v1 (EFun t v1)
 dupBranches r a ps = do
-  (rs, _) <- unzip <$!> mapM (inferGTy a) ps'
-  let ts = map (\ts1 -> gen r ts1 a) ps'
+  (rs1, _) <- unzip <$!> mapM (inferGTy a) ps
+  let (rs, ps1) = unzip $! ps' rs1
+      ts = map (\ts1 -> gen r ts1 a) ps1
   i <- needBranch rs
   let t1 = take i ts
       ts2 = drop i ts
-  -- seqChoices t1 ts2
   seqChoices t1 ts2
   where
     seqChoices t1 ts2 = eAbs newVar $ \x -> do
@@ -418,9 +417,11 @@ dupBranches r a ps = do
         go  vi []  [] [] = mRet vi
         go _vi [e] [] [] = mRet e
         go _vi es  [] [] = mRet $! EPair $! reverse es
-        go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x : vs) [] es
+        go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x:vs) [] es
         go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
-    ps' = filter ((r `Set.member`) . termRoles) ps
+    ps' rs
+      | r `Set.member` typeRoles a = zip rs ps
+      | otherwise = filter ((r `Set.member`) . typeRoles . fst) $ zip rs ps
 
      -- EAbs i m <- g -- \ x -> do
      -- m' <- case m of

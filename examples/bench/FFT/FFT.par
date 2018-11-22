@@ -27,12 +27,36 @@ par fftp1 = fft {
   unroll 2;
   annotate {
     fl;
-    fr
+    fo
   }
 };
 
 // par fftp2 = fft {
+//   unroll 2;
+//   annotate {
+//     fl;
+//     fr
+//   }
+// };
+//
+// par fftp3 = fft {
 //   unroll 3;
+//   annotate {
+//     fl;
+//     fr
+//   }
+// };
+//
+// par fftp4 = fft {
+//   unroll 4;
+//   annotate {
+//     fl;
+//     fr
+//   }
+// };
+//
+// par fftp5 = fft {
+//   unroll 5;
 //   annotate {
 //     fl;
 //     fr

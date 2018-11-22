@@ -232,6 +232,8 @@ instance Subst (Func t) (Alg t v) where
   subst _ t                 = t
 
 comp :: Alg t v -> Alg t v -> Alg t v
+comp Id e = e
+comp e Id = e
 comp (Comp xs) (Comp ys) = Comp $! xs ++ ys
 comp (Comp xs) y         = Comp $! xs ++ [y]
 comp x         (Comp ys) = Comp $! x : ys
