@@ -393,10 +393,9 @@ doChoice r r1 rs fs =
     if r1 == r
     -- I do the choice
     then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
-    else if r1 `Set.member` Set.fromList rs
+    else if r `Set.member` Set.fromList rs
          then eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
          else fId
-    -- else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
 dupBranches :: Prim v1 t
             => RoleId

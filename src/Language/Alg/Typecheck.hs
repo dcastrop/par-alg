@@ -617,7 +617,6 @@ seqG (Choice r rs gs1) g@(Brn g2)
   where
     !rs' = Set.fromList rs `Set.union` gRoles g Set.\\ Set.singleton r
     !lrs = Set.toList rs'
-seqG c@Choice{}      (BSeq gs g)    = gSeq $! (seqG c $ Brn gs) : g
 seqG (Comm m g1)     g2             = Comm m $! seqG g1 g2
 seqG (GRec v g1)     g2             = GRec v $! seqG g1 g2
 seqG g@GVar{}        _              = g
