@@ -26,8 +26,7 @@ fun fft : Rec L -> Rec L
 par fftp1 = fft {
   unroll 2;
   annotate {
-    fl;
-    fo
+    fft
   }
 };
 

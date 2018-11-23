@@ -407,47 +407,30 @@ dupBranches r a ps = do
   i <- needBranch rs
   let t1 = take i ts
       ts2 = drop i ts
-  seqChoices t1 ts2
+  seqChoices rs t1 ts2
   where
-    seqChoices t1 ts2 = eAbs newVar $ \x -> do
+    seqChoices rs t1 ts2 = eAbs newVar $ \x -> do
       let ms1 = map (`hAbs` x) t1
       let ms2 = map (`hAbs` x) ts2
       go x [] ms1 ms2
       where
-        go  vi []  [] [] = mRet vi
-        go _vi [e] [] [] = mRet e
-        go _vi es  [] [] = mRet $! EPair $! reverse es
-        go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x:vs) [] es
+        go vi es  [] [] = mRet $!
+                          pair $!
+                          map snd $!
+                          filter ((r `Set.member`) . typeRoles . fst) $
+                          zip rs $
+                          reverse es
+          where
+            pair []  = vi
+            pair [e] = e
+            pair es' = EPair $! es'
+        go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x : vs) [] es
         go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
     ps' rs
+      -- if we are projecting the input role, we need to cover all cases
       | r `Set.member` typeRoles a = zip rs ps
-      | otherwise = filter ((r `Set.member`) . typeRoles . fst) $ zip rs ps
-
-     -- EAbs i m <- g -- \ x -> do
-     -- m' <- case m of
-     --        ECh c v fs ->
-     --          ECh c v <$> mapM (\f -> pure f `mComp` hAbs (goG gs g1)) fs
-     --        EBrn c fs ->
-     --          EBrn c <$> mapM (\f -> mBnd newVar (pure f) $ hAbs (goG gs g1)) fs
-     --        ERet m1 -> hAbs (goG gs g1) m1
-     --        ERun {} -> EBnd m <$!> goG gs g1
-     -- pure $ EAbs i m'
-     -- t <- g
-     -- case t of
-     --   EAbs i m ->
-    --      case m of
-    --        ECh c v fs ->
-    --          ECh c v <$> mapM (\f -> pure f `mComp` goG gs g1) fs
-      -- case tm of
-      --   _ -> undefined
-        -- Choice r rs alts
-        --   -> Choice r rs $! mapAlt (\ _ g2 -> gSeq [g2, goG gs g1]) alts
-        -- Comm m gn -> Comm m $! goG l gn
-        -- GRec r gn -> GRec r $! goG l gn
-        -- GSeq gl   -> gSeq [GSeq (init gl), goG l (last gl)]
-        -- GVar v    -> GVar v
-        -- GEnd      -> goG gs g1
-
+      -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
+      | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
