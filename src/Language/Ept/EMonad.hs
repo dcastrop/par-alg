@@ -35,6 +35,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Language.SessionTypes.Common ( Role(..) )
+import Language.SessionTypes.Global
 import Language.Common.Id
 import Language.Alg.Syntax
 import Language.Alg.Typecheck
@@ -44,7 +45,6 @@ import Language.Par.Role
 import Language.Par.Term
 import Language.Par.Type
 import Language.Par.Prog
--- import Language.SessionTypes.Common hiding (Role)
 
 generate :: Prim v t => TcSt t v -> WtProg t v -> IO (Int, EProg t v)
 generate tcst p = return (nextVar st, a)
@@ -428,11 +428,12 @@ dupBranches r a ps = do
             pair es' = EPair $! es'
         go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x : vs) [] es
         go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
-    ps' rs = zip rs ps
---      -- if we are projecting the input role, we need to cover all cases
---      | r `Set.member` typeRoles a = zip rs ps
---      -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
---      | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
+    ps' rs
+      = zip rs ps
+      -- if we are projecting the input role, we need to cover all cases
+      -- | r `Set.member` typeRoles a = zip rs ps
+      -- -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
+      -- | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
@@ -443,10 +444,14 @@ gen r p (TyAnn (TApp f a) r1) =
 --   = fId
 
 gen r p a
-  | Just (r1, as) <- tryChoice a p
-  = doChoice r r1 rs $! map (gen r p) as
+  | Just (r1, as) <- tryChoice a p = do
+      (_, g) <- inferGTy a p
+      doChoice r r1 (getChRoles g) $! map (gen r p) as
   where
-    !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
+    getChRoles (Choice _ rs _) = rs
+    getChRoles _ = error "Panic! should be a choice at EMonad.gen"
+--  where
+--    !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
 
 gen r (AnnAlg e r2) r1
   | r == r2    = cmsg r r2 r1 `mComp` \ x -> aApp e x >>= mRun
