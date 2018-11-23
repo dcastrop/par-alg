@@ -19,6 +19,7 @@ module Language.Alg.Typecheck
   , appPolyF
 
   , protocol
+  , protoInfer
   , inferGTy
   , needBranch
   , tryChoice
@@ -483,6 +484,7 @@ inferGTy a (AnnAlg e r) = do
 inferGTy a AnnId = pure (a, GEnd)
 
 -- Composition
+inferGTy a (AnnComp [e]) = inferGTy a e
 inferGTy a (AnnComp es) = go $ reverse es
   where
     go [] = pure (a, GEnd)

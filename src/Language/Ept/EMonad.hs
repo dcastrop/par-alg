@@ -28,7 +28,7 @@ import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
 import Data.List ( scanl' )
---import Data.List ( scanl' )
+import Debug.Trace
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
@@ -364,7 +364,14 @@ instance Pretty t => Pretty (MAlt t) where
 
 
 genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EAlt t v)
-genAlt r e (TyAlt as) = ENode <$!> mapM (genAlt r e) as
+genAlt r e (TyAlt as) = do
+
+  (_, gss) <- trace (render as ++ "\n" ++ render e ++ "\n" ++ render r ++ "\n\n") $ unzip <$!> mapM (`protoInfer` e) as
+  let (_ , as') = unzip $! filter ((r `Set.member`) . gRoles . fst) $! zip gss as
+  eNode <$!> mapM (genAlt r e) as'
+  where
+    eNode [t] = t
+    eNode es = ENode es
 genAlt r e r1         = ELeaf <$!> gen r e r1
 
 seqAltsF :: Prim v t => EFun t v -> EAlt t v -> EFun t v
@@ -373,6 +380,7 @@ seqAltsF (EAbs x m1) e = EAbs x $! seqAlts m1 e
 
 seqAlts :: Prim v t => EMonad t v -> EAlt t v -> EMonad t v
 seqAlts m1 (ELeaf mf2)  = ebnd m1 mf2
+seqAlts m1 (ENode []) = m1
 seqAlts m1 n@(ENode alts) = go m1
   where
     go (ECh  c v as) = ECh c v $! zipWith seqAltsF as alts
@@ -430,7 +438,7 @@ dupBranches r a ps = do
         go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
     ps' rs
       = zip rs ps
-      -- if we are projecting the input role, we need to cover all cases
+      -- -- if we are projecting the input role, we need to cover all cases
       -- | r `Set.member` typeRoles a = zip rs ps
       -- -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
       -- | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
