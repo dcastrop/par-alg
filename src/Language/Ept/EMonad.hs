@@ -393,7 +393,10 @@ doChoice r r1 rs fs =
     if r1 == r
     -- I do the choice
     then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
-    else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
+    else if r1 `Set.member` Set.fromList rs
+         then eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
+         else fId
+    -- else eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
 
 dupBranches :: Prim v1 t
             => RoleId
@@ -426,11 +429,11 @@ dupBranches r a ps = do
             pair es' = EPair $! es'
         go  vi vs  [] (e:es) = mBndR newVar e $ \x -> go vi (x : vs) [] es
         go  vi vs (e:es) ts = mBnd newVar e $ \x -> go vi (x : vs) es ts
-    ps' rs
-      -- if we are projecting the input role, we need to cover all cases
-      | r `Set.member` typeRoles a = zip rs ps
-      -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
-      | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
+    ps' rs = zip rs ps
+--      -- if we are projecting the input role, we need to cover all cases
+--      | r `Set.member` typeRoles a = zip rs ps
+--      -- if r is in rs, but not in ps, then 'r' must be in 'a', covered by previous case
+--      | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
 gen r p (TyAnn (TApp f a) r1) =
@@ -454,12 +457,10 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
   where
     go []    = fId
     go (h:t) = do
-      a <- aux (length t > 0) h
+      a <- gen r h r1
       (r3, _) <- inferGTy r1 h
       b <- genAlt r (AnnComp $ reverse t) r3
       pure $! seqAltsF a b
-    --aux True (AnnSplit ts) = dupBranches r r1 ts
-    aux _ p = gen r p r1
 --        where
 --          genComp rr
 --            | r `Set.notMember` (Set.unions $ typeRoles rr : map termRoles t)
@@ -497,13 +498,6 @@ gen r (AnnPrj i _) (TyPrd rs)
 gen _ (AnnPrj _ _) _ = eAbs sameVar $ \x -> mRet x
 
 gen r (AnnSplit ps) r1 = dupBranches r r1 ps
---gen r (AnnSplit ps) r1 = do
---  prd
---  where
---    prd = mSplit newVar $! map (\p -> hAbs $ gen r p r1) ps'
---    ps'
---      | r `Set.member` typeRoles r1 = ps
---      | otherwise = filter ((r `Set.member`) . termRoles) ps
 
 gen r (AnnCase es) (TyBrn i _ a) = gen r (es !! i) a
 

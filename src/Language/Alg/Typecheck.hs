@@ -487,11 +487,11 @@ inferGTy a (AnnComp es) = go $ reverse es
   where
     go [] = pure (a, GEnd)
     go (p:ps) = do
-      (t , g)  <- aux (length ps > 0) p
+      (t , g)  <- inferGTy a p -- aux (length ps > 0) p
       (t', gb) <- protoInfer t (AnnComp $! reverse ps)
       pure (t', seqG g gb)
-    aux True (AnnSplit ts) = dupBranches a ts
-    aux _     p = inferGTy a p
+    --aux True (AnnSplit ts) = dupBranches a ts
+    -- aux _     p = inferGTy a p
 
 
 -- Projection
@@ -503,9 +503,9 @@ inferGTy _ AnnPrj{}
   | otherwise     = fail "Typecheck.inferGTy: ill-typed term in projection"
 
 -- Split
-inferGTy a (AnnSplit es) = do
-  (rs, gs) <- unzip <$!> mapM (inferGTy a) es
-  pure $ (TyPrd rs, gSeq gs)
+inferGTy a (AnnSplit es) = dupBranches a es
+  -- (rs, gs) <- unzip <$!> mapM (inferGTy a) es
+  -- pure $ (TyPrd rs, gSeq gs)
   --let !t  = liftPrd rs
   --    !g  = seqChoices gs
   --pure $ (t, g)
