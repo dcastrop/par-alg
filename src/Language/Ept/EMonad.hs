@@ -18,7 +18,6 @@ module Language.Ept.EMonad
   , genProg
   , generate
   , renderPCode
-  , roleTrack
   , renderPrelude
   ) where
 
@@ -28,14 +27,12 @@ import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
 import Data.List ( scanl' )
-import Debug.Trace
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Language.SessionTypes.Common ( Role(..) )
-import Language.SessionTypes.Global
 import Language.Common.Id
 import Language.Alg.Syntax
 import Language.Alg.Typecheck
@@ -66,12 +63,12 @@ genProg defs = do
           _ -> fail $ "Cannot generate parallel code for function " ++
               render f ++ ". Cannot find a 'master' role."
       where
-        genRole r = (r,) <$> (keep (seqAltsF <$!> gen r p aty <*> close r (ascCod sc)))
+        genRole r = (r,) <$> (keep (join $! seqAltsF r <$!> gen r p aty <*> close r (ascCod sc)))
         aty = ascDom sc
         rs =  Set.toList $! typeRoles aty `Set.union` termRoles p
 
 close :: RoleId -> AType t -> TcM t v (EAlt t v)
-close r (TyAlt ts) = ENode <$> mapM (close r) ts
+close r t@(TyAlt ri ts) = ENode ri (Set.toList $ Set.insert r $ typeRoles t) <$> mapM (close r) ts
 close r (TyBrn i j a)
   | r `Set.member` typeRoles a = ELeaf <$> eAbs sameVar (\x -> mRet (EInj i j x))
 close _ _ = ELeaf <$> fId
@@ -139,12 +136,14 @@ data EFun t v
 type ChannelId = Int
 
 data EMonad t v
-  = ERet !(ETerm t v)
-  | EBnd !(EMonad t v) !(EFun t v)
+  = ERet !(ETerm t v) -- different ways to "return"?
   | ERun !(ETerm t v)
+  | ERbr !RoleId !(EMonad t v) -- "postponed" Branch
+
+  | EBnd !(EMonad t v) !(EFun t v)
   | ESnd !ChannelId !(ETerm t v)
   | ERcv !ChannelId
-  | ECh  ![ChannelId] !(ETerm t v) ![EFun t v]
+  | ECh  !(Set ChannelId) !(ETerm t v) ![EFun t v]
   | EBrn !ChannelId ![EMonad t v]
   deriving (Show, Eq)
 
@@ -154,6 +153,7 @@ eRun t = ERun t
 
 fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
+fvsM (ERbr _ t) = fvsM t
 fvsM (ERun t) = fvsT t
 fvsM (EBnd m1 f2) = fvsM m1 `Set.union` fvsF f2
 fvsM (ESnd _ t) = fvsT t
@@ -169,6 +169,7 @@ ecomp (EAbs x m) f = EAbs x (ebnd m f)
 
 retM :: EMonad t v -> EMonad t v -> EMonad t v
 retM ERet{} m = m
+retM (ERbr r m1) m2 = ERbr r (retM m1 m2)
 retM (EBnd m1 (EAbs x m2)) m = EBnd m1 (EAbs x $ retM m2 m)
 retM (ECh sf e fs) m = ECh sf e $ map (`ecomp` EAbs Nothing m) fs
 retM (EBrn sf ms) m = EBrn sf $ map (`retM` m) ms
@@ -177,6 +178,7 @@ retM m m1 = EBnd m $ EAbs Nothing m1
 ebnd :: EMonad t v -> EFun t v -> EMonad t v
 -- ebnd m@(ERet EApp{}) f = EBnd m f
 ebnd   (ERet t     ) f = app f t
+ebnd   (ERbr r m   ) f = ERbr r (m `ebnd` f)
 ebnd m (EAbs x (ERet (EVar y)))
   | x == Just y = m
 ebnd m (EAbs Nothing  m1@ERet{}) = retM m m1
@@ -189,6 +191,7 @@ ebnd m               f = EBnd m f
 
 ebndr :: EMonad t v -> EFun t v -> EMonad t v
 ebndr   (ERet t     ) f = app f t
+ebndr   (ERbr r m   ) f = ERbr r (m `ebnd` f)
 ebndr m (EAbs x (ERet (EVar y)))
   | x == Just y = m
 ebndr m (EAbs Nothing  m1@ERet{}) = retM m m1
@@ -208,6 +211,7 @@ app :: EFun t v -> ETerm t v -> EMonad t v
 app (EAbs i m) v = go m
   where
     go (ERet v') = ERet $! msbst i v v'
+    go (ERbr r m') = ERbr r $! go m'
     go (ERun v') = eRun $! msbst i v v'
     go (EBnd m1 f) = ebnd (go m1) (substF f)
     go (ESnd c v') = ESnd c $! (msbst i v) v'
@@ -250,6 +254,9 @@ hAbs f t = (`app` t) <$!> f
 
 mRet :: ETerm t v -> TcM t v (EMonad t v)
 mRet t = ERet <$> pure t
+
+mRbr :: RoleId -> ETerm t v -> TcM t v (EMonad t v)
+mRbr r t = ERbr r <$> mRet t
 
 mRun :: ETerm t v -> TcM t v (EMonad t v)
 mRun t = eRun <$> pure t
@@ -296,7 +303,10 @@ mRcv :: (Ord t, Pretty t) => RoleId -> RoleId -> Type t -> TcM t v (EMonad t v)
 mRcv r2 r1 ty = ERcv <$> getChannelId (r1, r2, ty)
 
 mCh :: (Ord t, Pretty t) => RoleId -> ETerm t v -> [RoleId] -> [ETerm t v -> TcM t v (EMonad t v)] -> TcM t v (EMonad t v)
-mCh r1 t rs fs = ECh <$> mapM getChannelId chs <*> pure t <*> mapM (eAbs sameVar) fs
+mCh r1 t rs fs
+  = ECh <$> (Set.fromList <$> mapM getChannelId chs)
+    <*> pure t
+    <*> mapM (eAbs sameVar) fs
   where
     chs = zip3 (repeat r1) rs $ repeat (TSum (map (const TUnit) fs) Nothing)
 
@@ -354,56 +364,64 @@ cmsg _ _ TyApp {} = fail "Error! Cannot generate message from functor \
 cmsg _ _ TyMeta{} = fail "Error! Cannot generate message from metavariable \
                           \to role. Choices must be resolved earlier."
 
-data MAlt t = ELeaf t | ENode [MAlt t]
+data MAlt t = ELeaf t | ENode RoleId [RoleId] [MAlt t]
 
 type EAlt t v = MAlt (EFun t v)
 
 instance Pretty t => Pretty (MAlt t) where
   pretty (ELeaf f) = pretty "leaf " <+> pretty f
-  pretty (ENode fs) = pretty "alts " <+> pretty fs
+  pretty (ENode ri rs fs) = pretty "alts@" <> pretty ri <+> pretty rs <+> pretty fs
 
 
 genAlt :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EAlt t v)
-genAlt r e (TyAlt as) = do
-
-  (_, gss) <- trace (render as ++ "\n" ++ render e ++ "\n" ++ render r ++ "\n\n") $ unzip <$!> mapM (`protoInfer` e) as
-  let (_ , as') = unzip $! filter ((r `Set.member`) . gRoles . fst) $! zip gss as
-  eNode <$!> mapM (genAlt r e) as'
+genAlt r e a@(TyAlt ri as) = eNode <$!> mapM (genAlt r e) as
   where
     eNode [t] = t
-    eNode es = ENode es
+    eNode es = ENode ri (Set.toList $ Set.union (typeRoles a) $ termRoles e) es
 genAlt r e r1         = ELeaf <$!> gen r e r1
 
-seqAltsF :: Prim v t => EFun t v -> EAlt t v -> EFun t v
-seqAltsF mf1 (ELeaf mf2) = ecomp mf1 mf2
-seqAltsF (EAbs x m1) e = EAbs x $! seqAlts m1 e
+seqAltsF :: Prim v t => RoleId -> EFun t v -> EAlt t v -> TcM t v (EFun t v)
+seqAltsF _ mf1 (ELeaf mf2) = pure $! ecomp mf1 mf2
+seqAltsF r (EAbs x m1) e = EAbs x <$!> seqAlts r m1 e
 
-seqAlts :: Prim v t => EMonad t v -> EAlt t v -> EMonad t v
-seqAlts m1 (ELeaf mf2)  = ebnd m1 mf2
-seqAlts m1 (ENode []) = m1
-seqAlts m1 n@(ENode alts) = go m1
+seqAlts :: Prim v t => RoleId -> EMonad t v -> EAlt t v -> TcM t v (EMonad t v)
+seqAlts _r m1 (ELeaf mf2)  = pure $! ebnd m1 mf2
+seqAlts _r m1 (ENode _ _ []) = pure $! m1
+seqAlts  r m1 n@(ENode r1 nr alts) = go m1
   where
-    go (ECh  c v as) = ECh c v $! zipWith seqAltsF as alts
-    go (EBrn c   ms) = EBrn c $! zipWith seqAlts ms alts
-    go (EBnd m2 (EAbs y m3)) = ebnd m2 $! EAbs y $! go m3
-    go t@ERet{} = error $ "Panic! ill-formed sequencing of computations 'seqAlts ret'" ++ render t ++ "\n" ++ render n
-    go t@ERun{} = error $ "Panic! ill-formed sequencing of computations 'seqAlts run'" ++ render t ++ "\n" ++ render n
-    go ESnd{} = error "Panic! ill-formed sequencing of computations 'seqAlts send'"
-    go ERcv{} = error "Panic! ill-formed sequencing of computations 'seqAlts receive'"
+    go (ECh c v as) = do
+      cs' <- mapM (\ rr -> getChannelId (r1, rr, TSum (replicate (length alts) TUnit) Nothing)) nr
+      ECh (Set.union c $ Set.fromList cs') v <$!> zipWithM (seqAltsF r) as alts
+    go (EBrn c   ms)
+      | length alts == length ms = EBrn c <$!> zipWithM (seqAlts r) ms alts
+    go (EBnd (ERbr r' t) f) = go (ERbr r' (EBnd t f))
+    go m2@(ERbr r' t)
+      | any notRet alts = mBrn r r' (replicate (length alts) $ pure t) >>= go
+      | otherwise       = pure m2
+      where
+        notRet (ELeaf (EAbs _ ERet{})) = False
+        notRet (ENode _ _ as) = any notRet as
+        notRet _ = True
+    go (EBnd m2 (EAbs y m3)) = (ebnd m2 . EAbs y) <$!> go m3
+    go m2
+       | r `elem` nr = mBnd newVar (pure m2) $ \x -> mBrn r r1 $ map (seqAlts r (ERet x)) alts
+    go m2 = error $ "Cannot sequence \n" ++ render m2 ++ "\nand: \n" ++ render n
 
 doChoice :: (Ord t, Pretty t)
          => RoleId
          -> RoleId
-         -> [RoleId]
+         -> Set RoleId
          -> [TcM t v (EFun t v)]
          -> TcM t v (EFun t v)
 doChoice r r1 rs fs =
     if r1 == r
     -- I do the choice
-    then eAbs sameVar $ \ x -> mCh r x rs $ map hAbs fs
-    else if r `Set.member` Set.fromList rs
+    then eAbs sameVar $ \ x -> mCh r x (Set.toList rs) $ map hAbs fs
+    else if r `Set.member` rs
          then eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs
-         else fId
+         else eAbs sameVar $ \ x -> mRbr r1 x -- eAbs sameVar $ \ x -> mBrn r r1 $ map (`hAbs` x) fs -- check this case
+                  -- subsequent choices will always have the right "structure". Maybe record some
+                  -- "noop-choice"?
 
 dupBranches :: Prim v1 t
             => RoleId
@@ -444,27 +462,25 @@ dupBranches r a ps = do
       -- | otherwise = filter ((r `Set.member`) . termRoles . snd) $ zip rs ps
 
 gen :: Prim v t => RoleId -> ATerm t v -> AType t -> TcM t v (EFun t v)
+--gen r e r1
+--  | r `Set.notMember` (termRoles e `Set.union` typeRoles r1)
+--  = fId
+
 gen r p (TyAnn (TApp f a) r1) =
   appPoly f a >>= \b -> gen r p (TyAnn b r1)
 
--- gen r e r1
---   | r `Set.notMember` (termRoles e `Set.union` typeRoles r1)
---   = fId
-
 gen r p a
-  | Just (r1, as) <- tryChoice a p = do
-      (_, g) <- inferGTy a p
-      doChoice r r1 (getChRoles g) $! map (gen r p) as
+  | Just (r1, as) <- tryChoice a p
+  = doChoice r r1 (Set.delete r1 rs) $! map (gen r p) as
   where
-    getChRoles (Choice _ rs _) = rs
-    getChRoles _ = error "Panic! should be a choice at EMonad.gen"
---  where
---    !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
+    !rs = typeRoles a `Set.union` termRoles p
 
 gen r (AnnAlg e r2) r1
   | r == r2    = cmsg r r2 r1 `mComp` \ x -> aApp e x >>= mRun
   | otherwise = cmsg r r2 r1
 
+gen _r (AnnComp []) _r1 = fId
+gen r (AnnComp [e]) r1 = gen r e r1
 gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
   where
     go []    = fId
@@ -472,7 +488,20 @@ gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go $! reverse es
       a <- gen r h r1
       (r3, _) <- inferGTy r1 h
       b <- genAlt r (AnnComp $ reverse t) r3
-      pure $! seqAltsF a b
+      seqAltsF r a b
+
+-- FIXME: use below for composition. Solve return value of t
+-- gen r e@(AnnComp es) r1 = keepCtx r r1 e $! go es
+--   where
+--     go []    = fId
+--     go (h:t) = do
+--       a <- gen r (AnnComp t) r1
+--       (r3, _) <- inferGTy r1 (AnnComp t)
+--       b <- genAlt r h r3
+--       seqAltsF r a b
+
+
+-- FIXME: do not call genAlt with AnnComp
 --        where
 --          genComp rr
 --            | r `Set.notMember` (Set.unions $ typeRoles rr : map termRoles t)
@@ -593,6 +622,10 @@ instance Prim v t => Pretty (EFun t v) where
 
 instance forall v t. Prim v t => Pretty (EMonad t v) where
   pretty (ERet t)    = hsep [pretty "return", pprParens t]
+  pretty (ERbr r t)  = align $ vsep [ hsep [ pretty "{- branch at", pretty r, pretty "-}" ]
+                                    , pretty t
+                                    , hsep [ pretty "{- end branch", pretty r, pretty "-}" ]
+                                    ]
   pretty blck@EBnd{} = hsep [ pretty "do"
                             , align $!
                               vsep $!
@@ -637,7 +670,7 @@ instance forall v t. Prim v t => Pretty (EMonad t v) where
                , maybe (pretty "_") pretty v
                , pretty "->"
                ]
-        , pretty (sendTag i c m)
+        , pretty (sendTag i (Set.toList c) m)
         ]
       sendTag _ [] k = k
       sendTag i (cc : cs) k = ESnd cc (EInj i (length a) EUnit) `ebnd` EAbs Nothing (sendTag i cs k)
@@ -801,8 +834,9 @@ getChans (EAbs _ m) = go m
     go (EBnd m1 f) = Set.union (go m1) (getChans f)
     go (ESnd c _) = Set.singleton c
     go (ERcv c) = Set.singleton c
+    go (ERbr _ m1) = go m1
     go (EBrn c ms1) = Set.unions $ Set.singleton c : map go ms1
-    go (ECh cs _ fs1 ) = Set.unions $ Set.fromList cs : map getChans fs1
+    go (ECh cs _ fs1 ) = Set.unions $ cs : map getChans fs1
     go _ = Set.empty
 
 toHsParens :: (Pretty a, Pretty t) => Alg t a -> Doc ann

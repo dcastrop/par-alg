@@ -18,22 +18,22 @@ import Language.Par.Role
 data AType t
   = TyAnn  !(Type t) !RoleId         -- a@r
   | TyBrn  !Int !Int !(AType t)      -- branch_i A b
-  | TyAlt  ![AType t]                -- A \oplus B <- can only occur after case, so we must know always the number of alternatives
+  | TyAlt  !RoleId ![AType t]        -- A \oplus B <- can only occur after case, so we must know always the number of alternatives
   | TyPrd  ![AType t]                -- A x B
   | TyApp  !(Func t) !Role !(Type t) -- F@R a
   | TyMeta !Int                      -- Metavar
   deriving (Eq, Show)
 
-tyAlt :: Eq t => [AType t] -> AType t
-tyAlt (t:ts)
+tyAlt :: Eq t => RoleId -> [AType t] -> AType t
+tyAlt _ (t:ts)
   | all (== t) ts = t
-tyAlt ts = TyAlt ts
+tyAlt ri ts = TyAlt ri ts
 
 typeRoles :: AType t -> Set RoleId
 typeRoles (TyAnn _ r) = Set.singleton r
 typeRoles (TyBrn _ _ a) = typeRoles a
-typeRoles (TyAlt as) = Set.unions $ map typeRoles as
-typeRoles (TyPrd as) = Set.unions $ map typeRoles as
+typeRoles (TyAlt ri as) = Set.insert ri $! Set.unions $! map typeRoles as
+typeRoles (TyPrd as) = Set.unions $! map typeRoles as
 typeRoles (TyApp _ r _) = roleIds r
 typeRoles (TyMeta _) = Set.empty
 
@@ -59,7 +59,7 @@ instance Pretty t => Pretty (AType t) where
                   ]
            , pprParens a
            ]
-  pretty (TyAlt es)
+  pretty (TyAlt _ es)
     = hsep $ punctuate (pretty (" ||" :: String)) $ map pprParens es
   pretty (TyPrd es)
     = hsep $ punctuate (pretty (" *" :: String)) $ map pprParens es

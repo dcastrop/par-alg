@@ -26,7 +26,6 @@ module Language.Alg.Typecheck
   , requiresChoice
   , rAnn
   , rGet
-  , roleTrack
   , WtProg (..)
   ) where
 
@@ -346,8 +345,8 @@ unroll fn f e1 e2 n
 rAnn :: (Eq t, Pretty t) => Type t -> Role -> Either [Char] (AType t)
 rAnn t (RId i)
   = pure $! TyAnn t i
-rAnn t (RAlt rs)
-  = tyAlt <$!> mapM (rAnn t) rs
+rAnn t (RAlt ri rs)
+  = tyAlt ri <$!> mapM (rAnn t) rs
 rAnn (TSum ts _) (RBrn i j r) | len > i
   = TyBrn i j <$!> rAnn (ts !! i) r
   where
@@ -366,41 +365,17 @@ rGet (TyBrn i j a) = do
   ts <- mapM (const (TMeta <$> fresh)) [0..j-2]
   (r, t) <- rGet a
   pure (RBrn i j r, TSum (take i ts ++ t : drop i ts) Nothing)
-rGet (TyAlt []) = error $ "Panic! empty alternative in 'rGet'"
-rGet (TyAlt (x:xs)) = do
+rGet (TyAlt _ []) = error $ "Panic! empty alternative in 'rGet'"
+rGet (TyAlt ri (x:xs)) = do
   (r , t) <- rGet x
   (rs, ts) <- unzip <$!> mapM rGet xs
   sb <- foldM' (`unify` t) (SEnv Map.empty Map.empty) $! ts
-  pure (RAlt $ r : rs, subst (sndE sb) t)
+  pure (RAlt ri $ r : rs, subst (sndE sb) t)
 rGet (TyPrd xs) = do
   (rs, ts) <- unzip <$!> mapM rGet xs
   pure $! (RPrd rs, TPrd ts Nothing)
 rGet (TyApp f r t) = pure $! (r, TApp f t)
 rGet TyMeta{} = error $ "Panic, ambiguous annotated type!"
-
--- Pre: ATerm must be well-typed, and role match its input type.
-roleTrack :: ATerm t v -> Role -> Role
-roleTrack p (RAlt ts)   = RAlt $! map (roleTrack p) ts
-roleTrack AnnId t        = t
-roleTrack (AnnAlg _ r) _ = RId r
-roleTrack (AnnComp es) t = go (reverse es) t
-  where
-    go l (RAlt (th : ts))
-      | all (== th) ts = go l th
-    go [] t' = t'
-    go (x:xs) t' = go xs $! roleTrack x t'
-roleTrack (AnnPrj i _) (RPrd ts) = ts !! i
-roleTrack AnnPrj{} r = r
-roleTrack (AnnSplit es) t = RPrd $! map (`roleTrack` t) es
-roleTrack (AnnCase es) (RBrn i _ a)
-  = let !e = es !! i
-    in roleTrack e a
-roleTrack (AnnCase es) r
-  = rAlt $! map (`roleTrack` r) es
-roleTrack (AnnInj i j) t
-  = RBrn i j t
-roleTrack _ _
-  = error $! "Panic! Ill-typed term reached "
 
 tryChoice :: AType t -> ATerm t v -> Maybe (RoleId, [AType t])
 tryChoice a p
@@ -435,9 +410,9 @@ protoInfer :: forall t v. Prim v t => AType t -> ATerm t v -> TcM t v (AType t, 
 --      A_i |= p ~ G_i : B_i
 --      -----------------------------------------------------
 --      A_1 \oplus A_2 |= p ~ G_1 \oplus G_2 : B_1 \oplus B_2
-protoInfer (TyAlt as) p = do
+protoInfer (TyAlt ri as) p = do
   (bs, ps) <- unzip <$!> mapM (`protoInfer` p) as
-  pure $! (tyAlt bs, Brn ps)
+  pure $! (tyAlt ri bs, Brn ps)
 -- Post : all rules A |= p ~ G : B from now on can assume A is not A_1 \oplus A_2,
 -- so G must be a single global type, not a global type branch!
 
@@ -466,7 +441,7 @@ inferGTy a p
   (bs, gs) <- unzip <$!> mapM (`inferGTy` p) as
   let !g  = Choice r rs $! foldr (uncurry addAlt) emptyAlt $! zip [0..] gs
       !rs = Set.toList $! r `Set.delete` (typeRoles a `Set.union` termRoles p)
-  pure $! (tyAlt bs, g)
+  pure $! (tyAlt r bs, g)
 -- Post: no role contains sum types
 
 -- Message
@@ -537,7 +512,7 @@ inferGTy a (AnnSplit es) = dupBranches a es
 inferGTy a (AnnInj i k) =
   pure (tagAlts i a, GEnd)
   where
-    tagAlts j (TyAlt ts) = tyAlt $! map (tagAlts j) ts
+    tagAlts j (TyAlt ri ts) = tyAlt ri $! map (tagAlts j) ts
     tagAlts j b = TyBrn j k b
 
 -- Case
@@ -562,7 +537,7 @@ needBranch ts = do
           | otherwise -> i
         _ -> go (i+1) rsn
     go i [] = i
-    getAlts (RAlt rs) = concatMap getAlts rs
+    getAlts (RAlt _ rs) = concatMap getAlts rs
     getAlts r = [r]
 
 dupBranches :: forall t v. Prim v t => AType t -> [ATerm t v] -> TcM t v (AType t, GTy t)
@@ -580,7 +555,7 @@ dupBranches a es = do
     liftPrd r1 []     = TyPrd r1 -- XXX: should never happen
     liftPrd r1 (t:ts) = goP ts r1 t
 
-    goP ts ps (TyAlt rs) = tyAlt $ map (goP ts ps) rs
+    goP ts ps (TyAlt ri rs) = tyAlt ri $ map (goP ts ps) rs
     goP []     ps t      = TyPrd (t : ps)
     goP (t:ts) ps p      = goP ts (p : ps) t
 

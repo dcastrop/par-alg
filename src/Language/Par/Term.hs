@@ -92,7 +92,7 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
     ann r (Split es   ) = ((\(a, b) -> (rPrd a, annSplit b)) . unzip) <$!> mapM (ann r) es
 
     ann r (Inj i   j  ) = pure (RBrn i j r, AnnInj i j)
-    ann r (Case es    ) = ((\(a, b) -> (rAlt a, annCase b)) . unzip) <$!> mapM (ann r) es
+    ann r (Case es    ) = ((\(a, b) -> (rAlt ri a, annCase b)) . unzip) <$!> mapM (ann r) es
 
     ann r (Fmap f e   ) = appPoly f e >>= ann r
     ann r t             = pure (RId $ oneOf r, AnnAlg t (oneOf r))
@@ -127,13 +127,13 @@ instance (Pretty v, Pretty t) => Pretty (ATerm t v) where
   pretty (AnnAlg e r) = hcat [ pprParens e, pretty "@", pretty r]
   pretty AnnId        = pretty "id"
   pretty (AnnComp es)
-    = align $ vsep $ prepend (pretty " .") $ fmap (pprParens) es
+    = align $ vsep $ prepend (pretty " .") $ fmap pprParens es
   pretty (AnnPrj i j)  = hcat [pretty "proj", brackets (pretty i <> pretty "," <+> pretty j)]
   pretty (AnnSplit es)
-    = align $ vsep $ prepend (pretty " &&&") $ fmap (pprParens) es
+    = align $ vsep $ prepend (pretty " &&&") $ fmap pprParens es
   pretty (AnnInj i j)   = hcat [pretty "inj", brackets (pretty i <> pretty "," <+> pretty j)]
   pretty (AnnCase es)
-    = align $ vsep $ prepend (pretty " |||") $ fmap (pprParens) es
+    = align $ vsep $ prepend (pretty " |||") $ fmap pprParens es
   pretty (AnnFmap f r g) = hcat [ brackets ( hcat [ pprParens f
                                                   , pretty "@"
                                                   , pretty r]

@@ -25,21 +25,21 @@ mkRole = ST.Rol
 data Role
   = RId RoleId       -- r1, r2 ...
   | RBrn Int Int Role -- branch_i R
-  | RAlt [Role]      -- R1 \oplus R_2
+  | RAlt RoleId [Role]      -- R1 \oplus R_2
   | RPrd [Role]      -- R1 x R2
   deriving (Eq, Show)
 
 roleIds :: Role -> Set RoleId
 roleIds (RId i) = Set.singleton i
 roleIds (RBrn _ _ r) = roleIds r
-roleIds (RAlt rs) = Set.unions $! map roleIds rs
+roleIds (RAlt r rs) = Set.insert r $! Set.unions $! map roleIds rs
 roleIds (RPrd rs) = Set.unions $! map roleIds rs
 
-rAlt :: [Role] -> Role
-rAlt (r:rs)
+rAlt :: RoleId -> [Role] -> Role
+rAlt _ri (r:rs)
   | all (== r) rs = r
-rAlt [r] = r
-rAlt rs  = RAlt rs
+rAlt _ri [r] = r
+rAlt ri rs  = RAlt ri rs
 
 rPrd :: [Role] -> Role
 rPrd (r:rs)
@@ -58,7 +58,7 @@ instance Pretty Role where
   pretty (RBrn i j r) = hsep [ hcat [pretty "branch[", pretty i, pretty ",", pretty j, pretty "]"]
                              , pretty r
                              ]
-  pretty t@(RAlt rs)
+  pretty t@(RAlt _ri rs)
     = hsep $ punctuate (pretty "\\/") $ fmap (prettyLvl (prefLvl t)) rs
   pretty t@(RPrd rs)
     = hsep $ punctuate (pretty "*") $ fmap (prettyLvl (prefLvl t)) rs
