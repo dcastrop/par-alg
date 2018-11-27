@@ -14,7 +14,7 @@ echo "Generating and compiling"
 for DIR in ${DIRS}; do
   pushd ${BENCH_DIR}/${DIR}
   echo ${TEST}
-  stack build; stack exec -- par-lang -g ${TEST}.par
+  stack build; stack exec -- par-lang -p -a=${TEST}Atoms.hs ${TEST}.par
   stack exec -- ghc ${GHC_OPTS} Main.hs
   rm -f *.o
   rm -f *.ho
@@ -38,9 +38,11 @@ for DIR in ${DIRS}; do
     echo  >> ./Measurements/${TEST}_seq.time
     echo  >> ./Measurements/${TEST}_par.time
     ./Main 'par/' --csv ./Measurements/${TEST}_par_${N}.csv +RTS -N${N} >> ./Measurements/${TEST}_par.time
+    sleep 1
     ./Main 'seq/' --csv ./Measurements/${TEST}_seq_${N}.csv +RTS -N${N} >> ./Measurements/${TEST}_seq.time
-    echo  >> ${TEST}_par.time
-    echo  >> ${TEST}_seq.time
+    sleep 1
+    echo  >> ./Measurements/${TEST}_par.time
+    echo  >> ./Measurements/${TEST}_seq.time
   done
   popd
 done

@@ -37,7 +37,7 @@ main = cmain -- msMain 100000
 msMain sz = do
   l <- randList sz
   t'init <- getTime Realtime
-  ms l >>= ensure
+  msp l >>= ensure
   t'last <- getTime Realtime
   print $ t'last - t'init
 
@@ -54,6 +54,6 @@ cmain = do
       , bgroup "std" $ map mkBench lss
       ]
   where
-    mkMsBench l = bench (show $ length l) $ nfIO $ ms l
-    mkSqBench l = bench (show $ length l) $ nf defn0 l
+    mkMsBench l = bench (show $ length l) $ nfIO $ msp l
+    mkSqBench l = bench (show $ length l) $ nf ms l
     mkBench l = bench (show $ length l) $ nf sort l
