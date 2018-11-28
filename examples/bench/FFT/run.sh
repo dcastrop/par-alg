@@ -10,17 +10,17 @@ GHC_OPTS="-threaded -O"
 TEST=${BENCH_DIR##*/}
 TEST=${TEST%.*}
 
-# echo "Generating and compiling"
-# for DIR in ${DIRS}; do
-#   pushd ${BENCH_DIR}/${DIR}
-#   echo ${TEST}
-#   stack build; stack exec -- par-lang -g ${TEST}.par
-#   stack exec -- ghc ${GHC_OPTS} Main.hs
-#   rm -f *.o
-#   rm -f *.ho
-#   rm -f *.hi
-#   popd
-# done
+echo "Generating and compiling"
+for DIR in ${DIRS}; do
+  pushd ${BENCH_DIR}/${DIR}
+  echo ${TEST}
+  stack build; stack exec -- par-lang -g ${TEST}.par
+  stack exec -- ghc ${GHC_OPTS} Main.hs
+  rm -f *.o
+  rm -f *.ho
+  rm -f *.hi
+  popd
+done
 
 echo "Running"
 for DIR in ${DIRS}; do
