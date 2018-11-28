@@ -4,4 +4,6 @@ par-lang.cabal
 *.swp
 *.aux
 *.hp
+*.hi
+*.o
 *.prof
