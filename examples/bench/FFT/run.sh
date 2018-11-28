@@ -1,7 +1,7 @@
 #!/bin/bash
 
 UNROLL=8
-MAX_CORES=12
+MAX_CORES=8
 
 BENCH_DIR=${PWD}
 DIRS=$(for i in `seq 0 ${UNROLL}`; do echo "K${i}"; done)
@@ -32,8 +32,8 @@ for DIR in ${DIRS}; do
     echo "------------ ${N} CORES -------------- >> ${TEST}_par.time
     echo "------------ ${N} CORES -------------- >> ${TEST}_seq.time
     echo  >> ${TEST}_par.time
-    ./Main 'par/' --template json --output ${TEST}_par_${N}.json +RTS -N${N} >> ${TEST}_par.time
-    ./Main 'seq/' --template json --output ${TEST}_seq_${N}.json +RTS -N${N} >> ${TEST}_seq.time
+    ./Main 'par/' -v 2 --template json --output ${TEST}_par_${N}.json +RTS -N${N} >> ${TEST}_par.time
+    ./Main 'seq/' -v 2 --template json --output ${TEST}_seq_${N}.json +RTS -N${N} >> ${TEST}_seq.time
     echo  >> ${TEST}_par.time
     echo  >> ${TEST}_seq.time
   done

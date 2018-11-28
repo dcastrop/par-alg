@@ -8,6 +8,7 @@ import Data.List ( sort )
 import Data.Vector  ( Vector )
 import qualified Data.Vector as V
 import System.Random ( randomRIO )
+import Statistics.Types
 import System.Clock
 
 import Criterion.Main
@@ -27,6 +28,10 @@ range       = [ 2 ^ sizeLow
               , 2 ^ (sizeLow + 4)
               , 2 ^ (sizeLow + 5)
               , 2 ^ (sizeLow + 6)
+              , 2 ^ (sizeLow + 7)
+              , 2 ^ (sizeLow + 8)
+              , 2 ^ (sizeLow + 9)
+              , 2 ^ (sizeLow + 10)
               ]
 step        = sizeLow `div` 10
 numSteps    = 10
@@ -48,9 +53,11 @@ msMain sz = do
   print $ t'last - t'init
 
 
-config = defaultConfig {
-            resamples = 10
-         }
+config = defaultConfig
+  { resamples = 1000
+  , confInterval = mkCL 0.999
+  , timeLimit = 120
+  }
 
 cmain = do
   lss <- mapM randList range >>= ensure
