@@ -14,7 +14,7 @@ echo "Generating and compiling"
 for DIR in ${DIRS}; do
   pushd ${BENCH_DIR}/${DIR}
   echo ${TEST}
-  stack build; stack exec -- par-lang -g ${TEST}.par
+  stack build; stack exec -- par-lang -p ${TEST}.par
   stack exec -- ghc ${GHC_OPTS} Main.hs
   rm -f *.o
   rm -f *.ho

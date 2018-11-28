@@ -1,0 +1,31 @@
+// change int to double in implementation
+type complex = int * int;
+
+poly L = K () + K complex * I;
+poly T = K (() + complex) + I * I;
+
+atom fl  : Rec L * Rec L -> Rec L;
+atom fr  : Rec L * Rec L -> Rec L;
+atom fo  : Rec L -> Rec L;
+atom deinterleave : Rec L -> T (Rec L);
+atom app : Rec L * Rec L -> Rec L;
+
+
+fun nil : () -> Rec L
+  = in . inj[0,2];
+
+fun cons : complex * Rec L -> Rec L
+  = in . inj[1,2];
+
+fun singleton : complex -> Rec L
+  = cons . (id &&& (nil . const ()));
+
+fun fft : Rec L -> Rec L
+  = rec[T] (((nil ||| singleton) ||| app) . (id +++ (fl &&& fr)) . (id +++ (id *** fo))) deinterleave;
+
+par fftp = fft {
+  unroll 4;
+  annotate {
+    fft
+  }
+};
