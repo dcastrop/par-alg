@@ -32,7 +32,9 @@ for DIR in ${DIRS}; do
     echo "------------ ${N} CORES -------------- >> ${TEST}_par.time
     echo "------------ ${N} CORES -------------- >> ${TEST}_seq.time
     echo  >> ${TEST}_par.time
+    sleep 1
     ./Main 'par/' -v 2 --template json --output ${TEST}_par_${N}.json +RTS -N${N} >> ${TEST}_par.time
+    sleep 1
     ./Main 'seq/' -v 2 --template json --output ${TEST}_seq_${N}.json +RTS -N${N} >> ${TEST}_seq.time
     echo  >> ${TEST}_par.time
     echo  >> ${TEST}_seq.time
