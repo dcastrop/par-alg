@@ -14,7 +14,7 @@ echo "Generating and compiling"
 for DIR in ${DIRS}; do
   pushd ${BENCH_DIR}/${DIR}
   echo ${TEST}
-  stack build; stack exec -- par-lang -p ${TEST}.par
+  stack build; stack exec -- par-lang -p -a=Atoms.hs ${TEST}.par
   stack exec -- ghc ${GHC_OPTS} Main.hs
   rm -f *.o
   rm -f *.ho
@@ -25,19 +25,24 @@ done
 echo "Running"
 for DIR in ${DIRS}; do
   pushd ${BENCH_DIR}/${DIR}
-  echo ${DIR} > ${TEST}_par.time
-  echo ${DIR} > ${TEST}_seq.time
+  tar -cvjpf Measurements.tar.bz2 Measurements
+  rm -rf ./Measurements
+  mkdir ./Measurements
+  echo ${DIR} > ./Measurements/${TEST}_par.time
+  echo ${DIR} > ./Measurements/${TEST}_seq.time
   for N in ${CORES}; do
-    echo  >> ${TEST}_seq.time
-    echo "------------ ${N} CORES -------------- >> ${TEST}_par.time
-    echo "------------ ${N} CORES -------------- >> ${TEST}_seq.time
-    echo  >> ${TEST}_par.time
+    echo  >> ./Measurements/${TEST}_seq.time
+    echo  >> ./Measurements/${TEST}_par.time
+    echo "------------ ${N} CORES --------------" >> ./Measurements/${TEST}_par.time
+    echo "------------ ${N} CORES --------------" >> ./Measurements/${TEST}_seq.time
+    echo  >> ./Measurements/${TEST}_seq.time
+    echo  >> ./Measurements/${TEST}_par.time
+    ./Main 'par/' --csv ./Measurements/${TEST}_par_${N}.csv +RTS -N${N} >> ./Measurements/${TEST}_par.time
     sleep 1
-    ./Main 'par/' -v 2 --template json --output ${TEST}_par_${N}.json +RTS -N${N} >> ${TEST}_par.time
+    ./Main 'seq/' --csv ./Measurements/${TEST}_seq_${N}.csv +RTS -N${N} >> ./Measurements/${TEST}_seq.time
     sleep 1
-    ./Main 'seq/' -v 2 --template json --output ${TEST}_seq_${N}.json +RTS -N${N} >> ${TEST}_seq.time
-    echo  >> ${TEST}_par.time
-    echo  >> ${TEST}_seq.time
+    echo  >> ./Measurements/${TEST}_par.time
+    echo  >> ./Measurements/${TEST}_seq.time
   done
   popd
 done
