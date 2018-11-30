@@ -43,14 +43,11 @@ randomRComplex = do
   n2 <- randomRIO (0.0, 1.0 :: Float)
   return $ n1 :+ n2
 
-main = cmain -- msMain 100000
+main = msMain [1,1,1,1,0,0,0,0]
 
-msMain sz = do
-  l <- randList sz
-  t'init <- getTime Realtime
-  fftp l >>= ensure
-  t'last <- getTime Realtime
-  print $ t'last - t'init
+msMain l = do
+  fftp l >>= print
+  print (fft l)
 
 
 config = defaultConfig
