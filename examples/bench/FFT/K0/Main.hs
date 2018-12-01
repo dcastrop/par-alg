@@ -22,16 +22,16 @@ ensure xs = xs `deepseq` return xs
 
 
 range       = [ 2 ^ sizeLow
-              , 2 ^ (sizeLow + 1)
-              , 2 ^ (sizeLow + 2)
-              , 2 ^ (sizeLow + 3)
+--              , 2 ^ (sizeLow + 1)
+--              , 2 ^ (sizeLow + 2)
+--              , 2 ^ (sizeLow + 3)
               , 2 ^ (sizeLow + 4)
-              , 2 ^ (sizeLow + 5)
+--              , 2 ^ (sizeLow + 5)
               , 2 ^ (sizeLow + 6)
-              , 2 ^ (sizeLow + 7)
---              , 2 ^ (sizeLow + 8)
+--              , 2 ^ (sizeLow + 7)
+              , 2 ^ (sizeLow + 8)
 --              , 2 ^ (sizeLow + 9)
---              , 2 ^ (sizeLow + 10)
+              , 2 ^ (sizeLow + 10)
               ]
 step        = sizeLow `div` 10
 numSteps    = 10

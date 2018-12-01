@@ -22,16 +22,16 @@ ensure xs = xs `deepseq` return xs
 
 
 range       = [ 2 ^ sizeLow
-              , 2 ^ (sizeLow + 1)
-              , 2 ^ (sizeLow + 2)
-              , 2 ^ (sizeLow + 3)
+--              , 2 ^ (sizeLow + 1)
+--              , 2 ^ (sizeLow + 2)
+--              , 2 ^ (sizeLow + 3)
               , 2 ^ (sizeLow + 4)
-              , 2 ^ (sizeLow + 5)
+--              , 2 ^ (sizeLow + 5)
               , 2 ^ (sizeLow + 6)
-              , 2 ^ (sizeLow + 7)
---              , 2 ^ (sizeLow + 8)
+--              , 2 ^ (sizeLow + 7)
+              , 2 ^ (sizeLow + 8)
 --              , 2 ^ (sizeLow + 9)
---              , 2 ^ (sizeLow + 10)
+              , 2 ^ (sizeLow + 10)
               ]
 step        = sizeLow `div` 10
 numSteps    = 10
@@ -43,11 +43,14 @@ randomRComplex = do
   n2 <- randomRIO (0.0, 1.0 :: Float)
   return $ n1 :+ n2
 
-main = msMain [1,1,1,1,0,0,0,0]
+main = cmain -- msMain 100000
 
-msMain l = do
-  fftp l >>= print
-  print (fft l)
+msMain sz = do
+  l <- randList sz
+  t'init <- getTime Realtime
+  fftp l >>= ensure
+  t'last <- getTime Realtime
+  print $ t'last - t'init
 
 
 config = defaultConfig

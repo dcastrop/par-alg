@@ -124,11 +124,13 @@ def main(argv):
         sys.exit(-1)
 
 
-    speedups_kns = { kk: { nn: {ss: seq_data[1][ss] / vv
+    speedups_kns = { kk: { nn: {ss: seq_data[nn][ss] / vv
                                   for ss, vv in nn_d.items() }
                               for nn, nn_d in kk_d.items() }
                           for kk, kk_d in par_data.items() }
 
+
+    ## speedups of +RTS -N
     rtsn_x = [ nn for nn, nn_d in seq_data.items() ]
     rtsn_k2 = [ speedups_kns[2][nn][current_S] for nn in rtsn_x ]
     rtsn_k4 = [ speedups_kns[4][nn][current_S] for nn in rtsn_x ]
@@ -146,7 +148,38 @@ def main(argv):
     ax.set_ylim([0, max(rtsn_k2 + rtsn_k4 + rtsn_k6 + rtsn_k8) + 0.5])
     ax.legend(['K2', 'K4', 'K6', 'K8'])
 
-    plt.savefig(out_filepath)
+    fig.savefig(out_filepath + "1", dpi=300)
+    plt.close(fig)
+
+    ## speedups vs -K, for 4 different sizes
+
+    k_x = range(1, 9)
+    sizes_x = [ ss for ss, _ in seq_data[1].items() ]
+    nsizes = len(sizes_x) - 1
+    sz1 = sizes_x[0]
+    sz4 = sizes_x[nsizes]
+    sz2 = sizes_x[nsizes / 3]
+    sz3 = sizes_x[2 * nsizes / 3]
+    k_sz1 = [ speedups_kns[k][4][sz1] for k in k_x ]
+    k_sz2 = [ speedups_kns[k][4][sz2] for k in k_x ]
+    k_sz3 = [ speedups_kns[k][4][sz3] for k in k_x ]
+    k_sz4 = [ speedups_kns[k][4][sz4] for k in k_x ]
+
+    fig, ax = plt.subplots(1, 1)
+    ax.set_ylabel('Speedup', **text_style)
+    ax.set_xlabel('K', **text_style)
+
+    markers = ['o', 'x', 's', 'h']
+
+    plotter(ax, k_x , [ k_sz1, k_sz2, k_sz3 , k_sz4], {})
+    ax.set_title("+RTS -N4 ", **text_style)
+    ax.set_ylim([0, max(k_sz1 + k_sz2 + k_sz3 + k_sz4) + 0.5])
+    ax.legend([sz1, sz2, sz3, sz4])
+
+    fig.savefig(out_filepath + "2", dpi=300)
+    plt.close(fig)
+
+    ## speedups of +RTS -N
 
 # ./plot.py out Base/Measurements/FFT_seq.time K0/Measurements/FFT_par.time
 #     K1/Measurements/FFT_par.time K2/Measurements/FFT_par.time
