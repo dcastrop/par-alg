@@ -14,6 +14,7 @@ module Language.Alg.Syntax
   , Mv(..)
   , Type(..)
   , Scheme(..)
+  , substVar
   , Subst(..)
   , RwStrat(..)
   , rwSeq
@@ -74,6 +75,16 @@ instance Subst a t => Subst a (Poly t) where
       go (PPrd ps) = PPrd $! map go ps
       go (PSum ps) = PSum $! map go ps
 
+substVarP :: Map Id (Type a) -> Poly (Type a) -> Poly (Type a)
+substVarP e = go
+  where
+    go (PK t)    = PK $! substVar e t
+    go x@PV{}    = x
+    go x@PI{}    = x
+    go x@PMeta{} = x
+    go (PPrd ps) = PPrd $! map go ps
+    go (PSum ps) = PSum $! map go ps
+
 pSum, pPrd :: Show a => Poly a -> Poly a -> Poly a
 pSum (PSum xs) y = PSum $! xs ++ [y]
 pSum l r = PSum [l,r]
@@ -117,6 +128,23 @@ data Type a
   | TRec !(Func a)
   | TMeta !Int
   deriving (Eq, Ord, Show)
+
+substVar :: Map Id (Type a) -> Type a -> Type a
+substVar e = go
+  where
+    go x@TPrim{}   = x
+    go x@(TVar i)
+      | Just t <- Map.lookup i e = t
+      | otherwise               = x
+    go x@TUnit{}   = x
+    go (TFun ts)   = TFun $! map go ts
+    -- XXX: careful, substitutions of sums and prods may extend the number
+    -- of elements. See unification rules
+    go (TSum ts t) = TSum (map go ts) t
+    go (TPrd ts t) = TPrd (map go ts) t
+    go (TApp f t)  = TApp (substVarP e f) $! go t
+    go (TRec f)    = TRec $! substVarP e f
+    go x@TMeta{}   = x
 
 instance Subst (Type a) (Type a) where
   subst e = go
@@ -205,10 +233,14 @@ data Alg t v
   | Unit
   | Comp ![Alg t v]
   | Id
+  -- Products
   | Proj !Int !Int
   | Split ![Alg t v]
+  -- Sums
   | Inj !Int !Int
   | Case ![Alg t v]
+  -- Distributivity
+  | Dist !Int !Int !Int
   | Fmap !(Func t) !(Alg t v)
   | In  !(Func t)
   | Out !(Func t)

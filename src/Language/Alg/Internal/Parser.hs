@@ -8,6 +8,7 @@ module Language.Alg.Internal.Parser
   , algParser
   , identifier
   , integer
+  , float
   , stringLiteral
   , initialSt
   , testSt
@@ -50,7 +51,7 @@ polyDef = LanguageDef
           , identLetter     = alphaNum <|> oneOf "_'"
           , opStart         = opLetter polyDef
           , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-          , reservedOpNames = ["*", "+", "->", "&&&", "|||" , ";", ","]
+          , reservedOpNames = ["*", "+", "->", "&&&", "|||", "+++", "***", ">>>", ";", ","]
           , reservedNames   = ["poly", "type", "atom", "fun", "forall",
                                 "const", "id", "Rec", "in", "out", --
                                 "()", "rec", "K", "I" --
@@ -121,7 +122,8 @@ natInt :: AlgParser t Int
 natInt        = fromInteger <$> natural
 integer :: AlgParser t Integer
 integer        = Token.integer        polyLexer
--- float          = Token.float          polyLexer
+float :: AlgParser t Double
+float          = Token.float          polyLexer
 -- naturalOrFloat = Token.naturalOrFloat polyLexer
 -- decimal        = Token.decimal        polyLexer
 -- hexadecimal    = Token.hexadecimal    polyLexer
@@ -203,9 +205,11 @@ simpleType p
 
 algParser :: Show a => Id -> AlgParser t a -> AlgParser t v -> AlgParser t (Alg a v)
 algParser dn pt pv
-  =   singl Comp  <$> try (sepBy1 caseParser (reservedOp "."))
+  = arrParser
   <?> "Expression"
   where
+    arrParser   = singl (Comp . reverse)  <$> try (sepBy1 compParser (reservedOp ">>>"))
+    compParser  = singl Comp  <$> try (sepBy1 caseParser (reservedOp "."))
     caseParser  = singl Case  <$> try (sepBy1 sumParser (reservedOp "|||"))
     sumParser   = singl (Case . inj) <$> try (sepBy1 splitParser (reservedOp "+++"))
       where
@@ -234,6 +238,7 @@ aAlg dn pt pv
   <|> try pId
   <|> try pProj
   <|> try pInj
+  <|> try pDist
   <|> try pIn
   <|> try pOut
   <|> try pVar
@@ -249,6 +254,8 @@ aAlg dn pt pv
             uncurry Proj <$> brackets ((,) <$> natInt <*> (reservedOp "," *> natInt))
     pInj  = reserved "inj" >>
             uncurry Inj <$> brackets ((,) <$> natInt <*> (reservedOp "," *> natInt))
+    pDist = reserved "distr" >>
+            (\(a,b,c) -> Dist a b c) <$> brackets ((,,) <$> natInt <*> (reservedOp "," *> natInt) <*> (reservedOp "," *> natInt))
     pIn   = reserved "in" >>
       In <$> choice [try $ brackets $ polyParser pt, PMeta <$> fresh]
     pOut  = reserved "out" >>
@@ -293,6 +300,7 @@ doRename   e@Unit{}   = pure e
 doRename   e@Id{}     = pure e
 doRename   e@Proj{}   = pure e
 doRename   e@Inj{}    = pure e
+doRename   e@Dist{}   = pure e
 doRename   e@In {}    = pure e
 doRename   e@Out{}    = pure e
 

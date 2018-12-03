@@ -163,6 +163,13 @@ typeOf s e@(Case es   ) t
       !to  <- TMeta <$!> fresh
       !s'  <- unify s t (TSum ts Nothing `tFun` to)
       foldM' (uncurry . typeOf) s' $! zip es $! map (`tFun` to) ts
+typeOf s (Dist n i j) t = do
+  ss <- mapM (const (TMeta <$> fresh)) [0..j-1]
+  ps <- mapM (const (TMeta <$> fresh)) [0..i-2]
+  let ps1 = take n ps
+      ps2 = drop n ps
+  unify s t (TPrd (ps1 ++ TSum ss Nothing : ps2) Nothing
+            `tFun` TSum (map (\st -> TPrd (ps1 ++ st : ps2 ) Nothing) ss) Nothing)
 typeOf s (Fmap f e   ) t = do
   !a <- TMeta <$!> fresh
   !b <- TMeta <$!> fresh

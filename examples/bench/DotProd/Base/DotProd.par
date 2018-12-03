@@ -1,0 +1,37 @@
+// Problem with floats and "." for function composition
+poly L1 = K () + K int * I;
+poly L2 = K () + K (int * int) * I;
+
+fun interleave : forall a b c d, (a * b) * (c * d) -> (a * c) * (b * d)
+  =  ((proj[0,2] . proj[0,2]) &&& (proj[0,2] . proj[1,2]))
+ &&& ((proj[1,2] . proj[0,2]) &&& (proj[1,2] . proj[1,2]));
+
+fun lzip : forall a, L1 a * L1 a -> L2 (a * a)
+  =   distr[0,2,2]
+  >>>  (  (inj[0,2] . proj[0,2])
+      ||| (  distr[1,2,2]
+         >>>  (  (inj[0,2] . proj[1,2])
+             ||| (inj[1,2] . interleave)
+              )
+          )
+       );
+
+atom mult : int * int -> int;
+atom sum  : int * int -> int;
+
+fun dot : Rec L1 * Rec L1 -> int
+   = rec [L2] (const 0 ||| ((mult *** id) >>> sum)) (lzip . (out *** out));
+
+// fun lzip : forall a, L1 a * L1 a -> L2 (a * a)
+//   = (  (inj[0,2] . proj[0,2])
+//    |||  (  (inj[0,2] . proj[1,2])
+//        ||| ( inj[1,2]
+//            .  (
+//               )
+//            )
+//         )
+//     ) . distr[0,2,2];
+
+//
+// fun dot : Rec L -> int
+//   = rec [

@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# OPTIONS_GHC -Wwarn #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -116,7 +115,8 @@ eProj i _ (EPair ps) = ps !! i
 eProj i j e          = EProj i j e
 
 eLet :: Id -> ETerm t v -> ETerm t v -> ETerm t v
-eLet v0 (EVar v1) t1 = sbst v0 (EVar v1) t1
+eLet v0 t@EVar{}  t1 = sbst v0 t t1
+eLet v0 t@EPair{} t1 = sbst v0 t t1
 eLet v t1 t2 = ELet v t1 t2
 
 eCase :: ETerm t v -> [(Id, ETerm t v)] -> ETerm t v
@@ -910,6 +910,15 @@ toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
 toETerm (Case es) t = do
   vs <- mapM (const newVar) es
   (eCase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
+toETerm (Dist n i j) t = do
+  vs <- replicateM j (mkV <$> newVar)
+  pure $!
+    eCase (eProj n i t) $!
+    zipWith (\ m v ->
+               (v, EInj m j $
+                   EPair $ map (\k -> eProj k i t) [0..n-1]
+                   ++ EVar v : map (\k -> eProj k i t) [n+1..i-1])
+        ) [0..] vs
 toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
 toETerm (Rec dn _pf _e1 _e2) t
   = pure $ EApp dn t

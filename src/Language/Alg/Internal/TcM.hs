@@ -263,8 +263,8 @@ instance Generalise (TcM t v) (Type t) where
 
 skolemise :: Ftv t => Scheme t -> TcM t v (Type t)
 skolemise ForAll{scVars=vs, scType=ty}
-  = (`subst` ty) . Map.fromList
-  <$!> mapM (\i -> (getId i,) . TMeta <$!> fresh) (Set.toList vs)
+  = (`substVar` ty) . Map.fromList
+  <$!> mapM (\i -> (i,) . TMeta <$!> fresh) (Set.toList vs)
 
 tyVarSupplier :: Set String -> [String]
 tyVarSupplier fvs

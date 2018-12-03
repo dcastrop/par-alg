@@ -84,6 +84,7 @@ instance Preference (Alg t v) where
   prefLvl Id      = Lvl $ -1
   prefLvl Proj{}  = Lvl $ -1
   prefLvl Inj{}   = Lvl $ -1
+  prefLvl Dist{}  = Lvl $ -1
   prefLvl In{}    = Lvl $ -1
   prefLvl Out{}   = Lvl $ -1
   prefLvl Fmap{}  = Lvl $ -1
@@ -158,6 +159,7 @@ instance (Pretty t, Pretty v) => Pretty (Alg t v) where
   pretty (Inj i j)    = hcat [pretty "inj", brackets (pretty i <> pretty ", " <> pretty j)]
   pretty (Case es)
     = group $! encloseSep emptyDoc emptyDoc (pretty "||| ") $! fmap pprParens es
+  pretty (Dist n i j) = hcat [pretty "dist", brackets (pretty n <> pretty ", " <> pretty i <> pretty ", " <> pretty j)]
   pretty (Fmap f g) = hcat [brackets (pretty f), pprParens g]
   pretty (In f)     = hcat [pretty "in", brackets $ pretty f]
   pretty (Out f)    = hcat [pretty "out", brackets $ pretty f]
