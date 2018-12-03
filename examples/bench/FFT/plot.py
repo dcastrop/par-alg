@@ -154,16 +154,17 @@ def main(argv):
     ## speedups vs -K, for 4 different sizes
 
     k_x = range(1, 9)
-    sizes_x = [ ss for ss, _ in seq_data[1].items() ]
+    sizes_x = [ int(ss) for ss, _ in seq_data[1].items() ]
+    sizes_x.sort()
     nsizes = len(sizes_x) - 1
     sz1 = sizes_x[0]
     sz4 = sizes_x[nsizes]
     sz2 = sizes_x[nsizes / 3]
-    sz3 = sizes_x[2 * nsizes / 3]
-    k_sz1 = [ speedups_kns[k][4][sz1] for k in k_x ]
-    k_sz2 = [ speedups_kns[k][4][sz2] for k in k_x ]
-    k_sz3 = [ speedups_kns[k][4][sz3] for k in k_x ]
-    k_sz4 = [ speedups_kns[k][4][sz4] for k in k_x ]
+    sz3 = sizes_x[nsizes / 2]
+    k_sz1 = [ speedups_kns[k][8][sz1] for k in k_x ]
+    k_sz2 = [ speedups_kns[k][8][sz2] for k in k_x ]
+    k_sz3 = [ speedups_kns[k][8][sz3] for k in k_x ]
+    k_sz4 = [ speedups_kns[k][8][sz4] for k in k_x ]
 
     fig, ax = plt.subplots(1, 1)
     ax.set_ylabel('Speedup', **text_style)
@@ -172,11 +173,40 @@ def main(argv):
     markers = ['o', 'x', 's', 'h']
 
     plotter(ax, k_x , [ k_sz1, k_sz2, k_sz3 , k_sz4], {})
-    ax.set_title("+RTS -N4 ", **text_style)
+    ax.set_title("+RTS -N8 ", **text_style)
     ax.set_ylim([0, max(k_sz1 + k_sz2 + k_sz3 + k_sz4) + 0.5])
     ax.legend([sz1, sz2, sz3, sz4])
 
     fig.savefig(out_filepath + "2", dpi=300)
+    plt.close(fig)
+
+    ## speedups vs size, for 4 different K values, fixed +RTS -N
+
+    rtsn = 8
+    sizes_x = [ ss for ss, _ in seq_data[1].items() ]
+    sizes_x.sort()
+    k1 = 1
+    k2 = 2
+    k3 = 6
+    k4 = 8
+    sz_k1 = [ speedups_kns[k1][rtsn][sz] for sz in sizes_x ]
+    sz_k2 = [ speedups_kns[k2][rtsn][sz] for sz in sizes_x ]
+    sz_k3 = [ speedups_kns[k3][rtsn][sz] for sz in sizes_x ]
+    sz_k4 = [ speedups_kns[k4][rtsn][sz] for sz in sizes_x ]
+
+    fig, ax = plt.subplots(1, 1)
+    ax.set_ylabel('Speedup', **text_style)
+    ax.set_xlabel('Size (n. elems)', **text_style)
+    ax.set_xscale('log')
+
+    markers = ['o', 'x', 's', 'h']
+
+    plotter(ax, sizes_x , [ sz_k1, sz_k2, sz_k3 , sz_k4], {})
+    ax.set_title("+RTS -N" + str(rtsn), **text_style)
+    ax.set_ylim([0, max(sz_k1 + sz_k2 + sz_k3 + sz_k4) + 0.5])
+    ax.legend(['K' + str(k1), 'K'+ str(k2), 'K' + str(k3), 'K' + str(k4)])
+
+    fig.savefig(out_filepath + "3", dpi=300)
     plt.close(fig)
 
     ## speedups of +RTS -N

@@ -22,15 +22,15 @@ ensure xs = xs `deepseq` return xs
 
 
 range       = [ 2 ^ sizeLow
---              , 2 ^ (sizeLow + 1)
---              , 2 ^ (sizeLow + 2)
---              , 2 ^ (sizeLow + 3)
+              , 2 ^ (sizeLow + 1)
+              , 2 ^ (sizeLow + 2)
+              , 2 ^ (sizeLow + 3)
               , 2 ^ (sizeLow + 4)
---              , 2 ^ (sizeLow + 5)
+              , 2 ^ (sizeLow + 5)
               , 2 ^ (sizeLow + 6)
---              , 2 ^ (sizeLow + 7)
+              , 2 ^ (sizeLow + 7)
               , 2 ^ (sizeLow + 8)
---              , 2 ^ (sizeLow + 9)
+              , 2 ^ (sizeLow + 9)
               , 2 ^ (sizeLow + 10)
               ]
 step        = sizeLow `div` 10
@@ -59,12 +59,17 @@ config = defaultConfig
   , timeLimit = 60
   }
 
-cmain = do
-  lss <- mapM randList range >>= ensure
+mkEnv = mapM randList range
+
+cmain =
   defaultMainWith config
-      [ bgroup "par" $ map mkMsBench lss
-      , bgroup "seq" $ map mkSqBench lss
+      [ env mkEnv mkMsBench
+      , env mkEnv mkSqBench
       ]
   where
-    mkMsBench l = bench (show $ length l) $ nfIO $ fftp l
-    mkSqBench l = bench (show $ length l) $ nf fft l
+    mkMsBench l = bgroup "par" $ take (length range) $ go l
+      where
+        go ~(l:t) = bench (show $ length l) (nfIO $ fftp l) : go t
+    mkSqBench l = bgroup "seq" $ take (length range) $ go l
+      where
+        go ~(l:t) = bench (show $ length l) (nf fft l) : go t

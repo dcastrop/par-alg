@@ -4,7 +4,7 @@ UNROLL=8
 MAX_CORES=8
 
 BENCH_DIR=${PWD}
-DIRS=$(for i in `seq 1 ${UNROLL}`; do echo "K${i}"; done)
+DIRS=$(for i in `seq 0 ${UNROLL}`; do echo "K${i}"; done)
 CORES=`seq 1 ${MAX_CORES}`
 GHC_OPTS="-threaded -rtsopts"
 TEST=${BENCH_DIR##*/}
@@ -41,7 +41,7 @@ for N in ${CORES}; do
   echo  >> ./Measurements/${TEST}_seq.time
   echo "------------ ${N} CORES --------------" >> ./Measurements/${TEST}_seq.time
   echo  >> ./Measurements/${TEST}_seq.time
-  ./Main 'seq/' --csv ./Measurements/${TEST}_seq_${N}.csv +RTS -N${N} -A7G >> ./Measurements/${TEST}_seq.time
+  ./Main 'seq/' --csv ./Measurements/${TEST}_seq_${N}.csv +RTS -A1G -N${N} >> ./Measurements/${TEST}_seq.time
   sleep 1
   echo  >> ./Measurements/${TEST}_seq.time
 done
@@ -57,7 +57,7 @@ for DIR in ${DIRS}; do
     echo  >> ./Measurements/${TEST}_par.time
     echo "------------ ${N} CORES --------------" >> ./Measurements/${TEST}_par.time
     echo  >> ./Measurements/${TEST}_par.time
-    ./Main 'par/' --csv ./Measurements/${TEST}_par_${N}.csv +RTS -N${N} -A7G >> ./Measurements/${TEST}_par.time
+    ./Main 'par/' --csv ./Measurements/${TEST}_par_${N}.csv +RTS -A1G -N${N} >> ./Measurements/${TEST}_par.time
     sleep 1
     echo  >> ./Measurements/${TEST}_par.time
   done
