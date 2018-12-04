@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -fno-cse #-}
 module Main where
 
+import Control.Monad ( when )
 import Data.Typeable
 import Data.Data
 import Data.Char
@@ -39,13 +40,15 @@ compile flg f = do
   let (fnm, _ext) = splitExtension f
   writeFile (fnm ++ ".proto") $ renderProg $ wtPDefs pr1
   logInfo "...compiling to monadic code"
+  when (gen_atoms flg) $ do
+    atomsMod <- generateAtoms atomsF preludeF tcSt pr1
+    writeFile (atoms flg) atomsMod
   (_, parProg) <- generate tcSt pr1
   writeFile (capitalise fnm ++ ".hs") $
-    renderPCode
-      (takeBaseName $ maybe stdPrelude id $ prelude flg)
-      (takeBaseName $ atoms flg)
-      (capitalise $ takeBaseName f) parProg
+    renderPCode preludeF atomsF (capitalise $ takeBaseName f) parProg
   where
+    atomsF = takeBaseName $ atoms flg
+    preludeF = takeBaseName $ maybe stdPrelude id $ prelude flg
     capitalise [] = []
     capitalise (h : t) = toUpper h : t
 

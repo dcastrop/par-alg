@@ -18,6 +18,10 @@ module Language.Alg.Internal.TcM
   , lookupVar
   , getChannelId
   , lookupChannelId
+  , getDefnId
+  , lookupDefnId
+  , getFuncId
+  , lookupFuncId
   , lookupPoly
   , localTc
   , initSt
@@ -29,8 +33,6 @@ module Language.Alg.Internal.TcM
   , polyDefined
   , typeDefined
   , exprDefined
-  , getDefnId
-  , lookupDefnId
   , foldM'
   , (<$!>)
   , TypeOf (..)
@@ -75,6 +77,9 @@ data TcSt t v = TcSt { nextId    :: Int
                      , defnId    :: Int
                      , defnsL    :: !(Map (Alg t v) Id)
                      , defnsR    :: !(Map Id (Alg t v))
+                     , funcId    :: Int
+                     , funcsL    :: !(Map (Func t) Id)
+                     , funcsR    :: !(Map Id (Func t))
                      , knownIds  :: !(Map String Id)
                      , fDefns    :: !(Map Id (Func t))
                      , tDefns    :: !(Map Id (Type t))
@@ -102,9 +107,9 @@ getDefnId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
     insert (st@TcSt { defnId = i, defnsL = ch, defnsR = chi })
       | Just v <- Map.lookup t ch = (v, st)
       | otherwise = (vv, st { defnId = j
-                                  , defnsL = Map.insert t vv ch
-                                  , defnsR = Map.insert vv t chi
-                                  })
+                            , defnsL = Map.insert t vv ch
+                            , defnsR = Map.insert vv t chi
+                            })
       where
         (j, vv) = mkAux t
         mkAux (Var v) = (i, v)
@@ -112,6 +117,24 @@ getDefnId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
 
 lookupDefnId :: Prim v t => Int -> TcM t v (Alg t v)
 lookupDefnId t = get >>= (pure . (Map.! mkId t "") . defnsR )
+
+getFuncId :: Prim v t => Func t -> TcM t v Id
+getFuncId (PV v) = pure v
+getFuncId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
+  where
+    insert (st@TcSt { funcId = i, funcsL = ch, funcsR = chi })
+      | Just v <- Map.lookup t ch = (v, st)
+      | otherwise = (vv, st { funcId = j
+                            , funcsL = Map.insert t vv ch
+                            , funcsR = Map.insert vv t chi
+                            })
+      where
+        (j, vv) = mkAux t
+        mkAux (PV v) = (i, v)
+        mkAux _ = (i+1, mkId i $ "F" ++ show i)
+
+lookupFuncId :: Prim v t => Int -> TcM t v (Func t)
+lookupFuncId t = get >>= (pure . (Map.! mkId t "") . funcsR )
 
 initSt :: Parser.St t -> TcSt t v
 initSt s = TcSt { nextId = Parser.nextId s
@@ -123,6 +146,9 @@ initSt s = TcSt { nextId = Parser.nextId s
                 , defnId = 0
                 , defnsL = Map.empty
                 , defnsR = Map.empty
+                , funcId = 0
+                , funcsL = Map.empty
+                , funcsR = Map.empty
                 , knownIds = Parser.knownIds s
                 , fDefns = Map.empty
                 , tDefns = Map.empty

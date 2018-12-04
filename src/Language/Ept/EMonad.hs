@@ -5,7 +5,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
--- Endpoint terms: monadic language for parallel programs
 module Language.Ept.EMonad
   ( ETerm(..)
   , EFun(..)
@@ -15,7 +14,9 @@ module Language.Ept.EMonad
   , gen
   , genAlt
   , genProg
+  , genAtom
   , generate
+  , generateAtoms
   , renderPCode
   , renderPrelude
   ) where
@@ -46,6 +47,32 @@ generate :: Prim v t => TcSt t v -> WtProg t v -> IO (Int, EProg t v)
 generate tcst p = return (nextVar st, a)
   where
     (a, st, _w) = runRWS (genProg p) () tcst
+
+generateAtoms :: Prim v t => String -> String -> TcSt t v -> WtProg t v -> IO String
+generateAtoms fn prel tcst p = pure contents
+  where
+    (a, _st, _w) = runRWS (genAtom p) () tcst
+    contents = renderString
+      $! layoutSmart defaultLayoutOptions
+      $! vsep
+      $! [pprHeader, line, a]
+    pprHeader = vsep $!
+      [ pretty "module" <+> pretty fn <+> pretty "where"
+      , line
+      , pretty "import" <+> pretty prel
+      ]
+
+genAtom :: Prim v t => WtProg t v -> TcM t v (Doc ann)
+genAtom WtProg { wtTys = tys, wtAtoms = atoms } = do
+  hsTyDefs    <- Map.elems <$> Map.traverseWithKey genTy tys
+  hsTyDefs1   <- Map.elems <$> ((funcsR <$> get) >>= Map.traverseWithKey goTy)
+  hsDataDefs  <- Map.elems <$> Map.traverseWithKey genRec tys
+  hsDataDefs1 <- Map.elems <$> ((funcsR <$> get) >>= Map.traverseWithKey goRec)
+  hsStubs     <- Map.elems <$> Map.traverseWithKey genStubs atoms
+  pure $! vsep $ hsTyDefs1 ++ hsDataDefs1 ++ hsTyDefs ++ hsDataDefs ++ hsStubs
+  where
+    goRec i t = genRec i (AnnF t)
+    goTy  i t = genTy  i (AnnF t)
 
 genProg :: Prim v t => WtProg t v -> TcM t v (EProg t v)
 genProg defs = do
@@ -567,7 +594,7 @@ keepCtx r r1 e m = do
 
 
 --------------------------------------------------------------------------------
--- Prettyprinting instances
+-- Prettyprinting instances and haskell code generation
 
 instance IsCompound (ETerm t v) where
   isCompound EVar {} = False
@@ -922,10 +949,82 @@ toETerm (Dist n i j) t = do
 toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
 toETerm (Rec dn _pf _e1 _e2) t
   = pure $ EApp dn t
-toETerm (In  _) t = newVar >>= \i -> pure (eApp (mkId i "rin") t) -- FIXME: in/out
-toETerm (Out _) t = newVar >>= \i -> pure (eApp (mkId i "rout") t) -- FIXME: in/out
+toETerm (In  f) t = do
+  fn <- getLbl <$> getFuncId f
+  newVar >>= \i -> pure (eApp (mkId i $ "in" ++ fn) t)
+toETerm (Out f) t = do
+  fn <- getLbl <$> getFuncId f
+  newVar >>= \i -> pure (eApp (mkId i $ "out" ++ fn) t)
 
--- renderAtoms :: TyEnv t ->
--- renderAtoms = vsgo . Map.toList
---   where
---     go ()
+toHsTPar :: Prim v t
+         => Lvl -> Type t -> TcM t v (Doc ann)
+toHsTPar ll t'
+  | prefLvl t' < ll = toHsT t'
+  | otherwise = parens <$> toHsT t'
+
+toHsT :: Prim v t => Type t -> TcM t v (Doc ann)
+toHsT (TPrim a   ) = pure $! pretty $ capitalise $ render a -- FIXME:
+  where
+    capitalise [] = []
+    capitalise (h : t) = toUpper h : t
+toHsT (TVar  a   ) = pure $! pretty a
+toHsT  TUnit {}    = pure $! pretty "()"
+toHsT t@(TFun  ts  ) = (hsep . punctuate (pretty "->")) <$!> mapM go ts
+  where
+    go = toHsTPar (prefLvl t)
+toHsT t@(TSum  ts Nothing) =
+  (hsep . (pretty "Sum" <> pretty (length ts) :)) <$!> mapM go ts
+  where
+    go = toHsTPar (prefLvl t)
+toHsT t@(TPrd ts Nothing) =
+  (hsep . (pretty "Pair" <> pretty (length ts) :)) <$!> mapM go ts
+  where
+    go = toHsTPar (prefLvl t)
+toHsT TPrd{} = error "Panic! Unexpected metavariable"
+toHsT TSum{} = error "Panic! Unexpected metavariable"
+toHsT (TApp  f  t) = toHsT t >>= toHsP f
+toHsT (TRec  f   ) = (pretty "Rec" <>) . pretty <$!> getFuncId f
+toHsT TMeta{} = error "Panic! Unexpected metavariable"
+
+toHsP :: Prim v t => Func t -> Doc ann -> TcM t v (Doc ann)
+toHsP (PK t)    _ = toHsT t
+toHsP (PV i)    t = lookupPoly i >>= (`toHsP` t)
+toHsP PI        t = pure t
+toHsP (PPrd ps) t
+  = (hsep . ((pretty "Pair" <> pretty (length ps)) :)) <$> mapM go ps
+  where
+    go p
+      | isCompound p = parens <$> toHsP p t
+      | otherwise    = toHsP p t
+toHsP (PSum ps) t
+  = (hsep . ((pretty "Sum" <> pretty (length ps)) :)) <$> mapM go ps
+  where
+    go p
+      | isCompound p = parens <$> toHsP p t
+      | otherwise    = toHsP p t
+toHsP PMeta{} _ = error "Panic! Unexpected metavariable"
+
+genTy :: Prim v t => Id -> TyDef t -> TcM t v (Doc ann)
+genTy i (AnnF f)
+  = (pretty "type" <+> pretty i <+> pretty "a =" <+>) <$> toHsP f (pretty "a")
+genTy i (AnnT t) = (pretty "type" <+> pretty i <+> pretty "=" <+>) <$> toHsT t
+genTy _ (AnnA _) = error $ "Panic! Unexpected atom"
+
+genRec :: Prim v t => Id -> TyDef t -> TcM t v (Doc ann)
+genRec _ AnnT{} = pure emptyDoc
+genRec _ AnnA{} = pure emptyDoc
+genRec f (AnnF p) = do
+  cs <- constr p
+  pure $! hang 2 $ vsep $
+    [ header , pretty "=" <+> head cs]
+    ++ (map (pretty "|" <+>) $ tail cs)
+  where
+    header = pretty "data" <+> pretty "Rec" <> pretty f
+    constr (PSum ps) = concat <$!> zipWithM (\i -> go (pretty f <> pretty "Inj" <> pretty i <> pretty "_" <> pretty (length ps))) [(0::Int)..] ps
+    constr p1         = ((:[]) . (pretty f <+>)) <$!> toHsP p1 (pretty "Rec" <> pretty f)
+    go n (PSum ps)
+      = concat <$!> zipWithM (\i -> go (n <> pretty "Inj" <> pretty i <> pretty "_" <> pretty (length ps))) [(0::Int)..] ps
+    go n p1 = ((:[]) . (n <+>) . parens) <$!> toHsP p1 (pretty "Rec" <> pretty f)
+
+genStubs :: Id -> Type t -> TcM t v (Doc ann)
+genStubs _ _ = pure $! pretty "stub"
