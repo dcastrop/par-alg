@@ -7,6 +7,7 @@ import Data.Typeable
 import Data.Data
 import Data.Char
 import System.Environment
+import System.Directory
 import System.Console.CmdArgs
 import System.FilePath.Posix
 
@@ -41,8 +42,10 @@ compile flg f = do
   writeFile (fnm ++ ".proto") $ renderProg $ wtPDefs pr1
   logInfo "...compiling to monadic code"
   when (gen_atoms flg) $ do
-    atomsMod <- generateAtoms atomsF preludeF tcSt pr1
-    writeFile (atoms flg) atomsMod
+    existsMod <- doesPathExist (atoms flg)
+    if existsMod
+      then output $ "Atoms module '" ++ atoms flg ++ "' already exists."
+      else generateAtoms atomsF preludeF tcSt pr1 >>= writeFile (atoms flg)
   (_, parProg) <- generate tcSt pr1
   writeFile (capitalise fnm ++ ".hs") $
     renderPCode preludeF atomsF (capitalise $ takeBaseName f) parProg

@@ -16,11 +16,11 @@ fun lzip : forall a, L1 a * L1 a -> L2 (a * a)
           )
        );
 
-atom mult : int * int -> int;
-atom sum  : int * int -> int;
+atom imult : int * int -> int;
+atom isum  : int * int -> int;
 
 fun dot : Rec L1 * Rec L1 -> int
-   = rec [L2] (const 0 ||| ((mult *** id) >>> sum)) (lzip . (out *** out));
+   = rec [L2] (const 0 ||| ((imult *** id) >>> isum)) (lzip . (out *** out));
 
 // fun lzip : forall a, L1 a * L1 a -> L2 (a * a)
 //   = (  (inj[0,2] . proj[0,2])

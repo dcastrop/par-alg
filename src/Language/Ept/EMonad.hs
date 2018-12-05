@@ -26,7 +26,7 @@ import Control.Monad.RWS.Strict
 import Data.Char ( toUpper )
 import Data.Map ( Map )
 import Data.Set ( Set )
-import Data.List ( scanl' )
+import Data.List ( scanl', foldl' )
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.String
 import qualified Data.Map as Map
@@ -55,10 +55,10 @@ generateAtoms fn prel tcst p = pure contents
     contents = renderString
       $! layoutSmart defaultLayoutOptions
       $! vsep
-      $! [pprHeader, line, a]
+      $! [pprHeader, a]
     pprHeader = vsep $!
       [ pretty "module" <+> pretty fn <+> pretty "where"
-      , line
+      , emptyDoc
       , pretty "import" <+> pretty prel
       ]
 
@@ -69,7 +69,12 @@ genAtom WtProg { wtTys = tys, wtAtoms = atoms } = do
   hsDataDefs  <- Map.elems <$> Map.traverseWithKey genRec tys
   hsDataDefs1 <- Map.elems <$> ((funcsR <$> get) >>= Map.traverseWithKey goRec)
   hsStubs     <- Map.elems <$> Map.traverseWithKey genStubs atoms
-  pure $! vsep $ hsTyDefs1 ++ hsDataDefs1 ++ hsTyDefs ++ hsDataDefs ++ hsStubs
+  pure $! vsep $ hsTyDefs1
+    ++ emptyDoc : hsDataDefs1
+    ++ emptyDoc : hsTyDefs
+    ++ emptyDoc : hsDataDefs
+    ++ emptyDoc : hsStubs
+    ++ [emptyDoc]
   where
     goRec i t = genRec i (AnnF t)
     goTy  i t = genTy  i (AnnF t)
@@ -991,18 +996,22 @@ toHsP (PK t)    _ = toHsT t
 toHsP (PV i)    t = lookupPoly i >>= (`toHsP` t)
 toHsP PI        t = pure t
 toHsP (PPrd ps) t
-  = (hsep . ((pretty "Pair" <> pretty (length ps)) :)) <$> mapM go ps
-  where
-    go p
-      | isCompound p = parens <$> toHsP p t
-      | otherwise    = toHsP p t
+  = (hsep . ((pretty "Pair" <> pretty (length ps)) :)) <$> mapM (`toHsPPar` t) ps
 toHsP (PSum ps) t
-  = (hsep . ((pretty "Sum" <> pretty (length ps)) :)) <$> mapM go ps
-  where
-    go p
-      | isCompound p = parens <$> toHsP p t
-      | otherwise    = toHsP p t
+  = (hsep . ((pretty "Sum" <> pretty (length ps)) :)) <$> mapM (`toHsPPar` t) ps
 toHsP PMeta{} _ = error "Panic! Unexpected metavariable"
+
+toHsPPar :: Prim v t
+         => Func t
+         -> Doc ann
+         -> TcM t v (Doc ann)
+toHsPPar p t
+  | isComp p = parens <$> toHsP p t
+  | otherwise = toHsP p t
+  where
+    isComp (PK t1) = isCompound t1
+    isComp PI = False
+    isComp _ = True
 
 genTy :: Prim v t => Id -> TyDef t -> TcM t v (Doc ann)
 genTy i (AnnF f)
@@ -1014,17 +1023,56 @@ genRec :: Prim v t => Id -> TyDef t -> TcM t v (Doc ann)
 genRec _ AnnT{} = pure emptyDoc
 genRec _ AnnA{} = pure emptyDoc
 genRec f (AnnF p) = do
-  cs <- constr p
-  pure $! hang 2 $ vsep $
-    [ header , pretty "=" <+> head cs]
-    ++ (map (pretty "|" <+>) $ tail cs)
+  cs <- constrs [] p
+  pure $! vsep $!
+    [ hang 2 $ vsep $
+      [ header , pretty "=" <+> mkConstr (head cs)]
+      ++ (map ((pretty "|" <+>) . mkConstr) $ tail cs)
+    ]
+    ++ emptyDoc : map mkInF cs
+    ++ emptyDoc : map mkOutF cs
+    ++ [emptyDoc]
   where
+    mkConstr (args, fc, _) = hsep $ fc : args
+    inF = pretty "in" <> pretty f
+    outF = pretty "out" <> pretty f
     header = pretty "data" <+> pretty "Rec" <> pretty f
-    constr (PSum ps) = concat <$!> zipWithM (\i -> go (pretty f <> pretty "Inj" <> pretty i <> pretty "_" <> pretty (length ps))) [(0::Int)..] ps
-    constr p1         = ((:[]) . (pretty f <+>)) <$!> toHsP p1 (pretty "Rec" <> pretty f)
-    go n (PSum ps)
-      = concat <$!> zipWithM (\i -> go (n <> pretty "Inj" <> pretty i <> pretty "_" <> pretty (length ps))) [(0::Int)..] ps
-    go n p1 = ((:[]) . (n <+>) . parens) <$!> toHsP p1 (pretty "Rec" <> pretty f)
 
-genStubs :: Id -> Type t -> TcM t v (Doc ann)
-genStubs _ _ = pure $! pretty "stub"
+    mkInF (args, fc, cnstrs)
+      = inF <+> (foldl' (\a c -> parens (c <+> a)) (hsep vs) cnstrs) <+> pretty "="
+        <+> fc <+> hsep vs
+      where
+        vs = take (length args) $ map ((pretty "v" <>) . pretty) [(0 :: Int)..]
+
+    mkOutF (args, fc, cnstrs)
+      = outF <+> parens (fc <+> hsep vs) <+> pretty "="
+        <+> (foldl' (\a c -> c <+> (parens a)) (head cnstrs <+> hsep vs) $ tail cnstrs)
+      where
+        vs = take (length args) $ map ((pretty "v" <>) . pretty) [(0 :: Int)..]
+
+    constrs is (PSum ps)
+      = concat <$!> zipWithM aux [(0 :: Int)..] ps
+      where
+        aux i p1 = constrs ((i, n) : is) p1
+        n = length ps
+    constrs is p1
+      = do args <- mapM (`toHsPPar` (pretty "Rec" <> pretty f)) ps
+           pure $! [(args, hcat $ pretty f : map mkC is, pprd ++ map mkC is)]
+      where
+        pprd =
+          case p1 of
+            PPrd ps1 -> [pretty "Pair" <> pretty (length ps1)]
+            _        -> []
+        mkC (i, k) = pretty "Inj" <> pretty i <> pretty "_" <> pretty k
+        ps = case p1 of
+               PPrd ps1 -> ps1
+               _        -> [p1]
+
+genStubs :: Prim v t => Id -> Type t -> TcM t v (Doc ann)
+genStubs f ty = do
+  hsty <- toHsT ty
+  pure $! vsep
+    [ pretty f <+> pretty "::" <+> hsty
+    , pretty f <+> pretty "= undefined"
+    , emptyDoc
+    ]

@@ -1,35 +1,35 @@
 module Atoms where
 
-import Data.Complex
 import AlgPrelude
 
-type RecL = [Complex Float]
 
-rin :: Sum2 () (Pair2 (Complex Float) RecL) -> RecL
-rin (Inj0_2 _) = []
-rin (Inj1_2 (Pair2 x y)) = x : y
+type L1 a = Sum2 () (Pair2 Int a)
+type L2 a = Sum2 () (Pair2 (Pair2 Int Int) a)
 
-fl :: Pair2 RecL RecL -> RecL
-fl (Pair2 xs ys) = zipWith (+) xs ys
+data RecL1
+  = L1Inj0_2 ()
+  | L1Inj1_2 Int RecL1
 
-fr :: Pair2 RecL RecL -> RecL
-fr (Pair2 xs ys) = zipWith (-) xs ys
+inL1 (Inj0_2 v0) = L1Inj0_2 v0
+inL1 (Inj1_2 (Pair2 v0 v1)) = L1Inj1_2 v0 v1
 
-fo :: RecL -> RecL
-fo x = zipWith (\z k -> exp' k * z) x [0..]
-  where
-    exp' k = cis $ -2 * pi * fromIntegral k / fromIntegral n
-    n = length x * 2
+outL1 (L1Inj0_2 v0) = Inj0_2 v0
+outL1 (L1Inj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
+
+data RecL2
+  = L2Inj0_2 ()
+  | L2Inj1_2 (Pair2 Int Int) RecL2
+
+inL2 (Inj0_2 v0) = L2Inj0_2 v0
+inL2 (Inj1_2 (Pair2 v0 v1)) = L2Inj1_2 v0 v1
+
+outL2 (L2Inj0_2 v0) = Inj0_2 v0
+outL2 (L2Inj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
 
 
-deinterleave :: RecL -> Sum2 (Sum2 () (Complex Float)) (Pair2 RecL RecL)
-deinterleave [] = Inj0_2 (Inj0_2 ())
-deinterleave [x] = Inj0_2 (Inj1_2 x)
-deinterleave (x:y:zs) = Inj1_2 $! go [x] [y] zs
-  where
-    go l r []  = Pair2 (reverse l) (reverse r)
-    go l r [_] = Pair2 (reverse l) (reverse r)
-    go l r (a:b:cs) = go (a:l) (b:r) cs
+imult :: Pair2 Int Int-> Int
+imult (Pair2 i j) = i * j
 
-app :: Pair2 RecL RecL -> RecL
-app (Pair2 xs ys) = xs ++ ys
+isum :: Pair2 Int Int-> Int
+isum (Pair2 i j) = i + j
+
