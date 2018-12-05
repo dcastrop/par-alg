@@ -1,0 +1,47 @@
+// Problem with floats and "." for function composition
+poly L1 = K () + K int * I;
+poly L2 = K () + K (int * int) * I;
+
+fun interleave : forall a b c d, (a * b) * (c * d) -> (a * c) * (b * d)
+  =  ((proj[0,2] . proj[0,2]) &&& (proj[0,2] . proj[1,2]))
+ &&& ((proj[1,2] . proj[0,2]) &&& (proj[1,2] . proj[1,2]));
+
+fun lzip : forall a, L1 a * L1 a -> L2 (a * a)
+  =   distr[0,2,2]
+  >>>  (  (inj[0,2] . proj[0,2])
+      ||| (  distr[1,2,2]
+         >>>  (  (inj[0,2] . proj[1,2])
+             ||| (inj[1,2] . interleave)
+              )
+          )
+       );
+
+atom imult : int * int -> int;
+atom isum  : int * int -> int;
+
+fun dot : Rec L1 * Rec L1 -> int
+   = rec [L2] (const 0 ||| ((imult *** id) >>> isum)) (lzip . (out *** out));
+
+// = by hylo-fission
+
+fun dothf2 : Rec L1 * Rec L1 -> int
+   = (rec [L2] (const 0 ||| ((imult *** id) >>> isum)) out)
+     . rec [L2] in (lzip . (out *** out));
+
+// = by associativity of isum
+
+poly P = K (() + int * int) + I * I;
+atom split : Rec L2 -> P (Rec L2);
+
+fun rzip : Rec L1 * Rec L1 -> Rec L2
+   = rec [L2] in (lzip . (out *** out));
+
+fun dotpr : Rec L2 -> int
+  = rec [P] ((const 0 ||| imult) ||| isum) split;
+
+par dotpar = dotpr {
+  unroll 5;
+  annotate {
+    dotpr
+  }
+};
