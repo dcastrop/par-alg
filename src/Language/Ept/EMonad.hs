@@ -952,8 +952,8 @@ toETerm (Dist n i j) t = do
                    ++ EVar v : map (\k -> eProj k i t) [n+1..i-1])
         ) [0..] vs
 toETerm (Fmap pf g) t = appPolyF pf g >>= \ e -> toETerm e t
-toETerm (Rec dn _pf _e1 _e2) t
-  = pure $ EApp dn t
+toETerm e@Rec{} t
+  = getDefnId e >>= \dn -> pure $ EApp dn t
 toETerm (In  f) t = do
   fn <- getLbl <$> getFuncId f
   newVar >>= \i -> pure (eApp (mkId i $ "in" ++ fn) t)
@@ -1073,6 +1073,6 @@ genStubs f ty = do
   hsty <- toHsT ty
   pure $! vsep
     [ pretty f <+> pretty "::" <+> hsty
-    , pretty f <+> pretty "= undefined"
+    , pretty "--" <+> pretty f <+> pretty "= undefined"
     , emptyDoc
     ]

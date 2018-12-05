@@ -191,6 +191,8 @@ unifyPoly :: (Eq t, Pretty t, IsCompound t)
           -> Func t
           -> Func t
           -> TcM t v (SEnv t)
+unifyPoly s t1    t2
+  | t1 == t2   = return s
 unifyPoly s p          x@(PMeta i)
   | i `Set.member` metaVars p = fail $! "Occurs check, cannot unify '"
                                 ++ render x ++ "' with '" ++ render p ++ "'"
@@ -201,9 +203,9 @@ unifyPoly s (PPrd ps1) (PPrd ps2) = foldM' (uncurry . unifyPoly) s $! zip ps1 ps
 unifyPoly s (PSum ps1) (PSum ps2) = foldM' (uncurry . unifyPoly) s $! zip ps1 ps2
 unifyPoly s (PK t1)    (PK t2)    = unify s t1 t2
 unifyPoly s t1    t2
-  | t1 == t2   = return s
-  | otherwise = fail $! "Cannot unify '" ++ render (subst (sndE s) t1)
-                ++ "' with '" ++ render (subst (sndE s) t2) ++ "'"
+  = fail $! "Cannot unify '" ++ render (subst (sndE s) t1)
+    ++ "' with '" ++ render (subst (sndE s) t2) ++ "'"
+
 zipD :: [a] -> [a] -> ([(a,a)], MEither [a] [a]) -- Return remaining elements
 zipD [] [] = ([], None)
 zipD [] r  = ([], JRight r)

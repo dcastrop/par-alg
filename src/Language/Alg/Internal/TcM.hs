@@ -74,7 +74,6 @@ data TcSt t v = TcSt { nextId    :: Int
                      , chanId    :: Int
                      , channelsL :: !(Map (Role, Role, Type t) Int)
                      , channelsR :: !(Map Int (Role, Role, Type t))
-                     , defnId    :: Int
                      , defnsL    :: !(Map (Alg t v) Id)
                      , defnsR    :: !(Map Id (Alg t v))
                      , funcId    :: Int
@@ -102,11 +101,17 @@ lookupChannelId t = get >>= (pure . (Map.! t) . channelsR )
 
 getDefnId :: Prim v t => Alg t v -> TcM t v Id
 getDefnId (Var v) = pure v
+getDefnId e@(Rec dn _ _ _) = do
+  st@TcSt { defnsL = dl, defnsR = dr } <- get
+  put st { defnsL = Map.insert e dn dl
+         , defnsR = Map.insert dn e dr
+         }
+  return dn
 getDefnId t = (insert <$> get) >>= \(i, st) -> put st *> pure i
   where
-    insert (st@TcSt { defnId = i, defnsL = ch, defnsR = chi })
+    insert (st@TcSt { nextId = i, defnsL = ch, defnsR = chi })
       | Just v <- Map.lookup t ch = (v, st)
-      | otherwise = (vv, st { defnId = j
+      | otherwise = (vv, st { nextId = j
                             , defnsL = Map.insert t vv ch
                             , defnsR = Map.insert vv t chi
                             })
@@ -143,7 +148,6 @@ initSt s = TcSt { nextId = Parser.nextId s
                 , chanId = 0
                 , channelsL = Map.empty
                 , channelsR = Map.empty
-                , defnId = 0
                 , defnsL = Map.empty
                 , defnsR = Map.empty
                 , funcId = 0
