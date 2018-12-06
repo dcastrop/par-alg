@@ -48,7 +48,7 @@ sizeLow     = 10
 
 main = do
   l <- randPairL sz >>= ensure
-  -- msMain l dotpar
+  --msMain l dotpar
   msMain l (pure . dot)
   --msMain l (pure . dothf2)
   where
@@ -81,3 +81,6 @@ cmain =
     mkSqBench l = bgroup "seq" $ take (length range) $ go l
       where
         go ~(l:t) = bench (show $ fst l) (nf dot $ snd l) : go t
+    mkVBench l = bgroup "hs" $ take (length range) $ go l
+      where
+        go ~(l:t) = bench (show $ fst l) (nf dotv $ snd l) : go t

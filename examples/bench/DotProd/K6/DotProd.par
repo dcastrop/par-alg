@@ -31,17 +31,15 @@ fun dothf2 : Rec L1 * Rec L1 -> int
 // = by associativity of isum
 
 poly P = K (() + int * int) + I * I;
-atom split : Rec L2 -> P (Rec L2);
+atom split : Rec L1 * Rec L1 -> P (Rec L1 * Rec L1);
 
-fun rzip : Rec L1 * Rec L1 -> Rec L2
-   = rec [L2] in (lzip . (out *** out));
-
-fun dotpr : Rec L2 -> int
+fun dotpr : Rec L1 * Rec L1 -> int
   = rec [P] ((const 0 ||| imult) ||| isum) split;
 
 par dotpar = dotpr {
   unroll 6;
   annotate {
+    // split;
     dotpr
   }
 };

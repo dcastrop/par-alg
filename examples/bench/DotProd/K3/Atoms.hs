@@ -14,6 +14,8 @@ type P a = Sum2 (Sum2 () (Pair2 Integer Integer)) (Pair2 a a)
 
 type RecL1 = V.Vector Integer
 
+dotv (Pair2 v0 v1) = V.sum $ V.zipWith (*) v0 v1
+
 inL1 (Inj0_2 v0) = V.empty
 inL1 (Inj1_2 (Pair2 v0 v1)) = V.cons v0 v1
 
@@ -51,13 +53,15 @@ isum (Pair2 i j) = i + j
 
 type PL1 = Pair2 RecL1 RecL1
 
-split :: PL1 -> Pair2 PL1 PL1
-split (Pair2 v1 v2) = Pair2 (Pair2 v11 v21) (Pair2 v12 v22)
+split :: PL1 -> Sum2 (Sum2 () (Pair2 Integer Integer)) (Pair2 PL1 PL1)
+split (Pair2 v1 v2)
+  | V.null v1 = Inj0_2 $ Inj0_2 ()
+  | V.null v2 = Inj0_2 $ Inj0_2 ()
+  | V.length v1 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
+  | V.length v2 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
+  | otherwise = Inj1_2 $ Pair2 (Pair2 v11 v21) (Pair2 v12 v22)
   where
-    (v11, v12) = split v1
-    (v21, v22) = split v2
-    split v
-      | V.null v = (v, v)
-      | otherwise = V.splitAt n v
-      where
-        n = V.length v `div` 2
+    (v11, v12) = V.splitAt n1 v1
+    (v21, v22) = V.splitAt n2 v2
+    n1 = V.length v1 `div` 2
+    n2 = V.length v2 `div` 2
