@@ -45,6 +45,16 @@ for N in ${CORES}; do
   sleep 1
   echo  >> ./Measurements/${TEST}_seq.time
 done
+
+echo ${DIR} > ./Measurements/${TEST}_hs.time
+for N in ${CORES}; do
+  echo  >> ./Measurements/${TEST}_hs.time
+  echo "------------ ${N} CORES --------------" >> ./Measurements/${TEST}_hs.time
+  echo  >> ./Measurements/${TEST}_hs.time
+  ./Main 'hs/' --csv ./Measurements/${TEST}_hs_${N}.csv +RTS -A1G -N${N} >> ./Measurements/${TEST}_hs.time
+  sleep 1
+  echo  >> ./Measurements/${TEST}_hs.time
+done
 popd
 
 for DIR in ${DIRS}; do
