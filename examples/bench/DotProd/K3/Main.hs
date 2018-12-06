@@ -22,6 +22,11 @@ import DotProd
 ensure :: NFData a => a -> IO a
 ensure xs = xs `deepseq` return xs
 
+minv :: Num a => a
+minv = -2^31
+
+maxv :: Num a => a
+maxv = 2^31
 
 range       = [ 2 ^ sizeLow
               , 2 ^ (sizeLow + 1)
@@ -37,16 +42,21 @@ range       = [ 2 ^ sizeLow
               ]
 step        = sizeLow `div` 10
 numSteps    = 10
-randList n  = replicateM n $ randomRIO (minBound, maxBound :: Int)
+randList n  = replicateM n $ randomRIO (minv, maxv :: Integer)
 randPairL n = Pair2 <$!> (toL1 <$!> randList n) <*> (toL1 <$!> randList n)
 sizeLow     = 10
 
-main = cmain -- msMain 100000
+main = do
+  l <- randPairL sz >>= ensure
+  -- msMain l dotpar
+  msMain l (pure . dot)
+  --msMain l (pure . dothf2)
+  where
+    sz = 10000000
 
-msMain sz = do
-  l <- randPairL sz
+msMain sz m = do
   t'init <- getTime Realtime
-  dotpar (rzip l) >>= ensure
+  m sz >>= print
   t'last <- getTime Realtime
   print $ t'last - t'init
 
@@ -67,7 +77,7 @@ cmain =
   where
     mkMsBench l = bgroup "par" $ take (length range) $ go l
       where
-        go ~(l:t) = bench (show $ fst l) (nfIO $ dotpar $ rzip $ snd l) : go t
+        go ~(l:t) = bench (show $ fst l) (nfIO $ dotpar $ snd l) : go t
     mkSqBench l = bgroup "seq" $ take (length range) $ go l
       where
         go ~(l:t) = bench (show $ fst l) (nf dot $ snd l) : go t

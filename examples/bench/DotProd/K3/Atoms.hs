@@ -4,53 +4,37 @@ module Atoms where
 import Control.DeepSeq
 import GHC.Generics (Generic, Generic1)
 
+import qualified Data.Vector as V
+
 import AlgPrelude
 
+type L1 a = Sum2 () (Pair2 Integer a)
+type L2 a = Sum2 () (Pair2 (Pair2 Integer Integer) a)
+type P a = Sum2 (Sum2 () (Pair2 Integer Integer)) (Pair2 a a)
 
-type L1 a = Sum2 () (Pair2 Int a)
-type L2 a = Sum2 () (Pair2 (Pair2 Int Int) a)
-type P a = Sum2 (Sum2 () (Pair2 Int Int)) (Pair2 a a)
+type RecL1 = V.Vector Integer
 
-data RecL1
-  = L1Inj0_2 ()
-  | L1Inj1_2 Int RecL1
-  deriving Generic
+inL1 (Inj0_2 v0) = V.empty
+inL1 (Inj1_2 (Pair2 v0 v1)) = V.cons v0 v1
 
-fromL1 (L1Inj0_2 _) = []
-fromL1 (L1Inj1_2 h t) = h : fromL1 t
+outL1 v0
+  | V.null v0 = Inj0_2 ()
+  | otherwise = Inj1_2 (Pair2 (V.head v0) (V.tail v0))
 
-toL1 [] = L1Inj0_2 ()
-toL1 (h:t) = L1Inj1_2 h $! toL1 t
+toL1 = V.fromList
 
-instance () => NFData RecL1
+type RecL2 = V.Vector (Pair2 Integer Integer)
 
-inL1 (Inj0_2 v0) = L1Inj0_2 v0
-inL1 (Inj1_2 (Pair2 v0 v1)) = L1Inj1_2 v0 v1
+fromL2 = V.toList
 
-outL1 (L1Inj0_2 v0) = Inj0_2 v0
-outL1 (L1Inj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
+toL2 = V.fromList
 
-data RecL2
-  = L2Inj0_2 ()
-  | L2Inj1_2 (Pair2 Int Int) RecL2
-  deriving Generic
+inL2 = inL1
 
-fromL2 (L2Inj0_2 _) = []
-fromL2 (L2Inj1_2 h t) = h : fromL2 t
-
-toL2 [] = L2Inj0_2 ()
-toL2 (h:t) = L2Inj1_2 h $! toL2 t
-
-instance () => NFData RecL2
-
-inL2 (Inj0_2 v0) = L2Inj0_2 v0
-inL2 (Inj1_2 (Pair2 v0 v1)) = L2Inj1_2 v0 v1
-
-outL2 (L2Inj0_2 v0) = Inj0_2 v0
-outL2 (L2Inj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
+outL2 = outL1
 
 data RecP
-  = PInj0_2 (Sum2 () (Pair2 Int Int))
+  = PInj0_2 (Sum2 () (Pair2 Integer Integer))
   | PInj1_2 RecP RecP
 
 inP (Inj0_2 v0) = PInj0_2 v0
@@ -59,18 +43,21 @@ inP (Inj1_2 (Pair2 v0 v1)) = PInj1_2 v0 v1
 outP (PInj0_2 v0) = Inj0_2 v0
 outP (PInj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
 
-imult :: Pair2 Int Int -> Int
+imult :: Pair2 Integer Integer -> Integer
 imult (Pair2 i j) = i * j
 
-isum :: Pair2 Int Int -> Int
+isum :: Pair2 Integer Integer -> Integer
 isum (Pair2 i j) = i + j
 
-split :: RecL2 -> Sum2 (Sum2 () (Pair2 Int Int)) (Pair2 RecL2 RecL2)
-split (L2Inj0_2 v) = Inj0_2 $! Inj0_2 v
-split (L2Inj1_2 h (L2Inj0_2 _)) = Inj0_2 $! Inj1_2 h
-split (L2Inj1_2 h1 (L2Inj1_2 h2 t))
-  = Inj1_2 $! go (L2Inj1_2 h1 (L2Inj0_2 ())) (L2Inj1_2 h2 (L2Inj0_2 ())) t
-  where
-    go l r (L2Inj0_2 _) = Pair2 l r
-    go l r (L2Inj1_2 h t) = go r (L2Inj1_2 h l) t
+type PL1 = Pair2 RecL1 RecL1
 
+split :: PL1 -> Pair2 PL1 PL1
+split (Pair2 v1 v2) = Pair2 (Pair2 v11 v21) (Pair2 v12 v22)
+  where
+    (v11, v12) = split v1
+    (v21, v22) = split v2
+    split v
+      | V.null v = (v, v)
+      | otherwise = V.splitAt n v
+      where
+        n = V.length v `div` 2

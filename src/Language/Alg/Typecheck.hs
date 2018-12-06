@@ -527,9 +527,9 @@ inferGTy a (AnnInj i k) =
 -- Case
 inferGTy (TyBrn i _ a) (AnnCase ps)
   | length ps > i = inferGTy a (ps !! i)
-inferGTy r AnnCase{}
+inferGTy r t@AnnCase{}
   = fail $! "Typecheck.inferGTy reached case expression in an un-tagged role: "
-    ++ render r
+    ++ render r ++ "\n" ++ render (liftAnn t)
 
 inferGTy _ AnnFmap{}
   = fail $ "Unimplemented"

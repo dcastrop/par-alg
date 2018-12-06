@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module Language.Par.Term
   ( ATerm (..)
+  , liftAnn
   , termRoles
   , annotate
   ) where
@@ -40,13 +41,20 @@ annT :: ([Alg t v] -> Alg t v)
      -> ([ATerm t v] -> ATerm t v)
      -> [ATerm t v]
      -> ATerm t v
-annT f _g ps@(AnnAlg _ r : _)
-  | Just es <- unAlg [] ps = AnnAlg (f es) r
+annT f _g ps
+  | Just r <- containsAnn ps
+  , Just es <- unAlg r [] ps = AnnAlg (f es) r
   where
-    unAlg l [] = Just $ reverse l
-    unAlg l (AnnAlg x r' : ts)
-      | r == r' = unAlg (x : l) ts
-    unAlg _ _ = Nothing
+    unAlg _ l [] = Just $ reverse l
+    unAlg r l (AnnAlg x r' : ts)
+      | r == r' = unAlg r (x : l) ts
+    unAlg r l (AnnId  : ts) = unAlg r (Id : l) ts
+    unAlg r l (AnnInj i j : ts) = unAlg r (Inj i j : l) ts
+    unAlg r l (AnnPrj i j : ts) = unAlg r (Proj i j : l) ts
+    unAlg _ _ _ = Nothing
+    containsAnn (AnnAlg _ r : _) = Just r
+    containsAnn (_ : t) = containsAnn t
+    containsAnn [] = Nothing
 annT _f g ts = g ts
 
 annComp :: [ATerm t v] -> ATerm t v
@@ -98,6 +106,12 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
     ann r t             = pure (RId $ oneOf r, AnnAlg t (oneOf r))
       where
         oneOf rr = last $ ri : (filter (/= ri) $ Set.toList $ roleIds rr)
+
+liftAnn :: ATerm t v -> ATerm t v
+liftAnn (AnnSplit es) = annSplit $ map liftAnn es
+liftAnn (AnnComp es) = annComp $ map liftAnn es
+liftAnn (AnnCase es) = annCase $ map liftAnn es
+liftAnn t            = t
 
 appPoly :: (Pretty t, Pretty v) => Func t -> Alg t v -> TcM t v (Alg t v)
 appPoly  PK{}     _ = pure Id
