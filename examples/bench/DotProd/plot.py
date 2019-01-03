@@ -129,6 +129,7 @@ def main(argv):
                               for nn, nn_d in kk_d.items() }
                           for kk, kk_d in par_data.items() }
 
+    print speedups_kns
 
     ## speedups of +RTS -N
     rtsn_x = [ nn for nn, nn_d in seq_data.items() ]

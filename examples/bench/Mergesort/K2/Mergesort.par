@@ -12,8 +12,6 @@ par msp = ms {
   unroll 2;
   annotate
     {
-    merge
-    ;
     ms
     }
 };

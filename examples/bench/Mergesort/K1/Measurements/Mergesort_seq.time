@@ -414,15 +414,3 @@ mean                 2.080 s    (2.064 s .. 2.102 s)
 std dev              40.20 ms   (10.63 ms .. 49.00 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
-
------------- 9 CORES --------------
-
-
------------- 10 CORES --------------
-
-
------------- 11 CORES --------------
-
-
------------- 12 CORES --------------
-

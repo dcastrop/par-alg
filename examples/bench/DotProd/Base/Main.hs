@@ -46,13 +46,14 @@ randList n  = replicateM n $ randomRIO (minv, maxv :: Integer)
 randPairL n = Pair2 <$!> (toL1 <$!> randList n) <*> (toL1 <$!> randList n)
 sizeLow     = 10
 
-main = do
-  l <- randPairL sz >>= ensure
-  --msMain l dotpar
-  msMain l (pure . dot)
-  --msMain l (pure . dothf2)
-  where
-    sz = 10000000
+main = cmain
+--main = do
+--  l <- randPairL sz >>= ensure
+--  --msMain l dotpar
+--  msMain l (pure . dot)
+--  --msMain l (pure . dothf2)
+--  where
+--    sz = 10000000
 
 msMain sz m = do
   t'init <- getTime Realtime
