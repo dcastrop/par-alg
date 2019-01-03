@@ -17,7 +17,7 @@ for DIR in ${DIRS}; do
   rm -f *.o
   rm -f *.ho
   rm -f *.hi
-  rm Main
+  rm -f Main
   stack build; stack exec -- par-lang -p -a=Atoms.hs ${TEST}.par
   stack exec -- ghc ${GHC_OPTS} Main.hs
   rm -f *.o
