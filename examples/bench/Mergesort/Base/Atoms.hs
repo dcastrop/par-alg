@@ -1,4 +1,4 @@
-module MergesortAtoms where
+module Atoms where
 
 import AlgPrelude
 
