@@ -4,6 +4,8 @@ module Atoms where
 import           Control.DeepSeq
 import           GHC.Generics       (Generic, Generic1)
 
+import           Data.Vector        ( Vector )
+import qualified Data.Vector     as Vector
 import           Data.Map.Strict    ( Map )
 import qualified Data.Map.Strict as Map
 import           Data.List          ( foldl' )
@@ -19,13 +21,13 @@ type T a = Sum2 (RecL1) (Pair2 a a)
 type D a = Sum2 () (Pair2 (Pair2 Text Int) a)
 type Dict = RecD
 
-type RecL1 = [Text]
+type RecL1 = Vector Text
 
-inL1 (Inj0_2 _) = []
-inL1 (Inj1_2 (Pair2 v0 v1)) = v0 : v1
-
-outL1 [] = Inj0_2 ()
-outL1 (v0 : v1) = Inj1_2 (Pair2 v0 v1)
+-- inL1 (Inj0_2 _) = []
+-- inL1 (Inj1_2 (Pair2 v0 v1)) = v0 : v1
+--
+-- outL1 [] = Inj0_2 ()
+-- outL1 (v0 : v1) = Inj1_2 (Pair2 v0 v1)
 
 data RecT
   = TInj0_2 (RecL1)
@@ -51,23 +53,22 @@ outD d
     (v0, v1) = Map.deleteFindMin d
 
 spltw :: Text -> RecL1
-spltw = Text.words
+spltw t = Vector.fromList $! Text.words t
 
 union :: Pair2 Dict Dict-> Dict
 union (Pair2 l r) = Map.unionWith (+) l r
 
 count :: RecL1 -> Dict
-count = foldl' (flip $ Map.alter go) Map.empty
+count = Vector.foldl' (flip $ Map.alter go) Map.empty
   where
     go Nothing = Just 1
     go (Just i) = Just $! i+1
 
 split :: RecL1 -> Sum2 (RecL1) (Pair2 RecL1 RecL1)
-split []  = Inj0_2 []
-split [x] = Inj0_2 [x]
-split l   = Inj1_2 $! Pair2 l1 l2
+split l
+  | n  < 1000 = Inj0_2 l
+  | otherwise = Inj1_2 $! Pair2 l1 l2
   where
-    (l1, l2) = spl [] [] l
-    spl a b [] = (a, b)
-    spl a b (x:xs) = spl b (x : a) xs
+    n = Vector.length l
+    (l1, l2) = Vector.splitAt (n `div` 2) l
 

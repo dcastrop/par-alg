@@ -16,7 +16,7 @@ fun wordCount : string -> Dict
   = wordc . spltw;
 
 par wordpar = wordc {
-  unroll 6;
+  unroll 0;
   annotate {
     split
   }
