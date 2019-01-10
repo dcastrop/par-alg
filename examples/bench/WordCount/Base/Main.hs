@@ -7,7 +7,6 @@ import qualified Data.Text as Text
 import qualified Data.Text.IO as TIO
 import System.Random ( randomRIO )
 import System.Clock
-import Text.Lorem
 
 import Criterion.Main
 import Criterion.Types
