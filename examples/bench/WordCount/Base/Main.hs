@@ -51,11 +51,9 @@ config = defaultConfig {
 cmain = do
   lss <- mapM randList range >>= ensure
   defaultMainWith config
-      [ bgroup "par" $ map mkMsBench lss
-      , bgroup "seq" $ map mkSqBench lss
+      [ bgroup "seq" $ map mkMsBench lss
       , bgroup "std" $ map mkBench lss
       ]
   where
     mkMsBench l = bench (show $ Text.length l) $ nfIO $ wordpar $ spltw l
-    mkSqBench l = bench (show $ Text.length l) $ nf wordCount l
     mkBench l = bench (show $ Text.length l) $ nf (count . spltw) l
