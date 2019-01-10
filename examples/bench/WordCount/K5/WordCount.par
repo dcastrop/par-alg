@@ -1,0 +1,62 @@
+poly L1 = K () + K string * I;
+poly T = K(Rec L1) + I * I;
+
+poly D = K () + K (string * int) * I;
+type Dict = Rec D;
+
+atom union : Dict * Dict -> Dict;
+atom spltw : string -> Rec L1;
+atom count : Rec L1 -> Dict;
+atom split : Rec L1 -> T (Rec L1);
+
+fun wordc : Rec L1 -> Dict
+  = rec [T] (count ||| union) split;
+
+fun wordCount : string -> Dict
+  = wordc . spltw;
+
+par wordpar = wordc {
+  unroll 5;
+  annotate {
+    split
+  }
+};
+
+//
+// fun dot0 : Rec L1 -> int
+//   = rec [L1] ((const 0 ||| plus) . (id +++ times *** id)) out;
+//
+// atom split : Rec L1 -> T (Rec L1);
+//
+// //fun dot1 : Rec L1 -> int
+// //   = plus . [T] dot0 . split;
+// //
+// //fun dot2 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] dot0 . split) . split;
+// //
+// fun dot3 : Rec L1 -> int
+//    = plus . [T] (plus . [T] (plus . [T] dot0 . split) . split) . split;
+// //
+// //fun dot4 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] (plus . [T] (plus . [T] dot0 . split) . split) . split) . split;
+// //
+// //fun dot5 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] dot0 . split) . split) . split) . split) . split;
+// //
+// //fun dot6 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] dot0 . split) . split) . split) . split) . split) . split;
+// //
+// //fun dot7 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] dot0 . split). split) . split) . split) . split) . split) . split;
+// //
+// //fun dot8 : Rec L1 -> int
+// //   = plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] (plus . [T] dot0 . split). split). split) . split) . split) . split) . split) . split;
+//
+// //par dot1 { annotate { dot0 } };
+// //par dot2 { annotate { dot0 } };
+// par dot3 { annotate { dot0 } };
+// //par dot4 { annotate { dot0 } };
+// //par dot5 { annotate { dot0 } };
+// //par dot6 { annotate { dot0 } };
+// //par dot7 { annotate { dot0 } };
+// //par dot8 { annotate { dot0 } };
