@@ -8,6 +8,7 @@ module Language.Par.Term
 
 import Control.Monad.RWS.Strict
 import Data.Set ( Set )
+import Data.List ( foldl' )
 import qualified Data.Set as Set
 import Data.Text.Prettyprint.Doc hiding ( annotate )
 
@@ -43,25 +44,61 @@ annT :: ([Alg t v] -> Alg t v)
      -> ATerm t v
 annT f _g ps
   | Just r <- containsAnn ps
-  , Just es <- unAlg r [] ps = AnnAlg (f es) r
+  , ([(r', es)], []) <- unAlg r [] ps
+  , r == r'
+  = AnnAlg (f es) r
+annT _f g ps = g ps
+
+unAlg :: RoleId
+      -> [(RoleId, [Alg t v])]
+      -> [ATerm t v]
+      -> ([(RoleId, [Alg t v])], [ATerm t v])
+unAlg _ ((r,h):t) (AnnAlg x r' : ts)
+  | r == r' = unAlg r ((r, h ++ [x]) : t) ts
+unAlg _ l (AnnAlg x r' : ts) = unAlg r' ((r', [x]) : l) ts
+unAlg ri l (AnnSplit sl : ts)
+  | ([(r, l')], []) <- unAlg ri [] sl = unAlg r l (AnnAlg (Split l') r : ts)
+unAlg ri l (AnnCase sl : ts)
+  | ([(r, l')], []) <- unAlg ri [] sl = unAlg r l (AnnAlg (Case l') r : ts)
+unAlg r l (AnnId  : ts) = unAlg r (add r Id l) ts
+unAlg r l (AnnInj i j : ts) = unAlg r (add r (Inj i j) l) ts
+unAlg r l (AnnPrj i j : ts) = unAlg r (add r (Proj i j) l) ts
+unAlg _ l ts = (reverse l, ts)
+
+add :: a1 -> a2 -> [(a1, [a2])] -> [(a1, [a2])]
+add r t [] = [(r, [t])]
+add _ t ((r, l1) : l2) = (r, l1 ++ [t]) : l2
+
+containsAnn :: [ATerm t v] -> Maybe RoleId
+containsAnn (AnnAlg _ r : _) = Just r
+containsAnn (AnnSplit ts : _ )
+  | Just r <- containsAnn ts = Just r
+containsAnn (AnnCase ts : _ )
+  | Just r <- containsAnn ts = Just r
+containsAnn (_ : t) = containsAnn t
+containsAnn [] = Nothing
+
+annComp :: Prim v t => [ATerm t v] -> ATerm t v
+annComp ts
+  | Just r <- containsAnn ts
+  , (l, t) <- unAlg r [] ts
+  = ac (annC l ++ t)
   where
-    unAlg _ l [] = Just $ reverse l
-    unAlg r l (AnnAlg x r' : ts)
-      | r == r' = unAlg r (x : l) ts
-    unAlg r l (AnnId  : ts) = unAlg r (Id : l) ts
-    unAlg r l (AnnInj i j : ts) = unAlg r (Inj i j : l) ts
-    unAlg r l (AnnPrj i j : ts) = unAlg r (Proj i j : l) ts
-    unAlg _ _ _ = Nothing
-    containsAnn (AnnAlg _ r : _) = Just r
-    containsAnn (_ : t) = containsAnn t
-    containsAnn [] = Nothing
-annT _f g ts = g ts
+    ac [x] = x
+    ac xs = AnnComp xs
+    annC [] = []
+    annC ((r, tsr) : tt) = AnnAlg (foldl' comp Id tsr) r : annC tt
+annComp [t] =  t
+annComp ts = AnnComp ts
 
-annComp :: [ATerm t v] -> ATerm t v
-annComp = annT Comp AnnComp
-
-annSplit :: [ATerm t v] -> ATerm t v
-annSplit = annT Split AnnSplit
+annSplit :: Prim v t => [ATerm t v] -> ATerm t v
+annSplit ts
+  | Just r <- containsAnn ts
+  , ([(r', t)], []) <- unAlg r [] ts
+  = AnnAlg (Split t) r'
+annSplit ts
+  | length ts == 1 = head ts
+  | otherwise = AnnSplit ts
 
 annCase :: [ATerm t v] -> ATerm t v
 annCase = annT Case AnnCase
@@ -81,7 +118,7 @@ annCase = annT Case AnnCase
 --    ann t             = pure $! AnnAlg t r
 
 -- XXX: Fixme: alternative with single role and no interactions
-annotate :: (Pretty v, Pretty t, Ord v, Ord t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t v (ATerm t v)
+annotate :: (Prim v t) => RoleId -> Set (Alg t v) -> Alg t v -> TcM t v (ATerm t v)
 annotate ri s tm = snd <$!> ann (RId ri) tm
   where
     ann _ t
@@ -93,11 +130,16 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
           (r1, x)  <- ann rn t
           go (x:acc) r1 ts
     ann r  Id           = pure (r, AnnId)
+    ann r@(RId i) t@Proj{} = pure (r, AnnAlg t i)
     ann r (Proj i  j  ) = pure (prjR r, AnnPrj i j)
       where
         prjR (RPrd ts) = ts !! i
         prjR rn        = rn
-    ann r (Split es   ) = ((\(a, b) -> (rPrd a, annSplit b)) . unzip) <$!> mapM (ann r) es
+    ann r (Split es   ) = ((\(a, b) -> (rPrd a, annSplit b)) . unzip) <$!> zipWithM ann rs es
+      where
+        rs = case r of
+               RPrd rr -> cycle rr
+               _       -> repeat r
 
     ann r (Inj i   j  ) = pure (RBrn i j r, AnnInj i j)
     ann r (Case es    ) = ((\(a, b) -> (rAlt ri a, annCase b)) . unzip) <$!> mapM (ann r) es
@@ -107,7 +149,7 @@ annotate ri s tm = snd <$!> ann (RId ri) tm
       where
         oneOf rr = last $ ri : (filter (/= ri) $ Set.toList $ roleIds rr)
 
-liftAnn :: ATerm t v -> ATerm t v
+liftAnn :: Prim v t => ATerm t v -> ATerm t v
 liftAnn (AnnSplit es) = annSplit $ map liftAnn es
 liftAnn (AnnComp es) = annComp $ map liftAnn es
 liftAnn (AnnCase es) = annCase $ map liftAnn es

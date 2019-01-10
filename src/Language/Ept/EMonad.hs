@@ -180,8 +180,8 @@ data EMonad t v
   deriving (Show, Eq)
 
 eRun :: (ETerm t v) -> EMonad t v
-eRun t@EVar{} = ERet t
-eRun t = ERun t
+eRun t@EApp{} = ERun t
+eRun t = ERet t
 
 fvsM :: EMonad t v -> Set Id
 fvsM (ERet t) = fvsT t
@@ -222,6 +222,7 @@ ebnd (EBnd m f1)  f2   = ebnd m (f1 `ecomp` f2)
 ebnd m               f = EBnd m f
 
 ebndr :: EMonad t v -> EFun t v -> EMonad t v
+ebndr   (ERun t     ) f@(EAbs _ ERun{}) = app f t
 ebndr   (ERet t     ) f = app f t
 ebndr   (ERbr r m   ) f = ERbr r (m `ebnd` f)
 ebndr m (EAbs x (ERet (EVar y)))
@@ -843,7 +844,9 @@ prettyChans :: EFun t v -> [Doc ann]
 prettyChans = map ((pretty "ch" <>) . pretty) . Set.toList . getChans
 
 pprInit :: ParProg t v -> Doc ann
-pprInit p = hsep [ pretty "do"
+pprInit p =
+  case Set.toList $ getPChans p of
+    ch : chs -> hsep [ pretty "do"
                  , align $ vsep $ (hsep [pretty "{", pprNewCh ch])
                    : (map (pretty "; "<>)
                       ( map pprNewCh chs
@@ -851,8 +854,16 @@ pprInit p = hsep [ pretty "do"
                       ++ [hsep $ pretty "r0" : prettyChans (p Map.! Rol 0) ++ [pretty "inp" ]]
                       )) ++ [pretty "}"]
                  ]
+    [] -> case Map.toList $ Map.delete (Rol 0) p of
+           rs : rss -> hsep [ pretty "do"
+                           , align $ vsep $ (hsep [pretty "{", pprCalls rs])
+                             : (map (pretty "; "<>)
+                                ( map pprCalls rss
+                                  ++ [hsep $ pretty "r0" : prettyChans (p Map.! Rol 0) ++ [pretty "inp" ]]
+                                )) ++ [pretty "}"]
+                           ]
+           [] -> hsep $ pretty "r0" : prettyChans (p Map.! Rol 0) ++ [pretty "inp" ]
   where
-    (ch : chs) = Set.toList $ getPChans p
     pprCh = (pretty "ch" <>) . pretty
     pprNewCh c =  hsep [pprCh c, pretty "<- newChan"]
     pprCalls (r, c) = hsep $ pretty "_ <- forkIO $" : pretty r : map pprCh (Set.toList $ getChans c) ++ [pretty "()"]

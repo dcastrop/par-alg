@@ -327,9 +327,7 @@ rwAlg (Unroll i) (AnnAlg (Rec d f m s) r1) = do
 rwAlg Unroll{} t = fail $! "Cannot unroll: " ++ render t
 rwAlg (Annotate s) ef = go ef
   where
-    go (AnnAlg e r) = do
-      a <- annotate r s e
-      pure a
+    go (AnnAlg e r) = annotate r s e
     go a = fail $ "Cannot annotate. Already annotated: " ++ render a
 
 unroll :: Prim v t
