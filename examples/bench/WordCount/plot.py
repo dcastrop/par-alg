@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 
-text_style = dict(fontsize=16, fontdict={'family': 'monospace'})
+text_style = dict(fontsize='xx-large', fontdict={'family': 'monospace'})
 
 from pint import UnitRegistry
 ureg = UnitRegistry()
@@ -139,21 +139,21 @@ def main(argv):
     fig, ax = plt.subplots(1, 1)
     ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('+RTS -N', **text_style)
-    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
 
     markers = ['o', 'x', 's', 'h']
 
     plotter(ax, rtsn_x, [ rtsn_k2, rtsn_k4, rtsn_k6, rtsn_k8 ], {})
     ax.set_title("Size = " + str(current_S), **text_style)
     ax.set_ylim([min(rtsn_k2 + rtsn_k4 + rtsn_k6 + rtsn_k8) - 0.1, max(rtsn_k2 + rtsn_k4 + rtsn_k6 + rtsn_k8) + 0.1])
-    ax.legend(['K2', 'K4', 'K6', 'K8'], prop={'size': 16} )
+    ax.legend(['K2', 'K4', 'K6', 'K8'], prop={'size': 'x-large'} )
 
     fig.savefig(out_filepath + "1", dpi=300)
     plt.close(fig)
 
     ## speedups vs -K, for 4 different sizes
 
-    k_x = range(1, 8)
+    k_x = range(1, 9)
     sizes_x = [ int(ss) for ss, _ in seq_data[1].items() ]
     sizes_x.sort()
     nsizes = len(sizes_x) - 1
@@ -169,14 +169,14 @@ def main(argv):
     fig, ax = plt.subplots(1, 1)
     ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('K', **text_style)
-    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
 
     markers = ['o', 'x', 's', 'h']
 
     plotter(ax, k_x , [ k_sz1, k_sz2, k_sz3 , k_sz4], {})
     ax.set_title("+RTS -N8 ", **text_style)
     ax.set_ylim([min(k_sz1 + k_sz2 + k_sz3 + k_sz4) - 0.1, max(k_sz1 + k_sz2 + k_sz3 + k_sz4) + 0.1])
-    ax.legend([sz1, sz2, sz3, sz4])
+    ax.legend(["%.0e" % sz1,"%.0e" % sz2,"%.0e" % sz3,"%.0e" % sz4], prop={'size': 'x-large'} )
 
     fig.savefig(out_filepath + "2", dpi=300)
     plt.close(fig)
@@ -199,14 +199,14 @@ def main(argv):
     ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('Text Size (bytes)', **text_style)
     ax.set_xscale('log')
-    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='major', labelsize='x-large')
 
     markers = ['o', 'x', 's', 'h']
 
     plotter(ax, sizes_x , [ sz_k1, sz_k2, sz_k3 , sz_k4], {})
     ax.set_title("+RTS -N" + str(rtsn), **text_style)
     ax.set_ylim([min(sz_k1 + sz_k2 + sz_k3 + sz_k4) - 0.1, max(sz_k1 + sz_k2 + sz_k3 + sz_k4) + 0.1])
-    ax.legend(['K' + str(k1), 'K'+ str(k2), 'K' + str(k3), 'K' + str(k4)])
+    ax.legend(['K' + str(k1), 'K'+ str(k2), 'K' + str(k3), 'K' + str(k4)], prop={'size': 'x-large'} )
 
     fig.savefig(out_filepath + "3", dpi=300)
     plt.close(fig)

@@ -3,48 +3,48 @@ K2
 ------------ 1 CORES --------------
 
 benchmarking par/10000
-time                 6.063 ms   (6.024 ms .. 6.062 ms)
+time                 6.163 ms   (6.115 ms .. 6.201 ms)
                      1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 6.165 ms   (6.136 ms .. 6.185 ms)
-std dev              84.57 μs   (77.24 μs .. 95.93 μs)
+mean                 6.232 ms   (6.217 ms .. 6.252 ms)
+std dev              102.5 μs   (96.98 μs .. 117.8 μs)
 
 benchmarking par/20000
-time                 17.85 ms   (17.77 ms .. 17.92 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 17.71 ms   (17.67 ms .. 17.75 ms)
-std dev              151.5 μs   (114.8 μs .. 164.3 μs)
+time                 17.74 ms   (17.67 ms .. 17.88 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 17.87 ms   (17.84 ms .. 17.89 ms)
+std dev              185.4 μs   (130.3 μs .. 209.8 μs)
 
 benchmarking par/40000
-time                 43.80 ms   (43.70 ms .. 43.89 ms)
+time                 43.59 ms   (43.38 ms .. 44.05 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 43.58 ms   (43.27 ms .. 43.75 ms)
-std dev              559.9 μs   (122.4 μs .. 880.1 μs)
+mean                 43.64 ms   (43.52 ms .. 43.94 ms)
+std dev              583.6 μs   (205.9 μs .. 780.9 μs)
 
 benchmarking par/80000
-time                 103.3 ms   (102.6 ms .. 103.4 ms)
+time                 103.4 ms   (102.9 ms .. 103.7 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 102.7 ms   (102.4 ms .. 103.1 ms)
-std dev              842.0 μs   (429.5 μs .. 1.046 ms)
+mean                 103.2 ms   (102.6 ms .. 103.7 ms)
+std dev              690.3 μs   (140.4 μs .. 871.4 μs)
 
 benchmarking par/160000
-time                 236.4 ms   (231.2 ms .. 236.7 ms)
+time                 237.5 ms   (236.6 ms .. 238.2 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 236.3 ms   (235.7 ms .. 237.2 ms)
-std dev              1.014 ms   (601.4 μs .. 1.366 ms)
+mean                 237.0 ms   (236.7 ms .. 237.5 ms)
+std dev              594.4 μs   (104.3 μs .. 639.7 μs)
 variance introduced by outliers: 14% (moderately inflated)
 
 benchmarking par/320000
-time                 544.8 ms   (544.8 ms .. 546.2 ms)
+time                 547.0 ms   (530.7 ms .. 555.4 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 539.6 ms   (533.8 ms .. 540.6 ms)
-std dev              6.028 ms   (5.178 ms .. 7.909 ms)
+mean                 541.6 ms   (537.4 ms .. 543.7 ms)
+std dev              5.953 ms   (2.674 ms .. 6.730 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/640000
-time                 1.246 s    (1.238 s .. 1.261 s)
+time                 1.249 s    (1.241 s .. 1.263 s)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 1.234 s    (1.230 s .. 1.240 s)
-std dev              5.899 ms   (752.7 μs .. 6.536 ms)
+mean                 1.232 s    (1.230 s .. 1.238 s)
+std dev              9.379 ms   (7.245 ms .. 10.60 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -52,48 +52,48 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 2 CORES --------------
 
 benchmarking par/10000
-time                 3.931 ms   (3.892 ms .. 3.972 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 4.038 ms   (4.027 ms .. 4.058 ms)
-std dev              93.58 μs   (86.98 μs .. 108.7 μs)
+time                 3.934 ms   (3.915 ms .. 3.942 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 4.031 ms   (4.027 ms .. 4.038 ms)
+std dev              69.74 μs   (58.69 μs .. 72.81 μs)
 
 benchmarking par/20000
-time                 11.50 ms   (11.45 ms .. 11.60 ms)
-                     0.998 R²   (0.998 R² .. 0.999 R²)
-mean                 11.40 ms   (11.34 ms .. 11.51 ms)
-std dev              257.9 μs   (161.1 μs .. 304.3 μs)
+time                 11.79 ms   (11.75 ms .. 11.81 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 11.70 ms   (11.68 ms .. 11.72 ms)
+std dev              109.7 μs   (79.60 μs .. 141.4 μs)
 
 benchmarking par/40000
-time                 27.80 ms   (27.31 ms .. 28.33 ms)
-                     0.999 R²   (0.998 R² .. 0.999 R²)
-mean                 27.53 ms   (27.34 ms .. 27.70 ms)
-std dev              477.4 μs   (294.1 μs .. 549.4 μs)
+time                 27.32 ms   (27.04 ms .. 28.13 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 27.97 ms   (27.79 ms .. 28.02 ms)
+std dev              436.1 μs   (371.8 μs .. 524.0 μs)
 
 benchmarking par/80000
-time                 63.31 ms   (62.50 ms .. 64.46 ms)
-                     1.000 R²   (0.998 R² .. 1.000 R²)
-mean                 63.23 ms   (63.01 ms .. 63.40 ms)
-std dev              870.4 μs   (773.2 μs .. 1.010 ms)
+time                 64.04 ms   (64.06 ms .. 64.11 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 64.09 ms   (64.05 ms .. 64.14 ms)
+std dev              138.0 μs   (79.10 μs .. 172.9 μs)
 
 benchmarking par/160000
-time                 143.5 ms   (142.4 ms .. 143.4 ms)
+time                 145.3 ms   (145.0 ms .. 146.2 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 143.3 ms   (143.2 ms .. 143.5 ms)
-std dev              1.198 ms   (1.099 ms .. 1.417 ms)
+mean                 144.9 ms   (144.7 ms .. 145.2 ms)
+std dev              883.2 μs   (497.0 μs .. 930.3 μs)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 326.9 ms   (326.5 ms .. 328.3 ms)
+time                 328.2 ms   (327.7 ms .. 329.8 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 325.3 ms   (323.6 ms .. 326.0 ms)
-std dev              1.887 ms   (200.1 μs .. 2.169 ms)
+mean                 326.4 ms   (325.4 ms .. 327.4 ms)
+std dev              1.815 ms   (652.2 μs .. 2.446 ms)
 variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/640000
-time                 754.4 ms   (746.6 ms .. 772.9 ms)
+time                 758.8 ms   (746.0 ms .. 760.2 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 747.9 ms   (747.4 ms .. 749.9 ms)
-std dev              3.453 ms   (3.317 ms .. 4.194 ms)
+mean                 752.4 ms   (751.6 ms .. 755.5 ms)
+std dev              5.865 ms   (1.701 ms .. 5.865 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -101,48 +101,48 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 3 CORES --------------
 
 benchmarking par/10000
-time                 3.870 ms   (3.853 ms .. 3.889 ms)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 3.926 ms   (3.917 ms .. 3.934 ms)
-std dev              36.74 μs   (25.25 μs .. 45.38 μs)
+time                 4.149 ms   (4.133 ms .. 4.178 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 4.149 ms   (4.123 ms .. 4.161 ms)
+std dev              58.24 μs   (49.35 μs .. 64.45 μs)
 
 benchmarking par/20000
-time                 11.27 ms   (11.15 ms .. 11.47 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 11.19 ms   (11.14 ms .. 11.25 ms)
-std dev              237.7 μs   (202.6 μs .. 289.8 μs)
+time                 11.90 ms   (11.84 ms .. 11.99 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 11.76 ms   (11.74 ms .. 11.78 ms)
+std dev              116.0 μs   (107.9 μs .. 143.0 μs)
 
 benchmarking par/40000
-time                 27.01 ms   (26.94 ms .. 27.13 ms)
+time                 28.22 ms   (28.06 ms .. 28.27 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 26.95 ms   (26.94 ms .. 26.96 ms)
-std dev              68.08 μs   (54.50 μs .. 91.40 μs)
+mean                 28.14 ms   (28.08 ms .. 28.18 ms)
+std dev              137.0 μs   (95.06 μs .. 160.5 μs)
 
 benchmarking par/80000
-time                 62.93 ms   (62.58 ms .. 63.12 ms)
+time                 64.71 ms   (64.68 ms .. 64.79 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 62.56 ms   (62.56 ms .. 62.56 ms)
-std dev              978.1 μs   (952.2 μs .. 1.299 ms)
+mean                 63.99 ms   (63.82 ms .. 64.15 ms)
+std dev              582.8 μs   (510.5 μs .. 601.9 μs)
 
 benchmarking par/160000
-time                 143.5 ms   (143.1 ms .. 144.1 ms)
+time                 144.5 ms   (143.6 ms .. 146.8 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 142.8 ms   (141.5 ms .. 143.3 ms)
-std dev              1.555 ms   (276.3 μs .. 2.278 ms)
+mean                 145.6 ms   (145.3 ms .. 146.1 ms)
+std dev              1.221 ms   (788.0 μs .. 1.364 ms)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 333.1 ms   (328.6 ms .. 337.9 ms)
+time                 334.8 ms   (334.6 ms .. 337.0 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 328.9 ms   (328.8 ms .. 329.6 ms)
-std dev              2.383 ms   (1.450 ms .. 2.383 ms)
+mean                 327.5 ms   (324.8 ms .. 329.2 ms)
+std dev              4.366 ms   (2.098 ms .. 5.279 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/640000
-time                 751.8 ms   (748.5 ms .. 764.9 ms)
+time                 755.2 ms   (719.7 ms .. 768.4 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 748.7 ms   (746.1 ms .. 757.7 ms)
-std dev              6.263 ms   (6.203 ms .. 6.317 ms)
+mean                 756.7 ms   (753.9 ms .. 758.4 ms)
+std dev              4.950 ms   (1.190 ms .. 6.391 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -150,50 +150,49 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 4 CORES --------------
 
 benchmarking par/10000
-time                 3.918 ms   (3.864 ms .. 3.937 ms)
-                     0.998 R²   (0.997 R² .. 0.999 R²)
-mean                 4.019 ms   (3.991 ms .. 4.049 ms)
-std dev              124.0 μs   (109.2 μs .. 136.0 μs)
-variance introduced by outliers: 15% (moderately inflated)
+time                 3.968 ms   (3.934 ms .. 3.993 ms)
+                     0.998 R²   (0.998 R² .. 0.999 R²)
+mean                 4.139 ms   (4.110 ms .. 4.162 ms)
+std dev              100.6 μs   (91.89 μs .. 112.6 μs)
 
 benchmarking par/20000
-time                 11.32 ms   (11.29 ms .. 11.42 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 11.32 ms   (11.30 ms .. 11.33 ms)
-std dev              65.12 μs   (54.81 μs .. 78.89 μs)
+time                 12.56 ms   (12.44 ms .. 12.83 ms)
+                     0.995 R²   (0.994 R² .. 0.997 R²)
+mean                 11.71 ms   (11.56 ms .. 11.82 ms)
+std dev              489.0 μs   (366.3 μs .. 528.1 μs)
+variance introduced by outliers: 17% (moderately inflated)
 
 benchmarking par/40000
-time                 27.65 ms   (27.57 ms .. 27.78 ms)
+time                 28.08 ms   (27.89 ms .. 28.21 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 27.91 ms   (27.68 ms .. 28.15 ms)
-std dev              889.1 μs   (879.2 μs .. 1.205 ms)
-variance introduced by outliers: 10% (moderately inflated)
+mean                 28.18 ms   (28.08 ms .. 28.23 ms)
+std dev              179.4 μs   (128.0 μs .. 221.1 μs)
 
 benchmarking par/80000
-time                 64.15 ms   (64.12 ms .. 64.28 ms)
+time                 63.57 ms   (63.29 ms .. 63.85 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 63.74 ms   (63.48 ms .. 63.99 ms)
-std dev              720.2 μs   (88.22 μs .. 954.4 μs)
+mean                 63.69 ms   (63.44 ms .. 63.92 ms)
+std dev              555.9 μs   (365.1 μs .. 616.7 μs)
 
 benchmarking par/160000
-time                 144.6 ms   (144.4 ms .. 144.7 ms)
+time                 145.3 ms   (144.9 ms .. 146.0 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 143.8 ms   (143.0 ms .. 144.3 ms)
-std dev              1.055 ms   (87.87 μs .. 1.493 ms)
+mean                 144.2 ms   (143.5 ms .. 144.4 ms)
+std dev              872.4 μs   (824.3 μs .. 917.9 μs)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 344.9 ms   (326.4 ms .. 348.0 ms)
+time                 344.8 ms   (324.1 ms .. 381.0 ms)
                      0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 327.8 ms   (324.1 ms .. 334.9 ms)
-std dev              8.524 ms   (3.461 ms .. 10.15 ms)
+mean                 328.5 ms   (326.2 ms .. 332.2 ms)
+std dev              8.203 ms   (3.129 ms .. 9.561 ms)
 variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/640000
-time                 771.3 ms   (767.2 ms .. NaN s)
-                     1.000 R²   (1.000 R² .. NaN R²)
-mean                 759.4 ms   (754.5 ms .. 762.9 ms)
-std dev              6.125 ms   (2.895 ms .. 7.038 ms)
+time                 777.2 ms   (773.4 ms .. 777.7 ms)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 758.6 ms   (753.3 ms .. 766.1 ms)
+std dev              11.21 ms   (5.125 ms .. 14.82 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -201,49 +200,49 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 5 CORES --------------
 
 benchmarking par/10000
-time                 3.884 ms   (3.858 ms .. 3.918 ms)
-                     0.999 R²   (0.999 R² .. 1.000 R²)
-mean                 3.955 ms   (3.945 ms .. 3.970 ms)
-std dev              50.06 μs   (33.29 μs .. 55.75 μs)
+time                 4.150 ms   (4.117 ms .. 4.188 ms)
+                     0.999 R²   (0.998 R² .. 0.999 R²)
+mean                 4.133 ms   (4.127 ms .. 4.139 ms)
+std dev              94.70 μs   (79.04 μs .. 104.7 μs)
 
 benchmarking par/20000
-time                 11.12 ms   (11.04 ms .. 11.17 ms)
-                     0.999 R²   (0.999 R² .. 1.000 R²)
-mean                 11.12 ms   (11.07 ms .. 11.14 ms)
-std dev              170.8 μs   (151.6 μs .. 202.6 μs)
+time                 11.48 ms   (11.21 ms .. 11.61 ms)
+                     0.998 R²   (0.998 R² .. 0.999 R²)
+mean                 11.66 ms   (11.62 ms .. 11.69 ms)
+std dev              256.5 μs   (192.6 μs .. 288.2 μs)
 
 benchmarking par/40000
-time                 26.87 ms   (26.78 ms .. 27.01 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 27.43 ms   (27.11 ms .. 28.12 ms)
-std dev              1.488 ms   (155.4 μs .. 2.426 ms)
-variance introduced by outliers: 21% (moderately inflated)
+time                 27.91 ms   (26.95 ms .. 28.24 ms)
+                     0.998 R²   (0.996 R² .. 0.999 R²)
+mean                 28.28 ms   (27.77 ms .. 29.03 ms)
+std dev              1.378 ms   (684.1 μs .. 2.346 ms)
+variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/80000
-time                 63.32 ms   (63.27 ms .. 63.78 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 62.49 ms   (62.31 ms .. 62.68 ms)
-std dev              680.3 μs   (377.9 μs .. 832.0 μs)
+time                 64.25 ms   (63.35 ms .. 64.86 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 64.74 ms   (63.83 ms .. 65.97 ms)
+std dev              2.838 ms   (2.817 ms .. 3.745 ms)
 
 benchmarking par/160000
-time                 143.2 ms   (142.5 ms .. 145.3 ms)
+time                 145.8 ms   (145.2 ms .. 146.1 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 145.7 ms   (145.2 ms .. 147.4 ms)
-std dev              2.155 ms   (816.8 μs .. 2.562 ms)
+mean                 145.4 ms   (145.3 ms .. 145.6 ms)
+std dev              568.0 μs   (518.1 μs .. 569.0 μs)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 334.6 ms   (322.8 ms .. NaN s)
-                     1.000 R²   (0.999 R² .. NaN R²)
-mean                 330.3 ms   (328.7 ms .. 333.2 ms)
-std dev              2.788 ms   (1.964 ms .. 3.398 ms)
-variance introduced by outliers: 19% (moderately inflated)
+time                 343.8 ms   (342.1 ms .. 368.8 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 329.2 ms   (325.3 ms .. 332.0 ms)
+std dev              7.464 ms   (2.303 ms .. 8.508 ms)
+variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/640000
-time                 795.3 ms   (790.9 ms .. 816.3 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 765.7 ms   (758.8 ms .. 771.5 ms)
-std dev              16.44 ms   (14.82 ms .. 17.52 ms)
+time                 791.2 ms   (765.7 ms .. 848.2 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 767.6 ms   (762.3 ms .. 772.7 ms)
+std dev              11.83 ms   (2.086 ms .. 14.39 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -251,49 +250,48 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 6 CORES --------------
 
 benchmarking par/10000
-time                 3.927 ms   (3.893 ms .. 3.951 ms)
-                     0.999 R²   (0.998 R² .. 0.999 R²)
-mean                 4.056 ms   (4.034 ms .. 4.089 ms)
-std dev              121.7 μs   (113.7 μs .. 131.7 μs)
-variance introduced by outliers: 13% (moderately inflated)
+time                 4.132 ms   (4.111 ms .. 4.143 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 4.131 ms   (4.122 ms .. 4.140 ms)
+std dev              70.54 μs   (67.70 μs .. 84.96 μs)
 
 benchmarking par/20000
-time                 11.53 ms   (11.52 ms .. 11.55 ms)
+time                 11.74 ms   (11.70 ms .. 11.77 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 11.52 ms   (11.51 ms .. 11.54 ms)
-std dev              62.16 μs   (47.09 μs .. 67.71 μs)
+mean                 11.76 ms   (11.75 ms .. 11.77 ms)
+std dev              75.02 μs   (59.27 μs .. 90.49 μs)
 
 benchmarking par/40000
-time                 28.45 ms   (28.37 ms .. 28.52 ms)
+time                 28.33 ms   (28.20 ms .. 28.42 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 28.40 ms   (28.37 ms .. 28.45 ms)
-std dev              146.8 μs   (101.9 μs .. 177.5 μs)
+mean                 28.04 ms   (27.78 ms .. 28.19 ms)
+std dev              313.0 μs   (165.8 μs .. 491.3 μs)
 
 benchmarking par/80000
-time                 64.44 ms   (64.22 ms .. 64.72 ms)
+time                 64.08 ms   (63.90 ms .. 64.21 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 64.94 ms   (64.65 ms .. 65.26 ms)
-std dev              1.131 ms   (93.53 μs .. 1.524 ms)
+mean                 64.11 ms   (63.93 ms .. 64.28 ms)
+std dev              441.0 μs   (214.5 μs .. 585.2 μs)
 
 benchmarking par/160000
-time                 142.3 ms   (141.7 ms .. 142.9 ms)
+time                 145.6 ms   (143.0 ms .. 146.8 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 142.7 ms   (142.3 ms .. 143.5 ms)
-std dev              932.9 μs   (399.2 μs .. 1.360 ms)
+mean                 143.6 ms   (143.0 ms .. 144.1 ms)
+std dev              1.482 ms   (793.2 μs .. 1.984 ms)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 341.1 ms   (322.6 ms .. 347.9 ms)
-                     0.998 R²   (0.998 R² .. 1.000 R²)
-mean                 330.0 ms   (327.4 ms .. 335.8 ms)
-std dev              6.307 ms   (1.431 ms .. 7.154 ms)
+time                 342.8 ms   (334.8 ms .. 356.6 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 327.5 ms   (323.3 ms .. 330.5 ms)
+std dev              7.932 ms   (2.073 ms .. 11.51 ms)
 variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/640000
-time                 785.6 ms   (762.6 ms .. 786.6 ms)
-                     0.999 R²   (1.000 R² .. 1.000 R²)
-mean                 755.1 ms   (750.4 ms .. 766.0 ms)
-std dev              14.86 ms   (9.426 ms .. 16.10 ms)
+time                 785.9 ms   (738.4 ms .. 811.6 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 765.3 ms   (762.4 ms .. 769.6 ms)
+std dev              11.86 ms   (6.717 ms .. 13.73 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -301,49 +299,48 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 7 CORES --------------
 
 benchmarking par/10000
-time                 3.860 ms   (3.844 ms .. 3.869 ms)
+time                 3.973 ms   (3.961 ms .. 3.998 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 3.901 ms   (3.900 ms .. 3.910 ms)
-std dev              42.04 μs   (34.54 μs .. 48.60 μs)
+mean                 4.023 ms   (4.013 ms .. 4.035 ms)
+std dev              53.89 μs   (44.79 μs .. 71.72 μs)
 
 benchmarking par/20000
-time                 11.42 ms   (11.39 ms .. 11.45 ms)
+time                 11.39 ms   (11.28 ms .. 11.47 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 11.43 ms   (11.39 ms .. 11.46 ms)
-std dev              114.6 μs   (50.32 μs .. 175.5 μs)
+mean                 11.49 ms   (11.39 ms .. 11.53 ms)
+std dev              141.0 μs   (110.5 μs .. 214.5 μs)
 
 benchmarking par/40000
-time                 27.32 ms   (27.20 ms .. 27.39 ms)
+time                 28.14 ms   (27.96 ms .. 28.23 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 27.78 ms   (27.46 ms .. 28.12 ms)
-std dev              1.287 ms   (47.24 μs .. 1.768 ms)
-variance introduced by outliers: 16% (moderately inflated)
+mean                 27.98 ms   (27.92 ms .. 28.03 ms)
+std dev              219.4 μs   (157.3 μs .. 252.7 μs)
 
 benchmarking par/80000
-time                 63.63 ms   (63.48 ms .. 63.68 ms)
+time                 64.82 ms   (64.68 ms .. 64.96 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 63.65 ms   (63.32 ms .. 63.71 ms)
-std dev              428.8 μs   (378.4 μs .. 596.0 μs)
+mean                 64.55 ms   (63.93 ms .. 64.78 ms)
+std dev              694.1 μs   (102.1 μs .. 1.156 ms)
 
 benchmarking par/160000
-time                 144.3 ms   (143.9 ms .. 144.6 ms)
+time                 146.7 ms   (146.6 ms .. 146.9 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 144.4 ms   (143.6 ms .. 144.8 ms)
-std dev              988.9 μs   (58.49 μs .. 1.274 ms)
+mean                 145.7 ms   (145.0 ms .. 146.2 ms)
+std dev              977.2 μs   (413.8 μs .. 1.388 ms)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 338.7 ms   (328.4 ms .. 360.9 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 323.6 ms   (317.8 ms .. 328.7 ms)
-std dev              8.528 ms   (5.359 ms .. 10.14 ms)
+time                 342.0 ms   (332.2 ms .. 380.9 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 330.5 ms   (328.0 ms .. 333.7 ms)
+std dev              6.084 ms   (2.366 ms .. 8.442 ms)
 variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/640000
-time                 777.5 ms   (734.8 ms .. 803.5 ms)
-                     0.998 R²   (0.997 R² .. 1.000 R²)
-mean                 752.5 ms   (743.4 ms .. 761.3 ms)
-std dev              15.71 ms   (14.54 ms .. 17.29 ms)
+time                 794.6 ms   (766.1 ms .. 858.5 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 763.0 ms   (755.6 ms .. 776.5 ms)
+std dev              15.60 ms   (0.0 s .. 18.96 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -351,48 +348,49 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 8 CORES --------------
 
 benchmarking par/10000
-time                 4.059 ms   (4.022 ms .. 4.092 ms)
-                     0.998 R²   (0.997 R² .. 0.999 R²)
-mean                 4.006 ms   (3.974 ms .. 4.027 ms)
-std dev              86.21 μs   (74.54 μs .. 94.79 μs)
+time                 4.094 ms   (4.045 ms .. 4.318 ms)
+                     0.996 R²   (0.994 R² .. 0.998 R²)
+mean                 4.100 ms   (4.076 ms .. 4.144 ms)
+std dev              128.1 μs   (123.7 μs .. 138.4 μs)
+variance introduced by outliers: 15% (moderately inflated)
 
 benchmarking par/20000
-time                 11.73 ms   (11.69 ms .. 11.76 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 11.73 ms   (11.68 ms .. 11.77 ms)
-std dev              98.61 μs   (82.66 μs .. 107.2 μs)
+time                 11.76 ms   (11.72 ms .. 11.79 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 11.82 ms   (11.80 ms .. 11.89 ms)
+std dev              167.4 μs   (86.59 μs .. 288.4 μs)
 
 benchmarking par/40000
-time                 27.08 ms   (26.98 ms .. 27.20 ms)
+time                 27.08 ms   (26.98 ms .. 27.17 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 27.08 ms   (27.05 ms .. 27.10 ms)
-std dev              88.37 μs   (51.22 μs .. 105.9 μs)
+mean                 27.07 ms   (26.99 ms .. 27.12 ms)
+std dev              159.5 μs   (124.7 μs .. 182.3 μs)
 
 benchmarking par/80000
-time                 64.21 ms   (63.79 ms .. 64.53 ms)
+time                 63.68 ms   (63.06 ms .. 64.12 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 63.66 ms   (63.37 ms .. 63.97 ms)
-std dev              704.4 μs   (491.4 μs .. 841.3 μs)
+mean                 63.61 ms   (63.03 ms .. 64.09 ms)
+std dev              1.612 ms   (438.0 μs .. 2.272 ms)
 
 benchmarking par/160000
-time                 145.0 ms   (144.5 ms .. 145.8 ms)
+time                 143.3 ms   (142.7 ms .. 143.9 ms)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 143.0 ms   (142.0 ms .. 144.1 ms)
-std dev              2.615 ms   (164.6 μs .. 3.343 ms)
+mean                 142.8 ms   (142.2 ms .. 143.6 ms)
+std dev              1.056 ms   (1.019 ms .. 1.185 ms)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/320000
-time                 343.0 ms   (333.9 ms .. 350.0 ms)
-                     0.999 R²   (0.999 R² .. 1.000 R²)
-mean                 329.9 ms   (328.8 ms .. 334.9 ms)
-std dev              7.085 ms   (4.119 ms .. 8.435 ms)
-variance introduced by outliers: 16% (moderately inflated)
+time                 335.4 ms   (333.5 ms .. NaN s)
+                     1.000 R²   (1.000 R² .. NaN R²)
+mean                 328.8 ms   (326.2 ms .. 331.5 ms)
+std dev              3.664 ms   (2.097 ms .. 4.979 ms)
+variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/640000
-time                 784.3 ms   (776.8 ms .. 786.4 ms)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 760.7 ms   (747.1 ms .. 768.5 ms)
-std dev              14.38 ms   (5.084 ms .. 17.47 ms)
+time                 793.1 ms   (747.0 ms .. 811.3 ms)
+                     1.000 R²   (0.999 R² .. 1.000 R²)
+mean                 766.5 ms   (752.0 ms .. 780.2 ms)
+std dev              15.73 ms   (1.967 ms .. 16.79 ms)
 variance introduced by outliers: 19% (moderately inflated)
 
 
