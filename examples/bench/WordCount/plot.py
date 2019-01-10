@@ -197,7 +197,7 @@ def main(argv):
 
     fig, ax = plt.subplots(1, 1)
     ax.set_ylabel('Speedup', **text_style)
-    ax.set_xlabel('Size (n. elems)', **text_style)
+    ax.set_xlabel('Text Size (bytes)', **text_style)
     ax.set_xscale('log')
     ax.tick_params(axis='both', which='major', labelsize=14)
 
