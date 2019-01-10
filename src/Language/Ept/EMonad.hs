@@ -57,7 +57,11 @@ generateAtoms fn prel tcst p = pure contents
       $! vsep
       $! [pprHeader, a]
     pprHeader = vsep $!
-      [ pretty "module" <+> pretty fn <+> pretty "where"
+      [ pretty "{-# LANGUAGE DeriveGeneric #-}"
+      , pretty "module" <+> pretty fn <+> pretty "where"
+      , emptyDoc
+      , pretty "import Control.DeepSeq"
+      , pretty "import GHC.Generics (Generic, Generic1)"
       , emptyDoc
       , pretty "import" <+> pretty prel
       ]
@@ -1039,7 +1043,9 @@ genRec f (AnnF p) = do
     [ hang 2 $ vsep $
       [ header , pretty "=" <+> mkConstr (head cs)]
       ++ (map ((pretty "|" <+>) . mkConstr) $ tail cs)
+      ++ [pretty "deriving Generic"]
     ]
+    ++ [pretty "instance NFData" <+> pretty "Rec" <> pretty f]
     ++ emptyDoc : map mkInF cs
     ++ emptyDoc : map mkOutF cs
     ++ [emptyDoc]

@@ -3,42 +3,44 @@ module Main where
 
 import Control.Monad
 import Control.DeepSeq
-import Data.List ( sort )
-import Data.Vector  ( Vector )
-import qualified Data.Vector as V
+import qualified Data.Text as Text
+import qualified Data.Text.IO as TIO
 import System.Random ( randomRIO )
 import System.Clock
+import Text.Lorem
 
 import Criterion.Main
 import Criterion.Types
 
-import Mergesort
+import Atoms
+import WordCount
 
 ensure :: NFData a => a -> IO a
 ensure xs = xs `deepseq` return xs
 
 
 range       = [ sizeLow
-              , sizeLow * 2
-              , sizeLow * 4
-              , sizeLow * 8
-              , sizeLow * 16
-              , sizeLow * 32
-              , sizeLow * 64
+              , sizeLow + step 1
+              , sizeLow + step 2
+              , sizeLow + step 4
+              , sizeLow + step 6
+              , sizeLow + step 8
+              , sizeLow + step 10
               ]
-step        = sizeLow `div` 10
+step     i  = sizeLow * i
 numSteps    = 10
-randList n  = replicateM n $ randomRIO (minBound,maxBound::Int)
+randList n  = Text.take n <$> TIO.readFile "input.txt"
 sizeLow     = 10000
 sizeHigh    = sizeLow
 
-main = cmain -- msMain 100000
+main = cmain --
 
 msMain sz = do
   l <- randList sz
   t'init <- getTime Realtime
-  msp l >>= ensure
+  wordpar (spltw l) >>= print
   t'last <- getTime Realtime
+  print l
   print $ t'last - t'init
 
 
@@ -54,6 +56,6 @@ cmain = do
       , bgroup "std" $ map mkBench lss
       ]
   where
-    mkMsBench l = bench (show $ length l) $ nfIO $ msp l
-    mkSqBench l = bench (show $ length l) $ nf ms l
-    mkBench l = bench (show $ length l) $ nf sort l
+    mkMsBench l = bench (show $ Text.length l) $ nfIO $ wordpar $ spltw l
+    mkSqBench l = bench (show $ Text.length l) $ nf wordCount l
+    mkBench l = bench (show $ Text.length l) $ nf (count . spltw) l

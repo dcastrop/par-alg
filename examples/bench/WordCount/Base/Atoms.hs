@@ -1,27 +1,74 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Atoms where
 
-import AlgPrelude
+import           Control.DeepSeq
+import           GHC.Generics       (Generic, Generic1)
 
-type LInt = [Int]
+import           Data.Map.Strict    ( Map )
+import qualified Data.Map.Strict as Map
+import           Data.List          ( foldl' )
+import           Data.Text          ( Text   )
+import qualified Data.Text       as Text
 
-split :: LInt -> Sum2 (Sum2 () Int) (Pair2 LInt LInt)
-split []  = Inj0_2 (Inj0_2 ())
-split [x] = Inj0_2 (Inj1_2 x)
-split (x:y:xs) = Inj1_2 $ go [x] [y] xs
+import           AlgPrelude
+
+threshold = 100
+
+type L1 a = Sum2 () (Pair2 Text a)
+type T a = Sum2 (RecL1) (Pair2 a a)
+type D a = Sum2 () (Pair2 (Pair2 Text Int) a)
+type Dict = RecD
+
+type RecL1 = [Text]
+
+inL1 (Inj0_2 _) = []
+inL1 (Inj1_2 (Pair2 v0 v1)) = v0 : v1
+
+outL1 [] = Inj0_2 ()
+outL1 (v0 : v1) = Inj1_2 (Pair2 v0 v1)
+
+data RecT
+  = TInj0_2 (RecL1)
+  | TInj1_2 RecT RecT
+  deriving Generic
+instance NFData RecT
+
+inT (Inj0_2 v0) = TInj0_2 v0
+inT (Inj1_2 (Pair2 v0 v1)) = TInj1_2 v0 v1
+
+outT (TInj0_2 v0) = Inj0_2 v0
+outT (TInj1_2 v0 v1) = Inj1_2 (Pair2 v0 v1)
+
+type RecD = Map Text Int
+
+inD (Inj0_2 ()) = Map.empty
+inD (Inj1_2 (Pair2 v0 v1)) = uncurry Map.insert v0 v1
+
+outD d
+  | Map.null d = Inj0_2 ()
+  | otherwise  = Inj1_2 (Pair2 v0 v1)
   where
-    go l r [] = Pair2 l r
-    go l r (x : xs) = go r (x : l) xs
+    (v0, v1) = Map.deleteFindMin d
 
-merge :: Sum2 (Sum2 () Int) (Pair2 LInt LInt) -> LInt
-merge (Inj0_2 (Inj0_2 _)) = []
-merge (Inj0_2 (Inj1_2 x)) = [x]
-merge (Inj1_2 (Pair2 l r)) = go l r
+spltw :: Text -> RecL1
+spltw = Text.words
+
+union :: Pair2 Dict Dict-> Dict
+union (Pair2 l r) = Map.unionWith (+) l r
+
+count :: RecL1 -> Dict
+count = foldl' (flip $ Map.alter go) Map.empty
   where
-    go xs ys = case (xs, ys) of
-      ([], _) -> ys
-      (_, []) -> xs
-      (x:xt, y:yt) -> if x < y
-        then x : go xt ys
-        else y : go xs yt
+    go Nothing = Just 1
+    go (Just i) = Just $! i+1
 
+split :: RecL1 -> Sum2 (RecL1) (Pair2 RecL1 RecL1)
+split l
+  | n > threshold = Inj1_2 $! Pair2 l1 l2
+  | otherwise     = Inj0_2 l
+  where
+    n = length l
+    (l1, l2) = spl [] [] l
+    spl a b [] = (a, b)
+    spl a b (x:xs) = spl b (x : a) xs
 
