@@ -26,20 +26,23 @@ range       = [ sizeLow
               , sizeLow + step 8
               , sizeLow + step 10
               ]
-step     i  = sizeLow * i
+step     i  = sizeLow * i * 10
 numSteps    = 10
-randList n  = Text.take n <$> TIO.readFile "input.txt"
+randList n  = TIO.readFile "../input.txt" >>= ensure . Text.take n
 sizeLow     = 10000
 sizeHigh    = sizeLow
 
-main = cmain --
+main = cmain
 
 msMain sz = do
   l <- randList sz
   t'init <- getTime Realtime
-  wordpar (spltw l) >>= print
+  wordpar (spltw l) >>= ensure
   t'last <- getTime Realtime
-  print l
+  print $ t'last - t'init
+  t'init <- getTime Realtime
+  ensure $ wordc (spltw l)
+  t'last <- getTime Realtime
   print $ t'last - t'init
 
 
@@ -50,11 +53,11 @@ config = defaultConfig {
 cmain = do
   lss <- mapM randList range >>= ensure
   defaultMainWith config
-      [ bgroup "par" $ map mkMsBench lss
-      , bgroup "seq" $ map mkSqBench lss
+      [ bgroup "seq" $ map mkMsBench lss
+      , bgroup "par" $ map mkParBench lss
       , bgroup "std" $ map mkBench lss
       ]
   where
-    mkMsBench l = bench (show $ Text.length l) $ nfIO $ wordpar $ spltw l
-    mkSqBench l = bench (show $ Text.length l) $ nf wordCount l
+    mkMsBench l = bench (show $ Text.length l) $ nf wordCount l
+    mkParBench l = bench (show $ Text.length l) $ nfIO $ wordpar $ spltw l
     mkBench l = bench (show $ Text.length l) $ nf (count . spltw) l

@@ -63,11 +63,10 @@ count = foldl' (flip $ Map.alter go) Map.empty
     go (Just i) = Just $! i+1
 
 split :: RecL1 -> Sum2 (RecL1) (Pair2 RecL1 RecL1)
-split l
-  | n > threshold = Inj1_2 $! Pair2 l1 l2
-  | otherwise     = Inj0_2 l
+split []  = Inj0_2 []
+split [x] = Inj0_2 [x]
+split l   = Inj1_2 $! Pair2 l1 l2
   where
-    n = length l
     (l1, l2) = spl [] [] l
     spl a b [] = (a, b)
     spl a b (x:xs) = spl b (x : a) xs

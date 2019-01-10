@@ -132,11 +132,10 @@ def main(argv):
 
     ## speedups of +RTS -N
     rtsn_x = [ nn for nn, nn_d in seq_data.items() ]
-    print rtsn_x
     rtsn_k2 = [ speedups_kns[2][nn][current_S] for nn in rtsn_x ]
     rtsn_k4 = [ speedups_kns[4][nn][current_S] for nn in rtsn_x ]
     rtsn_k6 = [ speedups_kns[6][nn][current_S] for nn in rtsn_x ]
-    rtsn_k8 = [ speedups_kns[7][nn][current_S] for nn in rtsn_x ]
+    rtsn_k8 = [ speedups_kns[8][nn][current_S] for nn in rtsn_x ]
 
     fig, ax = plt.subplots(1, 1)
     ax.set_ylabel('Speedup', **text_style)
@@ -189,7 +188,7 @@ def main(argv):
     k1 = 1
     k2 = 2
     k3 = 6
-    k4 = 7
+    k4 = 8
     sz_k1 = [ speedups_kns[k1][rtsn][sz] for sz in sizes_x ]
     sz_k2 = [ speedups_kns[k2][rtsn][sz] for sz in sizes_x ]
     sz_k3 = [ speedups_kns[k3][rtsn][sz] for sz in sizes_x ]
