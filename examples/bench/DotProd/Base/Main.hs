@@ -23,10 +23,10 @@ ensure :: NFData a => a -> IO a
 ensure xs = xs `deepseq` return xs
 
 minv :: Num a => a
-minv = -2^31
+minv = 0
 
 maxv :: Num a => a
-maxv = 2^31
+maxv = 10
 
 range       = [ 2 ^ sizeLow
               , 2 ^ (sizeLow + 1)
@@ -44,7 +44,7 @@ step        = sizeLow `div` 10
 numSteps    = 10
 randList n  = replicateM n $ randomRIO (minv, maxv :: Integer)
 randPairL n = Pair2 <$!> (toL1 <$!> randList n) <*> (toL1 <$!> randList n)
-sizeLow     = 10
+sizeLow     = 11
 
 main = cmain
 --main = do
@@ -63,25 +63,19 @@ msMain sz m = do
 
 
 config = defaultConfig
-  { resamples = 30
-  , confInterval = cl99
-  , timeLimit = 60
+  { confInterval = cl99
   }
 
 mkEnv = mapM (\i -> (i,) <$!> randPairL i) range
 
-cmain =
+cmain = do
+  lss <- mkEnv >>= ensure
   defaultMainWith config
-      [ env mkEnv mkMsBench
-      , env mkEnv mkSqBench
+      [ bgroup "par" $ map mkMsBench lss
+      , bgroup "seq" $ map mkSqBench lss
+      , bgroup "hs" $ map mkVBench lss
       ]
   where
-    mkMsBench l = bgroup "par" $ take (length range) $ go l
-      where
-        go ~(l:t) = bench (show $ fst l) (nfIO $ dotpar $ snd l) : go t
-    mkSqBench l = bgroup "seq" $ take (length range) $ go l
-      where
-        go ~(l:t) = bench (show $ fst l) (nf dot $ snd l) : go t
-    mkVBench l = bgroup "hs" $ take (length range) $ go l
-      where
-        go ~(l:t) = bench (show $ fst l) (nf dotv $ snd l) : go t
+    mkMsBench l = bench (show $ fst l) (nfIO $ dotpar $ snd l)
+    mkSqBench l = bench (show $ fst l) (nf dot $ snd l)
+    mkVBench l  = bench (show $ fst l) (nf dotv $ snd l)

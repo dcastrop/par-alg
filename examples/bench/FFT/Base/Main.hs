@@ -54,22 +54,17 @@ msMain sz = do
 
 
 config = defaultConfig
-  { resamples = 30
-  , confInterval = cl99
-  , timeLimit = 60
+  { confInterval = cl99
   }
 
 mkEnv = mapM randList range
 
-cmain =
+cmain = do
+  lss <- mkEnv >>= ensure
   defaultMainWith config
-      [ env mkEnv mkMsBench
-      , env mkEnv mkSqBench
+      [ bgroup "par" $ map mkMsBench lss
+      , bgroup "seq" $ map mkSqBench lss
       ]
   where
-    mkMsBench l = bgroup "par" $ take (length range) $ go l
-      where
-        go ~(l:t) = bench (show $ length l) (nfIO $ fftp l) : go t
-    mkSqBench l = bgroup "seq" $ take (length range) $ go l
-      where
-        go ~(l:t) = bench (show $ length l) (nf fft l) : go t
+    mkMsBench l = bench (show $ length l) (nfIO $ fftp l)
+    mkSqBench l = bench (show $ length l) (nf fft l)

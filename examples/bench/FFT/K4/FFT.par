@@ -26,6 +26,6 @@ fun fft : Rec L -> Rec L
 par fftp = fft {
   unroll 4;
   annotate {
-    fft
+    deinterleave
   }
 };

@@ -5,9 +5,9 @@ import AlgPrelude
 
 type RecL = [Complex Float]
 
-rin :: Sum2 () (Pair2 (Complex Float) RecL) -> RecL
-rin (Inj0_2 _) = []
-rin (Inj1_2 (Pair2 x y)) = x : y
+inL :: Sum2 () (Pair2 (Complex Float) RecL) -> RecL
+inL (Inj0_2 _) = []
+inL (Inj1_2 (Pair2 x y)) = x : y
 
 fl :: Pair2 RecL RecL -> RecL
 fl (Pair2 xs ys) = zipWith (+) xs ys

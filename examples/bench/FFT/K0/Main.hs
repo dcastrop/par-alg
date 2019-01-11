@@ -54,9 +54,7 @@ msMain sz = do
 
 
 config = defaultConfig
-  { resamples = 30
-  , confInterval = cl99
-  , timeLimit = 60
+  { confInterval = cl99
   }
 
 mkEnv = mapM randList range

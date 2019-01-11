@@ -39,6 +39,6 @@ fun dotpr : Rec L1 * Rec L1 -> int
 par dotpar = dotpr {
   unroll 4;
   annotate {
-    split
+    dotpr
   }
 };

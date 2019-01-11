@@ -7,7 +7,7 @@ BENCH_DIR=${PWD}
 DIRS=$(for i in `seq 0 ${UNROLL}`; do echo "K${i}"; done)
 CORES=`seq 1 ${MAX_CORES}`
 GHC_OPTS="-threaded -rtsopts"
-RTS_OPTS="-A1.5G"
+RTS_OPTS=
 TEST=${BENCH_DIR##*/}
 TEST=${TEST%.*}
 

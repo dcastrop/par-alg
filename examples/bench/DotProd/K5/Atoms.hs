@@ -57,11 +57,11 @@ split :: PL1 -> Sum2 (Sum2 () (Pair2 Integer Integer)) (Pair2 PL1 PL1)
 split (Pair2 v1 v2)
   | V.null v1 = Inj0_2 $ Inj0_2 ()
   | V.null v2 = Inj0_2 $ Inj0_2 ()
-  | V.length v1 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
-  | V.length v2 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
+  | n1 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
+  | n2 == 1 = Inj0_2 $ Inj1_2 $ Pair2 (V.head v1) (V.head v2)
   | otherwise = Inj1_2 $ Pair2 (Pair2 v11 v21) (Pair2 v12 v22)
   where
-    (v11, v12) = V.splitAt n1 v1
-    (v21, v22) = V.splitAt n2 v2
-    n1 = V.length v1 `div` 2
-    n2 = V.length v2 `div` 2
+    (v11, v12) = V.splitAt (n1 `div` 2) v1
+    (v21, v22) = V.splitAt (n2 `div` 2) v2
+    n1 = V.length v1
+    n2 = V.length v2

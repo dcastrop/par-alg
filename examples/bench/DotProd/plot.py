@@ -123,7 +123,7 @@ def main(argv):
         sys.exit(-1)
 
 
-    speedups_kns = { kk: { nn: {ss: seq_data[nn][ss] / vv
+    speedups_kns = { kk: { nn: {ss: seq_data[1][ss] / vv
                                   for ss, vv in nn_d.items() }
                               for nn, nn_d in kk_d.items() }
                           for kk, kk_d in par_data.items() }
@@ -137,7 +137,7 @@ def main(argv):
     rtsn_k8 = [ speedups_kns[8][nn][current_S] for nn in rtsn_x ]
 
     fig, ax = plt.subplots(1, 1)
-    ax.set_ylabel('Speedup', **text_style)
+    # ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('+RTS -N', **text_style)
     ax.tick_params(axis='both', which='major', labelsize='x-large')
 
@@ -167,7 +167,7 @@ def main(argv):
     k_sz4 = [ speedups_kns[k][8][sz4] for k in k_x ]
 
     fig, ax = plt.subplots(1, 1)
-    ax.set_ylabel('Speedup', **text_style)
+    # ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('K', **text_style)
     ax.tick_params(axis='both', which='major', labelsize='x-large')
 
@@ -196,7 +196,7 @@ def main(argv):
     sz_k4 = [ speedups_kns[k4][rtsn][sz] for sz in sizes_x ]
 
     fig, ax = plt.subplots(1, 1)
-    ax.set_ylabel('Speedup', **text_style)
+    # ax.set_ylabel('Speedup', **text_style)
     ax.set_xlabel('Length', **text_style)
     ax.set_xscale('log')
     ax.tick_params(axis='both', which='major', labelsize='x-large')
