@@ -152,8 +152,24 @@ eProj i j e          = EProj i j e
 
 eLet :: Id -> ETerm t v -> ETerm t v -> ETerm t v
 eLet v0 t@EVar{}  t1 = sbst v0 t t1
-eLet v0 t@EPair{} t1 = sbst v0 t t1
+eLet v0 t@(EPair ts) t1 | all isVar ts = sbst v0 t t1
+  where
+    isVar EVar{} = True
+    isVar _ = False
 eLet v t1 t2 = ELet v t1 t2
+
+eLetM :: Id -> ETerm t v -> ETerm t v -> TcM t v (ETerm t v)
+eLetM v0 t t1 = do
+  (f, t') <- mkLet t
+  pure $! f (sbst v0 t' t1)
+  where
+    mkLet v@EVar{} = pure (id, v)
+    mkLet (EPair ts) = do
+      (fs, vs) <- unzip <$> mapM mkLet ts
+      pure $! (foldl' (.) id fs, EPair vs)
+    mkLet tt = do
+      v <- mkV <$> newVar
+      pure $! (ELet v tt, EVar v)
 
 eCase :: ETerm t v -> [(Id, ETerm t v)] -> ETerm t v
 eCase (ELet v t1 t2) ls = eLet v t1 $ eCase t2 ls
@@ -164,6 +180,16 @@ eCase (EInj i _ t) ls = eLet v1 t t1
   where
     (v1, t1) = ls !! i
 eCase t ls = ECase t ls
+
+eCaseM :: ETerm t v -> [(Id, ETerm t v)] -> TcM t v (ETerm t v)
+eCaseM (ELet v t1 t2) ls = eCaseM t2 ls >>= eLetM v t1
+eCaseM (ECase t ps) ls = mapM go ps >>= eCaseM t
+  where
+    go (v, e) = (v,) <$!> eCaseM e ls
+eCaseM (EInj i _ t) ls = eLetM v1 t t1
+  where
+    (v1, t1) = ls !! i
+eCaseM t ls = pure $! ECase t ls
 
 data EFun t v
   = EAbs !(Maybe Id) !(EMonad t v)
@@ -944,19 +970,24 @@ toETerm (Const c) _ = pure $ go c -- toETerm c >>= \t -> pure $ hsep [pretty "co
 toETerm (Comp es) t = rev es t
   where
     rev []     tm = pure tm
-    rev (h:ts) tm = rev ts tm >>= \ hs -> toETerm h hs
+    rev (h:ts) tm = rev ts tm >>= \ hs ->
+       toETerm h hs
 toETerm Id       t = pure t
 toETerm (Proj i j) t =
   case t of
     EPair ts -> pure (ts !! i)
     _        -> pure $ eProj i j t
-toETerm (Split es) t
-  = EPair <$> mapM (`toETerm` t) es
+toETerm (Split es) t = do
+      v <- mkV <$> newVar
+      p <- EPair <$> mapM (`toETerm` (EVar v)) es
+      eLetM v t p
 toETerm (Inj i j) t  = pure $ EInj i j t
 toETerm (Case es) (EInj i _ t) = toETerm (es !! i) t
 toETerm (Case es) t = do
   vs <- mapM (const newVar) es
-  (eCase t . zipWith (\v tm -> (mkV v, tm)) vs) <$> zipWithM toETerm es (map (EVar . mkV) vs)
+  alts <- zipWith (\v tm -> (mkV v, tm)) vs
+         <$> zipWithM toETerm es (map (EVar . mkV) vs)
+  eCaseM t alts
 toETerm (Dist n i j) t = do
   vs <- replicateM j (mkV <$> newVar)
   pure $!

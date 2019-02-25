@@ -123,7 +123,7 @@ def main(argv):
         sys.exit(-1)
 
 
-    speedups_kns = { kk: { nn: {ss: seq_data[nn][ss] / vv
+    speedups_kns = { kk: { nn: {ss: seq_data[1][ss] / vv
                                   for ss, vv in nn_d.items() }
                               for nn, nn_d in kk_d.items() }
                           for kk, kk_d in par_data.items() }
@@ -161,10 +161,10 @@ def main(argv):
     sz4 = sizes_x[nsizes]
     sz2 = sizes_x[nsizes / 3]
     sz3 = sizes_x[nsizes / 2]
-    k_sz1 = [ speedups_kns[k][8][sz1] for k in k_x ]
-    k_sz2 = [ speedups_kns[k][8][sz2] for k in k_x ]
-    k_sz3 = [ speedups_kns[k][8][sz3] for k in k_x ]
-    k_sz4 = [ speedups_kns[k][8][sz4] for k in k_x ]
+    k_sz1 = [ speedups_kns[k][4][sz1] for k in k_x ]
+    k_sz2 = [ speedups_kns[k][4][sz2] for k in k_x ]
+    k_sz3 = [ speedups_kns[k][4][sz3] for k in k_x ]
+    k_sz4 = [ speedups_kns[k][4][sz4] for k in k_x ]
 
     fig, ax = plt.subplots(1, 1)
     # ax.set_ylabel('Speedup', **text_style)
@@ -183,7 +183,7 @@ def main(argv):
 
     ## speedups vs size, for 4 different K values, fixed +RTS -N
 
-    rtsn = 8
+    rtsn = 4
     sizes_x = [ ss for ss, _ in seq_data[1].items() ]
     sizes_x.sort()
     k1 = 1
