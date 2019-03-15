@@ -17,7 +17,6 @@ CORES=(`seq 1 ${MAX_CORES}`)
 
 NUMDIRS=${#DIRS[@]}
 NUMCORES=${#CORES[@]}
-TOTAL_TASKS=$((${NUMDIRS}*${NUMCORES}))
 
 for ((i = 0; i < ${NUMDIRS}; i++)); do
   rm -f ${BENCH_DIR}/${DIRS[${i}]}/Measurements/*
@@ -25,46 +24,55 @@ done
 
 TMP=${2}
 
-rm -f ${TMP}
-touch ${TMP}
+[ -f ${TMP} ] && echo "${2} already exists" && exit 1
 
-echo "#PBS -lwalltime=8:00:00"                                               >> ${TMP}
-echo "#PBS -lselect=1:ncpus=${MAX_CORES}:mem=4gb"                            >> ${TMP}
-echo "#PBS -lplace=pack:excl"                                                >> ${TMP}
-echo "#PBS -J 1-${TOTAL_TASKS}"                                              >> ${TMP}
-echo                                                                         >> ${TMP}
-echo "BENCH_DIR=${BENCH_DIR}"                                                >> ${TMP}
-echo "NUMDIRS=${NUMDIRS}"                                                    >> ${TMP}
-echo "NUMCORES=${NUMCORES}"                                                  >> ${TMP}
-echo "DIRS=(${DIRS[*]})"                                                     >> ${TMP}
-echo "CORES=(${CORES[*]})"                                                   >> ${TMP}
-echo                                                                         >> ${TMP}
-echo 'i=$((${PBS_ARRAY_INDEX}-1))'                                           >> ${TMP}
-echo 'DIR=${DIRS[$((${i} / ${NUMCORES}))]}'                                  >> ${TMP}
-echo 'N=${CORES[$((${i} % ${NUMCORES}))]}'                                   >> ${TMP}
-echo                                                                         >> ${TMP}
-echo 'cp -r ${PBS_O_WORKDIR}/${BENCH_DIR}/${DIR} .'                          >> ${TMP}
-echo 'if [ "${DIR}" = "Base" ]; then BENCHNAME=seq/; else BENCHNAME=par/; fi' >> ${TMP}
-echo 'pushd ./${DIR}'                                                        >> ${TMP}
-echo './Main ${BENCHNAME} \
--L 60 \
---csv ./Measurements/Time_${N}.csv \
-+RTS \
--N${N} > ./Measurements/Time_${N}.time'                                      >> ${TMP}
-echo 'popd'                                                                  >> ${TMP}
-echo 'cp -r ${DIR} ${PBS_O_WORKDIR}/${BENCH_DIR}'                            >> ${TMP}
+echo "Compiling ${BENCH_DIR}"
+pushd ${BENCH_DIR}
+./compile.sh
+popd
 
-cat ${TMP}
-qsub -W block=True ${TMP}
+for ((i = 0; i < ${MAX_CORES}; i++))
+do
+  C=${CORES[${i}]}
 
-echo 
-echo
-echo "Finished. Press any key to continue"
-read
+  rm -f ${TMP}
+  touch ${TMP}
 
-rm -f ${TMP}
-rm -f ${TMP}.e*
-rm -f ${TMP}.o*
+  echo "#!/bin/bash"                                                            >> ${TMP}
+  echo "#PBS -lwalltime=2:00:00"                                                >> ${TMP}
+  echo "#PBS -lselect=1:ncpus=${C}:mem=4gb"                                     >> ${TMP}
+  echo "#PBS -lplace=exclhost"                                                  >> ${TMP}
+  echo "#PBS -J 1-${NUMDIRS}"                                                   >> ${TMP}
+  echo                                                                          >> ${TMP}
+  echo "BENCH_DIR=${BENCH_DIR}"                                                 >> ${TMP}
+  echo "NUMDIRS=${NUMDIRS}"                                                     >> ${TMP}
+  echo "DIRS=(${DIRS[*]})"                                                      >> ${TMP}
+  echo                                                                          >> ${TMP}
+  echo 'i=$((${PBS_ARRAY_INDEX}-1))'                                            >> ${TMP}
+  echo 'DIR=${DIRS[${i}]}'                                                      >> ${TMP}
+  echo "N=${C}"                                                                 >> ${TMP}
+  echo                                                                          >> ${TMP}
+  echo 'cp -r ${PBS_O_WORKDIR}/${BENCH_DIR}/${DIR} .'                           >> ${TMP}
+  echo 'BENCHNAME=par/'                                                         >> ${TMP}
+  echo '[ "${DIR}" = "Base" ] && BENCHNAME=seq/'                                >> ${TMP}
+  echo 'pushd ./${DIR}'                                                         >> ${TMP}
+  echo './Main ${BENCHNAME} \
+  -L 180 \
+  --csv ./Measurements/Time_${N}.csv \
+  +RTS \
+  -N${N} > ./Measurements/Time_${N}.time'                                       >> ${TMP}
+  echo 'popd'                                                                   >> ${TMP}
+  echo 'cp -r ${DIR}/Measurements ${PBS_O_WORKDIR}/${BENCH_DIR}/${DIR}'         >> ${TMP}
+
+  echo "PBS Script:"
+  echo "============================================"
+  cat ${TMP}
+  echo "============================================"
+
+  echo "Enqueuing tasks:"
+  qsub -W block=True ${TMP}
+done
+
 
 for ((i = 0; i < ${NUMDIRS}; i++))
 do
@@ -73,13 +81,15 @@ do
   rm -f *.csv
   rm -f ${RESFILE}
   touch ${RESFILE}
+  echo ${DIRS[${i}]}                              >> ${RESFILE}
+  echo                                            >> ${RESFILE}
   for ((j = 0; j < ${NUMCORES}; j++))
   do
     N=${CORES[${j}]}
     echo                                          >> ${RESFILE}
     echo "------------ ${N} CORES --------------" >> ${RESFILE}
+    echo                                          >> ${RESFILE}
     [ -f Time_${N}.time ] && cat Time_${N}.time   >> ${RESFILE}
-    rm -f Time_${N}.time
     echo                                          >> ${RESFILE}
   done
   popd
