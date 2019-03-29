@@ -9,7 +9,7 @@ popd () {
 }
 
 UNROLL=8
-MAX_CORES=8
+MAX_CORES=24
 
 BENCH_DIR=${1}
 DIRS=($(echo "Base"; for i in `seq 0 ${UNROLL}`; do echo "K${i}"; done))
@@ -40,8 +40,8 @@ do
 
   echo "#!/bin/bash"                                                            >> ${TMP}
   echo "#PBS -lwalltime=2:00:00"                                                >> ${TMP}
-  echo "#PBS -lselect=1:ncpus=${C}:mem=4gb"                                     >> ${TMP}
-  echo "#PBS -lplace=exclhost"                                                  >> ${TMP}
+  echo "#PBS -lselect=1:ncpus=32:mem=8gb"                                       >> ${TMP}
+  echo "#PBS -lplace=pack:excl"                                                 >> ${TMP}
   echo "#PBS -J 1-${NUMDIRS}"                                                   >> ${TMP}
   echo                                                                          >> ${TMP}
   echo "BENCH_DIR=${BENCH_DIR}"                                                 >> ${TMP}
