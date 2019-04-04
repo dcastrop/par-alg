@@ -4,78 +4,77 @@ K2
 ------------ 1 CORES --------------
 
 benchmarking par/1024
-time                 7.695 ms   (7.588 ms .. 7.780 ms, ci 0.990)
-                     0.997 R²   (0.994 R² .. 0.999 R², ci 0.990)
-mean                 8.441 ms   (7.953 ms .. 9.361 ms, ci 0.990)
-std dev              2.616 ms   (1.237 ms .. 4.174 ms, ci 0.990)
+time                 7.700 ms   (7.558 ms .. 7.819 ms, ci 0.990)
+                     0.997 R²   (0.993 R² .. 0.998 R², ci 0.990)
+mean                 8.461 ms   (7.984 ms .. 9.275 ms, ci 0.990)
+std dev              2.556 ms   (1.434 ms .. 3.759 ms, ci 0.990)
 variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/2048
-time                 19.10 ms   (18.94 ms .. 19.29 ms, ci 0.990)
-                     0.999 R²   (0.998 R² .. 0.999 R², ci 0.990)
-mean                 19.25 ms   (18.52 ms .. 20.69 ms, ci 0.990)
-std dev              3.272 ms   (2.163 ms .. 4.857 ms, ci 0.990)
-variance introduced by outliers: 91% (severely inflated)
+time                 20.05 ms   (19.76 ms .. 20.35 ms, ci 0.990)
+                     0.998 R²   (0.997 R² .. 0.999 R², ci 0.990)
+mean                 20.05 ms   (19.17 ms .. 21.31 ms, ci 0.990)
+std dev              3.659 ms   (2.620 ms .. 5.305 ms, ci 0.990)
+variance introduced by outliers: 92% (severely inflated)
 
 benchmarking par/4096
-time                 42.30 ms   (41.96 ms .. 42.72 ms, ci 0.990)
-                     0.999 R²   (0.998 R² .. 1.000 R², ci 0.990)
-mean                 42.48 ms   (41.13 ms .. 44.74 ms, ci 0.990)
-std dev              5.325 ms   (3.428 ms .. 8.692 ms, ci 0.990)
-variance introduced by outliers: 80% (severely inflated)
+time                 44.65 ms   (44.20 ms .. 45.10 ms, ci 0.990)
+                     0.999 R²   (0.998 R² .. 0.999 R², ci 0.990)
+mean                 45.35 ms   (43.78 ms .. 47.88 ms, ci 0.990)
+std dev              5.731 ms   (3.850 ms .. 8.666 ms, ci 0.990)
+variance introduced by outliers: 81% (severely inflated)
 
 benchmarking par/8192
-time                 91.78 ms   (90.71 ms .. 92.83 ms, ci 0.990)
+time                 96.91 ms   (95.87 ms .. 98.00 ms, ci 0.990)
                      0.999 R²   (0.998 R² .. 0.999 R², ci 0.990)
-mean                 91.71 ms   (89.40 ms .. 94.93 ms, ci 0.990)
-std dev              8.162 ms   (5.262 ms .. 13.03 ms, ci 0.990)
-variance introduced by outliers: 61% (severely inflated)
+mean                 97.71 ms   (95.31 ms .. 100.6 ms, ci 0.990)
+std dev              8.208 ms   (5.318 ms .. 11.70 ms, ci 0.990)
+variance introduced by outliers: 58% (severely inflated)
 
 benchmarking par/16384
-time                 203.5 ms   (201.3 ms .. 206.1 ms, ci 0.990)
+time                 218.1 ms   (215.3 ms .. 220.7 ms, ci 0.990)
                      0.999 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 203.5 ms   (198.3 ms .. 207.8 ms, ci 0.990)
-std dev              12.13 ms   (7.102 ms .. 20.02 ms, ci 0.990)
-variance introduced by outliers: 34% (moderately inflated)
+mean                 219.0 ms   (213.8 ms .. 224.2 ms, ci 0.990)
+std dev              13.20 ms   (7.270 ms .. 21.90 ms, ci 0.990)
+variance introduced by outliers: 35% (moderately inflated)
 
 benchmarking par/32768
-time                 455.9 ms   (452.0 ms .. 459.9 ms, ci 0.990)
-                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
-mean                 456.4 ms   (452.5 ms .. 461.2 ms, ci 0.990)
-std dev              8.783 ms   (5.321 ms .. 13.34 ms, ci 0.990)
+time                 489.2 ms   (484.3 ms .. 493.7 ms, ci 0.990)
+                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
+mean                 489.2 ms   (480.8 ms .. 494.3 ms, ci 0.990)
+std dev              13.43 ms   (7.328 ms .. 22.38 ms, ci 0.990)
 
 benchmarking par/65536
-time                 1.037 s    (1.023 s .. 1.049 s, ci 0.990)
+time                 1.102 s    (1.086 s .. 1.117 s, ci 0.990)
                      1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 1.031 s    (1.002 s .. 1.044 s, ci 0.990)
-std dev              33.75 ms   (11.66 ms .. 61.01 ms, ci 0.990)
-variance introduced by outliers: 10% (moderately inflated)
+mean                 1.102 s    (1.087 s .. 1.117 s, ci 0.990)
+std dev              27.16 ms   (13.05 ms .. 45.67 ms, ci 0.990)
 
 benchmarking par/131072
-time                 2.347 s    (2.297 s .. 2.380 s, ci 0.990)
-                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 2.336 s    (2.310 s .. 2.357 s, ci 0.990)
-std dev              33.00 ms   (17.32 ms .. 54.76 ms, ci 0.990)
+time                 2.515 s    (2.457 s .. 2.606 s, ci 0.990)
+                     0.998 R²   (0.992 R² .. 1.000 R², ci 0.990)
+mean                 2.492 s    (2.437 s .. 2.545 s, ci 0.990)
+std dev              69.41 ms   (31.01 ms .. 110.0 ms, ci 0.990)
 
 benchmarking par/262144
-time                 5.266 s    (5.160 s .. 5.362 s, ci 0.990)
+time                 5.643 s    (5.506 s .. 5.747 s, ci 0.990)
                      1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 5.301 s    (5.255 s .. 5.367 s, ci 0.990)
-std dev              61.36 ms   (29.15 ms .. 90.81 ms, ci 0.990)
+mean                 5.645 s    (5.595 s .. 5.750 s, ci 0.990)
+std dev              78.25 ms   (25.70 ms .. 122.3 ms, ci 0.990)
 variance introduced by outliers: 12% (moderately inflated)
 
 benchmarking par/524288
-time                 12.32 s    (NaN s .. 12.81 s, ci 0.990)
-                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 12.16 s    (11.88 s .. 12.30 s, ci 0.990)
-std dev              201.8 ms   (40.25 ms .. 266.6 ms, ci 0.990)
+time                 13.41 s    (12.46 s .. 14.18 s, ci 0.990)
+                     0.999 R²   (0.998 R² .. 1.000 R², ci 0.990)
+mean                 13.10 s    (12.73 s .. 13.32 s, ci 0.990)
+std dev              281.4 ms   (0.0 s .. 340.4 ms, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/1048576
-time                 26.68 s    (26.07 s .. 27.92 s, ci 0.990)
-                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 27.12 s    (26.77 s .. 27.76 s, ci 0.990)
-std dev              455.9 ms   (2.734 ms .. 617.8 ms, ci 0.990)
+time                 29.12 s    (28.59 s .. NaN s, ci 0.990)
+                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
+mean                 29.33 s    (29.10 s .. 29.60 s, ci 0.990)
+std dev              272.2 ms   (18.20 ms .. 378.3 ms, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -83,80 +82,78 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 2 CORES --------------
 
 benchmarking par/1024
-time                 4.922 ms   (4.742 ms .. 5.094 ms, ci 0.990)
-                     0.985 R²   (0.970 R² .. 0.992 R², ci 0.990)
-mean                 5.374 ms   (4.803 ms .. 6.626 ms, ci 0.990)
-std dev              3.134 ms   (1.851 ms .. 5.097 ms, ci 0.990)
+time                 5.956 ms   (5.784 ms .. 6.173 ms, ci 0.990)
+                     0.989 R²   (0.981 R² .. 0.994 R², ci 0.990)
+mean                 6.239 ms   (5.644 ms .. 7.369 ms, ci 0.990)
+std dev              3.024 ms   (1.595 ms .. 5.125 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 14.19 ms   (13.63 ms .. 14.65 ms, ci 0.990)
-                     0.992 R²   (0.986 R² .. 0.995 R², ci 0.990)
-mean                 14.10 ms   (12.92 ms .. 16.29 ms, ci 0.990)
-std dev              5.922 ms   (3.719 ms .. 9.281 ms, ci 0.990)
+time                 17.61 ms   (17.10 ms .. 18.04 ms, ci 0.990)
+                     0.992 R²   (0.985 R² .. 0.995 R², ci 0.990)
+mean                 16.95 ms   (15.34 ms .. 20.30 ms, ci 0.990)
+std dev              7.369 ms   (4.625 ms .. 12.01 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 30.00 ms   (29.46 ms .. 30.73 ms, ci 0.990)
-                     0.995 R²   (0.992 R² .. 0.997 R², ci 0.990)
-mean                 30.37 ms   (28.35 ms .. 33.49 ms, ci 0.990)
-std dev              8.747 ms   (5.385 ms .. 14.57 ms, ci 0.990)
-variance introduced by outliers: 97% (severely inflated)
+time                 38.41 ms   (37.38 ms .. 39.44 ms, ci 0.990)
+                     0.993 R²   (0.986 R² .. 0.996 R², ci 0.990)
+mean                 37.92 ms   (35.33 ms .. 42.21 ms, ci 0.990)
+std dev              10.08 ms   (6.978 ms .. 15.85 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
 
 benchmarking par/8192
-time                 69.89 ms   (67.74 ms .. 71.82 ms, ci 0.990)
-                     0.995 R²   (0.992 R² .. 0.998 R², ci 0.990)
-mean                 66.20 ms   (62.36 ms .. 70.41 ms, ci 0.990)
-std dev              12.26 ms   (8.277 ms .. 17.82 ms, ci 0.990)
-variance introduced by outliers: 89% (severely inflated)
+time                 81.91 ms   (79.82 ms .. 83.75 ms, ci 0.990)
+                     0.995 R²   (0.990 R² .. 0.997 R², ci 0.990)
+mean                 81.03 ms   (75.75 ms .. 86.14 ms, ci 0.990)
+std dev              13.63 ms   (8.843 ms .. 20.85 ms, ci 0.990)
+variance introduced by outliers: 87% (severely inflated)
 
 benchmarking par/16384
-time                 153.6 ms   (148.9 ms .. 157.6 ms, ci 0.990)
-                     0.992 R²   (0.981 R² .. 0.997 R², ci 0.990)
-mean                 156.1 ms   (148.0 ms .. 167.1 ms, ci 0.990)
-std dev              24.37 ms   (15.71 ms .. 34.78 ms, ci 0.990)
-variance introduced by outliers: 80% (severely inflated)
+time                 182.0 ms   (174.6 ms .. 187.9 ms, ci 0.990)
+                     0.994 R²   (0.988 R² .. 0.998 R², ci 0.990)
+mean                 179.8 ms   (170.4 ms .. 192.1 ms, ci 0.990)
+std dev              25.18 ms   (15.59 ms .. 40.83 ms, ci 0.990)
+variance introduced by outliers: 77% (severely inflated)
 
 benchmarking par/32768
-time                 348.3 ms   (338.5 ms .. 357.2 ms, ci 0.990)
-                     0.997 R²   (0.993 R² .. 0.999 R², ci 0.990)
-mean                 352.5 ms   (333.3 ms .. 362.6 ms, ci 0.990)
-std dev              31.37 ms   (17.76 ms .. 54.45 ms, ci 0.990)
-variance introduced by outliers: 48% (moderately inflated)
+time                 393.5 ms   (382.4 ms .. 404.1 ms, ci 0.990)
+                     0.998 R²   (0.996 R² .. 0.999 R², ci 0.990)
+mean                 393.9 ms   (385.5 ms .. 413.5 ms, ci 0.990)
+std dev              25.41 ms   (12.53 ms .. 41.83 ms, ci 0.990)
+variance introduced by outliers: 33% (moderately inflated)
 
 benchmarking par/65536
-time                 786.4 ms   (758.6 ms .. 809.5 ms, ci 0.990)
-                     0.997 R²   (0.995 R² .. 0.999 R², ci 0.990)
-mean                 777.8 ms   (703.9 ms .. 807.0 ms, ci 0.990)
-std dev              83.00 ms   (30.98 ms .. 153.3 ms, ci 0.990)
-variance introduced by outliers: 48% (moderately inflated)
+time                 866.4 ms   (833.5 ms .. 895.8 ms, ci 0.990)
+                     0.997 R²   (0.993 R² .. 0.999 R², ci 0.990)
+mean                 868.3 ms   (832.0 ms .. 896.0 ms, ci 0.990)
+std dev              56.38 ms   (23.36 ms .. 100.2 ms, ci 0.990)
+variance introduced by outliers: 25% (moderately inflated)
 
 benchmarking par/131072
-time                 1.744 s    (1.691 s .. 1.787 s, ci 0.990)
-                     0.999 R²   (0.996 R² .. 1.000 R², ci 0.990)
-mean                 1.682 s    (1.617 s .. 1.723 s, ci 0.990)
-std dev              77.24 ms   (31.54 ms .. 112.1 ms, ci 0.990)
-variance introduced by outliers: 14% (moderately inflated)
+time                 1.862 s    (1.815 s .. 1.898 s, ci 0.990)
+                     0.999 R²   (0.999 R² .. 1.000 R², ci 0.990)
+mean                 1.839 s    (1.790 s .. 1.874 s, ci 0.990)
+std dev              59.34 ms   (27.51 ms .. 92.74 ms, ci 0.990)
 
 benchmarking par/262144
-time                 3.649 s    (3.104 s .. 4.179 s, ci 0.990)
-                     0.993 R²   (0.979 R² .. 1.000 R², ci 0.990)
-mean                 3.676 s    (3.469 s .. 3.872 s, ci 0.990)
-std dev              223.5 ms   (127.3 ms .. 348.8 ms, ci 0.990)
-variance introduced by outliers: 20% (moderately inflated)
+time                 3.957 s    (3.813 s .. 4.120 s, ci 0.990)
+                     0.998 R²   (0.996 R² .. 1.000 R², ci 0.990)
+mean                 3.981 s    (3.884 s .. 4.081 s, ci 0.990)
+std dev              123.6 ms   (74.89 ms .. 173.9 ms, ci 0.990)
 
 benchmarking par/524288
-time                 8.036 s    (7.753 s .. 8.401 s, ci 0.990)
-                     0.999 R²   (0.994 R² .. 1.000 R², ci 0.990)
-mean                 8.015 s    (7.860 s .. 8.170 s, ci 0.990)
-std dev              180.4 ms   (97.86 ms .. 228.4 ms, ci 0.990)
-variance introduced by outliers: 14% (moderately inflated)
+time                 8.882 s    (8.699 s .. NaN s, ci 0.990)
+                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
+mean                 8.697 s    (8.410 s .. 8.797 s, ci 0.990)
+std dev              213.7 ms   (4.357 ms .. 267.5 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/1048576
-time                 17.04 s    (15.97 s .. 17.60 s, ci 0.990)
-                     0.999 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 16.93 s    (16.59 s .. 17.13 s, ci 0.990)
-std dev              265.1 ms   (79.30 ms .. 356.5 ms, ci 0.990)
+time                 18.82 s    (18.48 s .. 19.08 s, ci 0.990)
+                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
+mean                 19.09 s    (18.95 s .. 19.31 s, ci 0.990)
+std dev              163.3 ms   (3.142 ms .. 226.8 ms, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -164,80 +161,80 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 3 CORES --------------
 
 benchmarking par/1024
-time                 6.720 ms   (6.487 ms .. 7.025 ms, ci 0.990)
-                     0.985 R²   (0.974 R² .. 0.992 R², ci 0.990)
-mean                 6.960 ms   (6.362 ms .. 8.024 ms, ci 0.990)
-std dev              2.972 ms   (1.788 ms .. 4.711 ms, ci 0.990)
+time                 6.867 ms   (6.126 ms .. 8.132 ms, ci 0.990)
+                     0.927 R²   (0.906 R² .. 0.970 R², ci 0.990)
+mean                 6.721 ms   (6.007 ms .. 7.591 ms, ci 0.990)
+std dev              2.733 ms   (2.196 ms .. 3.551 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 20.24 ms   (19.14 ms .. 21.50 ms, ci 0.990)
-                     0.980 R²   (0.968 R² .. 0.990 R², ci 0.990)
-mean                 20.40 ms   (18.29 ms .. 23.83 ms, ci 0.990)
-std dev              8.928 ms   (5.588 ms .. 13.30 ms, ci 0.990)
+time                 17.18 ms   (16.21 ms .. 17.99 ms, ci 0.990)
+                     0.984 R²   (0.971 R² .. 0.990 R², ci 0.990)
+mean                 17.58 ms   (15.92 ms .. 21.03 ms, ci 0.990)
+std dev              7.955 ms   (5.746 ms .. 11.72 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 47.06 ms   (44.06 ms .. 50.46 ms, ci 0.990)
-                     0.981 R²   (0.969 R² .. 0.990 R², ci 0.990)
-mean                 45.08 ms   (41.59 ms .. 50.26 ms, ci 0.990)
-std dev              12.58 ms   (8.947 ms .. 19.32 ms, ci 0.990)
-variance introduced by outliers: 95% (severely inflated)
+time                 44.23 ms   (39.66 ms .. 52.17 ms, ci 0.990)
+                     0.894 R²   (0.844 R² .. 0.979 R², ci 0.990)
+mean                 42.24 ms   (38.26 ms .. 47.71 ms, ci 0.990)
+std dev              14.52 ms   (11.26 ms .. 20.60 ms, ci 0.990)
+variance introduced by outliers: 97% (severely inflated)
 
 benchmarking par/8192
-time                 96.43 ms   (89.52 ms .. 107.4 ms, ci 0.990)
-                     0.975 R²   (0.963 R² .. 0.992 R², ci 0.990)
-mean                 99.18 ms   (92.83 ms .. 108.1 ms, ci 0.990)
-std dev              22.04 ms   (15.34 ms .. 32.13 ms, ci 0.990)
-variance introduced by outliers: 92% (severely inflated)
+time                 86.07 ms   (83.55 ms .. 88.48 ms, ci 0.990)
+                     0.993 R²   (0.987 R² .. 0.997 R², ci 0.990)
+mean                 83.34 ms   (77.76 ms .. 89.21 ms, ci 0.990)
+std dev              17.24 ms   (12.53 ms .. 23.32 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
 
 benchmarking par/16384
-time                 239.2 ms   (219.1 ms .. 257.1 ms, ci 0.990)
-                     0.982 R²   (0.965 R² .. 0.993 R², ci 0.990)
-mean                 223.2 ms   (206.4 ms .. 236.2 ms, ci 0.990)
-std dev              34.39 ms   (24.11 ms .. 48.42 ms, ci 0.990)
-variance introduced by outliers: 77% (severely inflated)
+time                 188.6 ms   (179.5 ms .. 197.6 ms, ci 0.990)
+                     0.989 R²   (0.979 R² .. 0.995 R², ci 0.990)
+mean                 186.0 ms   (173.3 ms .. 198.9 ms, ci 0.990)
+std dev              31.22 ms   (19.91 ms .. 45.45 ms, ci 0.990)
+variance introduced by outliers: 82% (severely inflated)
 
 benchmarking par/32768
-time                 470.1 ms   (438.4 ms .. 498.3 ms, ci 0.990)
-                     0.989 R²   (0.972 R² .. 0.998 R², ci 0.990)
-mean                 496.4 ms   (467.9 ms .. 528.5 ms, ci 0.990)
-std dev              63.55 ms   (29.44 ms .. 109.8 ms, ci 0.990)
-variance introduced by outliers: 64% (severely inflated)
+time                 442.8 ms   (428.7 ms .. 459.4 ms, ci 0.990)
+                     0.997 R²   (0.995 R² .. 0.999 R², ci 0.990)
+mean                 425.1 ms   (395.0 ms .. 438.1 ms, ci 0.990)
+std dev              43.73 ms   (16.26 ms .. 74.12 ms, ci 0.990)
+variance introduced by outliers: 52% (severely inflated)
 
 benchmarking par/65536
-time                 1.157 s    (1.072 s .. 1.221 s, ci 0.990)
-                     0.987 R²   (0.957 R² .. 0.999 R², ci 0.990)
-mean                 1.083 s    (947.5 ms .. 1.142 s, ci 0.990)
-std dev              134.5 ms   (65.84 ms .. 234.4 ms, ci 0.990)
-variance introduced by outliers: 51% (severely inflated)
+time                 926.0 ms   (881.4 ms .. 973.4 ms, ci 0.990)
+                     0.995 R²   (0.989 R² .. 0.998 R², ci 0.990)
+mean                 942.3 ms   (857.2 ms .. 984.7 ms, ci 0.990)
+std dev              109.4 ms   (32.82 ms .. 187.6 ms, ci 0.990)
+variance introduced by outliers: 48% (moderately inflated)
 
 benchmarking par/131072
-time                 2.223 s    (1.897 s .. 2.492 s, ci 0.990)
-                     0.990 R²   (0.974 R² .. 0.999 R², ci 0.990)
-mean                 2.347 s    (2.242 s .. 2.456 s, ci 0.990)
-std dev              151.3 ms   (95.88 ms .. 230.7 ms, ci 0.990)
-variance introduced by outliers: 17% (moderately inflated)
+time                 1.930 s    (1.861 s .. 1.964 s, ci 0.990)
+                     0.999 R²   (0.997 R² .. 1.000 R², ci 0.990)
+mean                 1.915 s    (1.782 s .. 1.951 s, ci 0.990)
+std dev              89.40 ms   (28.23 ms .. 158.3 ms, ci 0.990)
+variance introduced by outliers: 14% (moderately inflated)
 
 benchmarking par/262144
-time                 4.361 s    (4.016 s .. 4.738 s, ci 0.990)
-                     0.996 R²   (0.987 R² .. 1.000 R², ci 0.990)
-mean                 4.555 s    (4.366 s .. 4.813 s, ci 0.990)
-std dev              253.0 ms   (126.0 ms .. 407.6 ms, ci 0.990)
-variance introduced by outliers: 12% (moderately inflated)
+time                 3.916 s    (3.731 s .. 4.072 s, ci 0.990)
+                     0.998 R²   (0.992 R² .. 1.000 R², ci 0.990)
+mean                 4.061 s    (3.940 s .. 4.313 s, ci 0.990)
+std dev              215.8 ms   (68.31 ms .. 351.4 ms, ci 0.990)
+variance introduced by outliers: 11% (moderately inflated)
 
 benchmarking par/524288
-time                 9.419 s    (9.148 s .. 9.879 s, ci 0.990)
-                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 9.284 s    (9.130 s .. 9.367 s, ci 0.990)
-std dev              117.9 ms   (39.04 ms .. 167.2 ms, ci 0.990)
-variance introduced by outliers: 16% (moderately inflated)
+time                 9.466 s    (8.101 s .. 11.63 s, ci 0.990)
+                     0.995 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 9.282 s    (8.316 s .. 9.729 s, ci 0.990)
+std dev              737.3 ms   (190.8 ms .. 986.9 ms, ci 0.990)
+variance introduced by outliers: 18% (moderately inflated)
 
 benchmarking par/1048576
-time                 18.43 s    (NaN s .. 20.81 s, ci 0.990)
-                     0.997 R²   (0.989 R² .. 1.000 R², ci 0.990)
-mean                 20.62 s    (19.47 s .. 21.88 s, ci 0.990)
-std dev              1.308 s    (948.0 ms .. 1.502 s, ci 0.990)
+time                 17.90 s    (13.87 s .. 20.69 s, ci 0.990)
+                     0.994 R²   (0.981 R² .. 1.000 R², ci 0.990)
+mean                 19.67 s    (18.41 s .. 20.68 s, ci 0.990)
+std dev              1.177 s    (872.0 ms .. 1.311 s, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -245,79 +242,80 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 4 CORES --------------
 
 benchmarking par/1024
-time                 6.883 ms   (6.552 ms .. 7.357 ms, ci 0.990)
-                     0.988 R²   (0.982 R² .. 0.993 R², ci 0.990)
-mean                 6.531 ms   (6.025 ms .. 7.567 ms, ci 0.990)
-std dev              2.515 ms   (1.551 ms .. 3.882 ms, ci 0.990)
+time                 5.331 ms   (5.209 ms .. 5.527 ms, ci 0.990)
+                     0.991 R²   (0.985 R² .. 0.995 R², ci 0.990)
+mean                 5.585 ms   (5.176 ms .. 6.306 ms, ci 0.990)
+std dev              2.246 ms   (1.416 ms .. 3.714 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 18.66 ms   (18.09 ms .. 19.37 ms, ci 0.990)
-                     0.988 R²   (0.976 R² .. 0.993 R², ci 0.990)
-mean                 19.19 ms   (17.65 ms .. 22.30 ms, ci 0.990)
-std dev              8.144 ms   (5.494 ms .. 12.43 ms, ci 0.990)
+time                 16.25 ms   (15.41 ms .. 16.98 ms, ci 0.990)
+                     0.987 R²   (0.980 R² .. 0.993 R², ci 0.990)
+mean                 15.90 ms   (14.49 ms .. 18.29 ms, ci 0.990)
+std dev              6.572 ms   (4.160 ms .. 10.03 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 45.18 ms   (43.56 ms .. 47.42 ms, ci 0.990)
-                     0.988 R²   (0.979 R² .. 0.996 R², ci 0.990)
-mean                 41.56 ms   (38.74 ms .. 44.40 ms, ci 0.990)
-std dev              9.267 ms   (7.394 ms .. 12.09 ms, ci 0.990)
-variance introduced by outliers: 94% (severely inflated)
+time                 39.88 ms   (38.40 ms .. 41.43 ms, ci 0.990)
+                     0.991 R²   (0.985 R² .. 0.995 R², ci 0.990)
+mean                 39.40 ms   (36.17 ms .. 43.98 ms, ci 0.990)
+std dev              12.10 ms   (8.008 ms .. 18.53 ms, ci 0.990)
+variance introduced by outliers: 97% (severely inflated)
 
 benchmarking par/8192
-time                 91.36 ms   (87.68 ms .. 94.60 ms, ci 0.990)
-                     0.984 R²   (0.971 R² .. 0.993 R², ci 0.990)
-mean                 93.59 ms   (86.79 ms .. 100.1 ms, ci 0.990)
-std dev              18.79 ms   (13.77 ms .. 25.81 ms, ci 0.990)
+time                 80.84 ms   (77.72 ms .. 83.62 ms, ci 0.990)
+                     0.990 R²   (0.982 R² .. 0.995 R², ci 0.990)
+mean                 81.28 ms   (75.55 ms .. 86.29 ms, ci 0.990)
+std dev              16.61 ms   (12.29 ms .. 23.70 ms, ci 0.990)
 variance introduced by outliers: 90% (severely inflated)
 
 benchmarking par/16384
-time                 219.6 ms   (209.1 ms .. 235.0 ms, ci 0.990)
-                     0.987 R²   (0.974 R² .. 0.995 R², ci 0.990)
-mean                 213.0 ms   (198.8 ms .. 226.3 ms, ci 0.990)
-std dev              34.32 ms   (22.28 ms .. 48.33 ms, ci 0.990)
-variance introduced by outliers: 81% (severely inflated)
+time                 186.0 ms   (178.7 ms .. 191.5 ms, ci 0.990)
+                     0.994 R²   (0.988 R² .. 0.997 R², ci 0.990)
+mean                 178.8 ms   (167.5 ms .. 189.5 ms, ci 0.990)
+std dev              28.05 ms   (17.26 ms .. 39.42 ms, ci 0.990)
+variance introduced by outliers: 79% (severely inflated)
 
 benchmarking par/32768
-time                 484.8 ms   (445.6 ms .. 534.1 ms, ci 0.990)
-                     0.978 R²   (0.944 R² .. 0.991 R², ci 0.990)
-mean                 509.9 ms   (473.0 ms .. 539.9 ms, ci 0.990)
-std dev              65.12 ms   (42.10 ms .. 94.69 ms, ci 0.990)
-variance introduced by outliers: 62% (severely inflated)
+time                 432.9 ms   (411.5 ms .. 450.9 ms, ci 0.990)
+                     0.995 R²   (0.990 R² .. 0.998 R², ci 0.990)
+mean                 412.7 ms   (381.3 ms .. 426.6 ms, ci 0.990)
+std dev              43.84 ms   (20.99 ms .. 74.88 ms, ci 0.990)
+variance introduced by outliers: 56% (severely inflated)
 
 benchmarking par/65536
-time                 1.032 s    (949.7 ms .. 1.129 s, ci 0.990)
-                     0.985 R²   (0.970 R² .. 0.995 R², ci 0.990)
-mean                 1.069 s    (956.6 ms .. 1.135 s, ci 0.990)
-std dev              136.4 ms   (77.64 ms .. 228.9 ms, ci 0.990)
-variance introduced by outliers: 51% (severely inflated)
+time                 935.1 ms   (877.2 ms .. 993.2 ms, ci 0.990)
+                     0.993 R²   (0.987 R² .. 0.998 R², ci 0.990)
+mean                 956.6 ms   (859.4 ms .. 1.015 s, ci 0.990)
+std dev              129.0 ms   (41.59 ms .. 246.6 ms, ci 0.990)
+variance introduced by outliers: 59% (severely inflated)
 
 benchmarking par/131072
-time                 2.321 s    (2.265 s .. 2.415 s, ci 0.990)
-                     0.998 R²   (0.991 R² .. 1.000 R², ci 0.990)
-mean                 2.247 s    (2.186 s .. 2.299 s, ci 0.990)
-std dev              86.73 ms   (45.71 ms .. 134.5 ms, ci 0.990)
+time                 2.003 s    (1.884 s .. 2.147 s, ci 0.990)
+                     0.993 R²   (0.975 R² .. 0.999 R², ci 0.990)
+mean                 1.991 s    (1.853 s .. 2.052 s, ci 0.990)
+std dev              133.0 ms   (65.09 ms .. 211.1 ms, ci 0.990)
+variance introduced by outliers: 23% (moderately inflated)
 
 benchmarking par/262144
-time                 4.240 s    (3.938 s .. 4.439 s, ci 0.990)
-                     0.997 R²   (0.985 R² .. 1.000 R², ci 0.990)
-mean                 4.446 s    (4.335 s .. 4.682 s, ci 0.990)
-std dev              200.1 ms   (56.87 ms .. 300.0 ms, ci 0.990)
-variance introduced by outliers: 11% (moderately inflated)
+time                 3.887 s    (3.541 s .. 4.268 s, ci 0.990)
+                     0.996 R²   (0.990 R² .. 1.000 R², ci 0.990)
+mean                 4.059 s    (3.770 s .. 4.283 s, ci 0.990)
+std dev              283.2 ms   (158.6 ms .. 415.1 ms, ci 0.990)
+variance introduced by outliers: 22% (moderately inflated)
 
 benchmarking par/524288
-time                 9.945 s    (7.713 s .. 11.00 s, ci 0.990)
-                     0.997 R²   (0.985 R² .. 1.000 R², ci 0.990)
-mean                 9.581 s    (9.003 s .. 10.00 s, ci 0.990)
-std dev              546.7 ms   (93.28 ms .. 761.9 ms, ci 0.990)
-variance introduced by outliers: 16% (moderately inflated)
+time                 9.579 s    (7.118 s .. 15.08 s, ci 0.990)
+                     0.982 R²   (0.928 R² .. 1.000 R², ci 0.990)
+mean                 8.649 s    (8.167 s .. 9.621 s, ci 0.990)
+std dev              624.0 ms   (213.3 ms .. 856.1 ms, ci 0.990)
+variance introduced by outliers: 18% (moderately inflated)
 
 benchmarking par/1048576
-time                 18.11 s    (17.76 s .. 18.35 s, ci 0.990)
-                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
-mean                 18.70 s    (18.44 s .. 19.06 s, ci 0.990)
-std dev              352.6 ms   (54.75 ms .. 477.4 ms, ci 0.990)
+time                 19.44 s    (16.21 s .. 25.43 s, ci 0.990)
+                     0.988 R²   (0.982 R² .. 1.000 R², ci 0.990)
+mean                 18.05 s    (17.27 s .. 19.33 s, ci 0.990)
+std dev              983.6 ms   (17.77 ms .. 1.196 s, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -325,161 +323,161 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 5 CORES --------------
 
 benchmarking par/1024
-time                 7.377 ms   (7.107 ms .. 7.682 ms, ci 0.990)
-                     0.987 R²   (0.976 R² .. 0.993 R², ci 0.990)
-mean                 7.437 ms   (6.785 ms .. 8.538 ms, ci 0.990)
-std dev              3.376 ms   (2.130 ms .. 4.818 ms, ci 0.990)
+time                 6.179 ms   (5.898 ms .. 6.442 ms, ci 0.990)
+                     0.989 R²   (0.980 R² .. 0.994 R², ci 0.990)
+mean                 6.274 ms   (5.687 ms .. 7.549 ms, ci 0.990)
+std dev              3.486 ms   (1.985 ms .. 5.993 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 21.19 ms   (20.15 ms .. 22.39 ms, ci 0.990)
-                     0.980 R²   (0.964 R² .. 0.988 R², ci 0.990)
-mean                 21.75 ms   (19.51 ms .. 25.45 ms, ci 0.990)
-std dev              10.50 ms   (5.750 ms .. 15.54 ms, ci 0.990)
+time                 17.80 ms   (17.14 ms .. 18.63 ms, ci 0.990)
+                     0.984 R²   (0.974 R² .. 0.991 R², ci 0.990)
+mean                 18.29 ms   (16.56 ms .. 23.61 ms, ci 0.990)
+std dev              9.494 ms   (5.741 ms .. 17.18 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 52.46 ms   (49.99 ms .. 54.54 ms, ci 0.990)
-                     0.981 R²   (0.961 R² .. 0.990 R², ci 0.990)
-mean                 49.39 ms   (44.51 ms .. 56.50 ms, ci 0.990)
-std dev              16.94 ms   (11.44 ms .. 25.72 ms, ci 0.990)
+time                 42.20 ms   (40.87 ms .. 43.62 ms, ci 0.990)
+                     0.989 R²   (0.977 R² .. 0.994 R², ci 0.990)
+mean                 43.10 ms   (38.87 ms .. 47.08 ms, ci 0.990)
+std dev              14.27 ms   (10.18 ms .. 21.29 ms, ci 0.990)
 variance introduced by outliers: 97% (severely inflated)
 
 benchmarking par/8192
-time                 117.4 ms   (109.9 ms .. 123.7 ms, ci 0.990)
-                     0.978 R²   (0.958 R² .. 0.990 R², ci 0.990)
-mean                 112.8 ms   (104.2 ms .. 121.8 ms, ci 0.990)
-std dev              25.72 ms   (19.39 ms .. 33.23 ms, ci 0.990)
-variance introduced by outliers: 91% (severely inflated)
+time                 92.97 ms   (89.05 ms .. 96.94 ms, ci 0.990)
+                     0.987 R²   (0.976 R² .. 0.993 R², ci 0.990)
+mean                 91.08 ms   (84.67 ms .. 99.71 ms, ci 0.990)
+std dev              22.08 ms   (16.55 ms .. 31.93 ms, ci 0.990)
+variance introduced by outliers: 94% (severely inflated)
 
 benchmarking par/16384
-time                 252.9 ms   (232.5 ms .. 279.0 ms, ci 0.990)
-                     0.973 R²   (0.949 R² .. 0.988 R², ci 0.990)
-mean                 246.4 ms   (224.9 ms .. 260.5 ms, ci 0.990)
-std dev              41.34 ms   (24.95 ms .. 62.65 ms, ci 0.990)
-variance introduced by outliers: 80% (severely inflated)
+time                 216.2 ms   (201.6 ms .. 229.1 ms, ci 0.990)
+                     0.987 R²   (0.976 R² .. 0.995 R², ci 0.990)
+mean                 201.7 ms   (187.3 ms .. 213.4 ms, ci 0.990)
+std dev              35.64 ms   (22.61 ms .. 53.20 ms, ci 0.990)
+variance introduced by outliers: 84% (severely inflated)
 
 benchmarking par/32768
-time                 565.2 ms   (524.1 ms .. 599.9 ms, ci 0.990)
-                     0.976 R²   (0.939 R² .. 0.992 R², ci 0.990)
-mean                 553.6 ms   (497.8 ms .. 581.1 ms, ci 0.990)
-std dev              72.11 ms   (48.43 ms .. 105.3 ms, ci 0.990)
-variance introduced by outliers: 61% (severely inflated)
+time                 457.4 ms   (439.8 ms .. 480.4 ms, ci 0.990)
+                     0.993 R²   (0.985 R² .. 0.997 R², ci 0.990)
+mean                 466.6 ms   (436.3 ms .. 480.7 ms, ci 0.990)
+std dev              49.77 ms   (25.98 ms .. 89.64 ms, ci 0.990)
+variance introduced by outliers: 54% (severely inflated)
 
 benchmarking par/65536
-time                 1.229 s    (1.163 s .. 1.289 s, ci 0.990)
-                     0.989 R²   (0.963 R² .. 0.998 R², ci 0.990)
-mean                 1.203 s    (1.111 s .. 1.260 s, ci 0.990)
-std dev              150.2 ms   (64.28 ms .. 249.6 ms, ci 0.990)
-variance introduced by outliers: 48% (moderately inflated)
+time                 1.037 s    (993.1 ms .. 1.084 s, ci 0.990)
+                     0.995 R²   (0.990 R² .. 0.998 R², ci 0.990)
+mean                 1.013 s    (886.9 ms .. 1.067 s, ci 0.990)
+std dev              135.1 ms   (48.12 ms .. 241.0 ms, ci 0.990)
+variance introduced by outliers: 54% (severely inflated)
 
 benchmarking par/131072
-time                 2.548 s    (2.321 s .. 2.790 s, ci 0.990)
-                     0.991 R²   (0.966 R² .. 0.999 R², ci 0.990)
-mean                 2.548 s    (2.377 s .. 2.647 s, ci 0.990)
-std dev              168.9 ms   (80.05 ms .. 261.0 ms, ci 0.990)
-variance introduced by outliers: 17% (moderately inflated)
+time                 2.245 s    (2.098 s .. 2.376 s, ci 0.990)
+                     0.994 R²   (0.978 R² .. 1.000 R², ci 0.990)
+mean                 2.112 s    (1.934 s .. 2.193 s, ci 0.990)
+std dev              165.2 ms   (65.73 ms .. 300.6 ms, ci 0.990)
+variance introduced by outliers: 24% (moderately inflated)
 
 benchmarking par/262144
-time                 4.762 s    (3.978 s .. 5.425 s, ci 0.990)
-                     0.987 R²   (0.944 R² .. 1.000 R², ci 0.990)
-mean                 5.003 s    (4.773 s .. 5.330 s, ci 0.990)
-std dev              341.8 ms   (210.0 ms .. 490.9 ms, ci 0.990)
-variance introduced by outliers: 12% (moderately inflated)
+time                 4.723 s    (4.064 s .. 5.872 s, ci 0.990)
+                     0.992 R²   (0.961 R² .. 1.000 R², ci 0.990)
+mean                 4.701 s    (4.298 s .. 4.949 s, ci 0.990)
+std dev              439.3 ms   (198.2 ms .. 670.5 ms, ci 0.990)
+variance introduced by outliers: 24% (moderately inflated)
 
 benchmarking par/524288
-time                 10.35 s    (9.445 s .. 11.51 s, ci 0.990)
-                     0.999 R²   (0.994 R² .. 1.000 R², ci 0.990)
-mean                 9.597 s    (8.813 s .. 9.978 s, ci 0.990)
-std dev              603.3 ms   (57.88 ms .. 850.7 ms, ci 0.990)
-variance introduced by outliers: 17% (moderately inflated)
+time                 8.823 s    (8.210 s .. 9.333 s, ci 0.990)
+                     0.999 R²   (0.997 R² .. 1.000 R², ci 0.990)
+mean                 8.603 s    (8.165 s .. 8.825 s, ci 0.990)
+std dev              339.4 ms   (56.03 ms .. 469.9 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
 
 benchmarking par/1048576
-time                 21.67 s    (20.06 s .. 23.18 s, ci 0.990)
-                     0.999 R²   (0.997 R² .. 1.000 R², ci 0.990)
-mean                 19.95 s    (18.83 s .. 20.83 s, ci 0.990)
-std dev              972.9 ms   (82.20 ms .. 1.157 s, ci 0.990)
-variance introduced by outliers: 19% (moderately inflated)
+time                 18.18 s    (14.28 s .. 21.38 s, ci 0.990)
+                     0.992 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 19.31 s    (18.11 s .. 21.84 s, ci 0.990)
+std dev              1.744 s    (105.9 ms .. 2.184 s, ci 0.990)
+variance introduced by outliers: 22% (moderately inflated)
 
 
 
 ------------ 6 CORES --------------
 
 benchmarking par/1024
-time                 7.516 ms   (7.263 ms .. 7.787 ms, ci 0.990)
-                     0.989 R²   (0.977 R² .. 0.995 R², ci 0.990)
-mean                 7.529 ms   (6.828 ms .. 9.012 ms, ci 0.990)
-std dev              3.900 ms   (1.912 ms .. 6.550 ms, ci 0.990)
+time                 6.417 ms   (6.122 ms .. 6.744 ms, ci 0.990)
+                     0.983 R²   (0.973 R² .. 0.990 R², ci 0.990)
+mean                 6.570 ms   (5.977 ms .. 7.629 ms, ci 0.990)
+std dev              2.907 ms   (1.961 ms .. 4.019 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 21.21 ms   (19.97 ms .. 22.67 ms, ci 0.990)
-                     0.979 R²   (0.962 R² .. 0.989 R², ci 0.990)
-mean                 21.07 ms   (18.95 ms .. 24.99 ms, ci 0.990)
-std dev              10.54 ms   (5.997 ms .. 16.28 ms, ci 0.990)
+time                 19.91 ms   (18.94 ms .. 21.01 ms, ci 0.990)
+                     0.976 R²   (0.958 R² .. 0.987 R², ci 0.990)
+mean                 19.85 ms   (17.57 ms .. 23.34 ms, ci 0.990)
+std dev              10.97 ms   (7.706 ms .. 17.03 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 53.63 ms   (50.57 ms .. 56.43 ms, ci 0.990)
-                     0.978 R²   (0.955 R² .. 0.989 R², ci 0.990)
-mean                 49.07 ms   (45.51 ms .. 56.55 ms, ci 0.990)
-std dev              15.04 ms   (10.29 ms .. 22.46 ms, ci 0.990)
-variance introduced by outliers: 97% (severely inflated)
+time                 47.51 ms   (45.00 ms .. 49.74 ms, ci 0.990)
+                     0.983 R²   (0.974 R² .. 0.990 R², ci 0.990)
+mean                 47.11 ms   (42.53 ms .. 54.57 ms, ci 0.990)
+std dev              17.88 ms   (12.63 ms .. 26.73 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/8192
-time                 112.4 ms   (103.2 ms .. 120.9 ms, ci 0.990)
-                     0.973 R²   (0.954 R² .. 0.990 R², ci 0.990)
-mean                 108.6 ms   (100.5 ms .. 117.5 ms, ci 0.990)
-std dev              23.35 ms   (16.84 ms .. 31.76 ms, ci 0.990)
-variance introduced by outliers: 91% (severely inflated)
+time                 111.0 ms   (98.74 ms .. 126.0 ms, ci 0.990)
+                     0.943 R²   (0.918 R² .. 0.971 R², ci 0.990)
+mean                 108.2 ms   (97.38 ms .. 121.5 ms, ci 0.990)
+std dev              31.87 ms   (23.60 ms .. 45.29 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
 
 benchmarking par/16384
-time                 249.0 ms   (227.3 ms .. 285.6 ms, ci 0.990)
-                     0.965 R²   (0.939 R² .. 0.987 R², ci 0.990)
-mean                 251.3 ms   (229.8 ms .. 271.4 ms, ci 0.990)
-std dev              50.00 ms   (35.20 ms .. 73.27 ms, ci 0.990)
-variance introduced by outliers: 85% (severely inflated)
+time                 215.6 ms   (203.9 ms .. 229.9 ms, ci 0.990)
+                     0.983 R²   (0.969 R² .. 0.992 R², ci 0.990)
+mean                 222.8 ms   (196.1 ms .. 241.3 ms, ci 0.990)
+std dev              45.27 ms   (29.54 ms .. 63.93 ms, ci 0.990)
+variance introduced by outliers: 86% (severely inflated)
 
 benchmarking par/32768
-time                 558.4 ms   (500.0 ms .. 599.8 ms, ci 0.990)
-                     0.981 R²   (0.965 R² .. 0.993 R², ci 0.990)
-mean                 560.0 ms   (518.5 ms .. 590.4 ms, ci 0.990)
-std dev              75.64 ms   (39.06 ms .. 121.8 ms, ci 0.990)
-variance introduced by outliers: 65% (severely inflated)
+time                 502.4 ms   (477.2 ms .. 524.4 ms, ci 0.990)
+                     0.991 R²   (0.978 R² .. 0.996 R², ci 0.990)
+mean                 480.1 ms   (435.0 ms .. 502.0 ms, ci 0.990)
+std dev              61.49 ms   (28.56 ms .. 95.48 ms, ci 0.990)
+variance introduced by outliers: 64% (severely inflated)
 
 benchmarking par/65536
-time                 1.269 s    (1.058 s .. 1.446 s, ci 0.990)
-                     0.975 R²   (0.935 R² .. 0.996 R², ci 0.990)
-mean                 1.213 s    (1.074 s .. 1.302 s, ci 0.990)
-std dev              185.9 ms   (93.02 ms .. 305.0 ms, ci 0.990)
-variance introduced by outliers: 61% (severely inflated)
+time                 1.092 s    (1.011 s .. 1.188 s, ci 0.990)
+                     0.987 R²   (0.958 R² .. 0.997 R², ci 0.990)
+mean                 1.099 s    (987.7 ms .. 1.165 s, ci 0.990)
+std dev              152.6 ms   (64.35 ms .. 251.1 ms, ci 0.990)
+variance introduced by outliers: 57% (severely inflated)
 
 benchmarking par/131072
-time                 2.716 s    (2.411 s .. 2.885 s, ci 0.990)
-                     0.993 R²   (0.982 R² .. 1.000 R², ci 0.990)
-mean                 2.572 s    (2.404 s .. 2.673 s, ci 0.990)
-std dev              174.9 ms   (110.3 ms .. 250.2 ms, ci 0.990)
-variance introduced by outliers: 17% (moderately inflated)
+time                 2.382 s    (2.194 s .. 2.577 s, ci 0.990)
+                     0.994 R²   (0.983 R² .. 1.000 R², ci 0.990)
+mean                 2.346 s    (2.060 s .. 2.459 s, ci 0.990)
+std dev              221.9 ms   (87.17 ms .. 368.8 ms, ci 0.990)
+variance introduced by outliers: 34% (moderately inflated)
 
 benchmarking par/262144
-time                 5.298 s    (4.668 s .. 6.356 s, ci 0.990)
-                     0.988 R²   (0.921 R² .. 1.000 R², ci 0.990)
-mean                 5.013 s    (4.836 s .. 5.412 s, ci 0.990)
-std dev              282.1 ms   (101.7 ms .. 400.0 ms, ci 0.990)
-variance introduced by outliers: 13% (moderately inflated)
+time                 4.659 s    (4.155 s .. 6.013 s, ci 0.990)
+                     0.985 R²   (0.870 R² .. 1.000 R², ci 0.990)
+mean                 5.010 s    (4.775 s .. 5.440 s, ci 0.990)
+std dev              457.1 ms   (167.0 ms .. 663.7 ms, ci 0.990)
+variance introduced by outliers: 24% (moderately inflated)
 
 benchmarking par/524288
-time                 9.329 s    (7.991 s .. 11.27 s, ci 0.990)
-                     0.998 R²   (0.983 R² .. 1.000 R², ci 0.990)
-mean                 9.354 s    (8.977 s .. 9.742 s, ci 0.990)
-std dev              448.5 ms   (12.86 ms .. 694.2 ms, ci 0.990)
-variance introduced by outliers: 16% (moderately inflated)
+time                 10.48 s    (8.353 s .. 12.16 s, ci 0.990)
+                     0.996 R²   (0.989 R² .. 1.000 R², ci 0.990)
+mean                 10.07 s    (9.064 s .. 10.50 s, ci 0.990)
+std dev              730.8 ms   (49.73 ms .. 960.7 ms, ci 0.990)
+variance introduced by outliers: 18% (moderately inflated)
 
 benchmarking par/1048576
-time                 20.08 s    (18.28 s .. 22.33 s, ci 0.990)
-                     0.998 R²   (0.998 R² .. 1.000 R², ci 0.990)
-mean                 20.18 s    (19.42 s .. 20.78 s, ci 0.990)
-std dev              637.0 ms   (187.5 ms .. 839.8 ms, ci 0.990)
+time                 18.25 s    (15.09 s .. 19.65 s, ci 0.990)
+                     0.996 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 20.51 s    (19.38 s .. 21.60 s, ci 0.990)
+std dev              1.173 s    (586.1 ms .. 1.645 s, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -487,79 +485,80 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 7 CORES --------------
 
 benchmarking par/1024
-time                 7.633 ms   (7.287 ms .. 8.037 ms, ci 0.990)
-                     0.983 R²   (0.973 R² .. 0.991 R², ci 0.990)
-mean                 7.744 ms   (7.037 ms .. 9.177 ms, ci 0.990)
-std dev              3.655 ms   (2.344 ms .. 6.148 ms, ci 0.990)
+time                 7.148 ms   (6.760 ms .. 7.679 ms, ci 0.990)
+                     0.957 R²   (0.927 R² .. 0.979 R², ci 0.990)
+mean                 8.458 ms   (7.544 ms .. 9.836 ms, ci 0.990)
+std dev              4.596 ms   (3.044 ms .. 7.512 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 21.30 ms   (19.92 ms .. 22.46 ms, ci 0.990)
-                     0.968 R²   (0.944 R² .. 0.981 R², ci 0.990)
-mean                 21.86 ms   (19.61 ms .. 25.38 ms, ci 0.990)
-std dev              10.44 ms   (7.269 ms .. 14.32 ms, ci 0.990)
+time                 21.52 ms   (20.20 ms .. 22.93 ms, ci 0.990)
+                     0.974 R²   (0.953 R² .. 0.987 R², ci 0.990)
+mean                 21.39 ms   (19.20 ms .. 25.47 ms, ci 0.990)
+std dev              12.89 ms   (7.501 ms .. 23.37 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 52.30 ms   (48.43 ms .. 55.69 ms, ci 0.990)
-                     0.972 R²   (0.952 R² .. 0.985 R², ci 0.990)
-mean                 52.99 ms   (47.84 ms .. 59.69 ms, ci 0.990)
-std dev              19.01 ms   (13.42 ms .. 27.83 ms, ci 0.990)
+time                 49.96 ms   (47.78 ms .. 52.08 ms, ci 0.990)
+                     0.981 R²   (0.965 R² .. 0.991 R², ci 0.990)
+mean                 49.82 ms   (44.47 ms .. 56.50 ms, ci 0.990)
+std dev              19.97 ms   (12.90 ms .. 30.68 ms, ci 0.990)
 variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/8192
-time                 113.5 ms   (101.2 ms .. 124.2 ms, ci 0.990)
-                     0.963 R²   (0.939 R² .. 0.983 R², ci 0.990)
-mean                 116.5 ms   (105.1 ms .. 126.8 ms, ci 0.990)
-std dev              32.03 ms   (21.61 ms .. 43.55 ms, ci 0.990)
+time                 103.8 ms   (97.54 ms .. 113.9 ms, ci 0.990)
+                     0.971 R²   (0.949 R² .. 0.985 R², ci 0.990)
+mean                 106.1 ms   (95.59 ms .. 116.4 ms, ci 0.990)
+std dev              28.50 ms   (20.12 ms .. 39.55 ms, ci 0.990)
 variance introduced by outliers: 94% (severely inflated)
 
 benchmarking par/16384
-time                 263.8 ms   (244.7 ms .. 283.0 ms, ci 0.990)
-                     0.976 R²   (0.948 R² .. 0.992 R², ci 0.990)
-mean                 269.3 ms   (246.3 ms .. 290.7 ms, ci 0.990)
-std dev              59.96 ms   (36.28 ms .. 92.68 ms, ci 0.990)
+time                 246.1 ms   (235.0 ms .. 261.3 ms, ci 0.990)
+                     0.983 R²   (0.966 R² .. 0.993 R², ci 0.990)
+mean                 241.6 ms   (213.5 ms .. 266.8 ms, ci 0.990)
+std dev              56.34 ms   (29.78 ms .. 87.44 ms, ci 0.990)
 variance introduced by outliers: 88% (severely inflated)
 
 benchmarking par/32768
-time                 620.5 ms   (562.4 ms .. 669.9 ms, ci 0.990)
-                     0.980 R²   (0.951 R² .. 0.996 R², ci 0.990)
-mean                 601.7 ms   (536.8 ms .. 633.8 ms, ci 0.990)
-std dev              82.68 ms   (48.11 ms .. 135.9 ms, ci 0.990)
-variance introduced by outliers: 64% (severely inflated)
+time                 557.7 ms   (529.7 ms .. 587.9 ms, ci 0.990)
+                     0.992 R²   (0.982 R² .. 0.998 R², ci 0.990)
+mean                 535.3 ms   (475.2 ms .. 558.7 ms, ci 0.990)
+std dev              73.83 ms   (32.31 ms .. 115.7 ms, ci 0.990)
+variance introduced by outliers: 66% (severely inflated)
 
 benchmarking par/65536
-time                 1.287 s    (1.136 s .. 1.400 s, ci 0.990)
-                     0.987 R²   (0.954 R² .. 0.997 R², ci 0.990)
-mean                 1.307 s    (1.135 s .. 1.396 s, ci 0.990)
-std dev              195.3 ms   (78.86 ms .. 336.3 ms, ci 0.990)
-variance introduced by outliers: 61% (severely inflated)
+time                 1.176 s    (1.086 s .. 1.264 s, ci 0.990)
+                     0.989 R²   (0.976 R² .. 0.998 R², ci 0.990)
+mean                 1.147 s    (1.001 s .. 1.216 s, ci 0.990)
+std dev              168.5 ms   (63.49 ms .. 295.1 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
 
 benchmarking par/131072
-time                 2.830 s    (2.737 s .. 2.970 s, ci 0.990)
-                     0.999 R²   (0.996 R² .. 1.000 R², ci 0.990)
-mean                 2.711 s    (2.576 s .. 2.781 s, ci 0.990)
-std dev              133.8 ms   (55.12 ms .. 220.4 ms, ci 0.990)
+time                 2.493 s    (2.291 s .. 2.653 s, ci 0.990)
+                     0.993 R²   (0.982 R² .. 0.999 R², ci 0.990)
+mean                 2.451 s    (2.188 s .. 2.563 s, ci 0.990)
+std dev              279.3 ms   (78.50 ms .. 455.4 ms, ci 0.990)
+variance introduced by outliers: 35% (moderately inflated)
 
 benchmarking par/262144
-time                 5.321 s    (3.811 s .. 6.630 s, ci 0.990)
-                     0.978 R²   (0.925 R² .. 1.000 R², ci 0.990)
-mean                 5.406 s    (5.055 s .. 5.857 s, ci 0.990)
-std dev              458.5 ms   (297.0 ms .. 598.8 ms, ci 0.990)
-variance introduced by outliers: 26% (moderately inflated)
+time                 5.286 s    (4.417 s .. 6.149 s, ci 0.990)
+                     0.993 R²   (0.964 R² .. 1.000 R², ci 0.990)
+mean                 5.081 s    (4.705 s .. 5.324 s, ci 0.990)
+std dev              390.6 ms   (212.2 ms .. 551.0 ms, ci 0.990)
+variance introduced by outliers: 14% (moderately inflated)
 
 benchmarking par/524288
-time                 10.28 s    (4.693 s .. 14.64 s, ci 0.990)
-                     0.983 R²   (0.888 R² .. 1.000 R², ci 0.990)
-mean                 10.45 s    (9.682 s .. 10.98 s, ci 0.990)
-std dev              649.0 ms   (272.0 ms .. 895.7 ms, ci 0.990)
-variance introduced by outliers: 17% (moderately inflated)
+time                 12.65 s    (8.525 s .. 22.63 s, ci 0.990)
+                     0.961 R²   (0.926 R² .. 1.000 R², ci 0.990)
+mean                 11.00 s    (10.32 s .. 12.82 s, ci 0.990)
+std dev              1.069 s    (99.80 ms .. 1.411 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/1048576
-time                 19.52 s    (17.67 s .. 21.45 s, ci 0.990)
-                     0.999 R²   (NaN R² .. 1.000 R², ci 0.990)
-mean                 21.09 s    (20.31 s .. 21.92 s, ci 0.990)
-std dev              887.5 ms   (703.0 ms .. 980.5 ms, ci 0.990)
+time                 19.78 s    (17.94 s .. 20.91 s, ci 0.990)
+                     0.999 R²   (0.998 R² .. 1.000 R², ci 0.990)
+mean                 19.87 s    (19.36 s .. 20.45 s, ci 0.990)
+std dev              571.0 ms   (161.6 ms .. 773.9 ms, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
@@ -567,298 +566,1376 @@ variance introduced by outliers: 19% (moderately inflated)
 ------------ 8 CORES --------------
 
 benchmarking par/1024
-time                 7.968 ms   (7.638 ms .. 8.217 ms, ci 0.990)
-                     0.990 R²   (0.979 R² .. 0.995 R², ci 0.990)
-mean                 7.633 ms   (6.963 ms .. 8.689 ms, ci 0.990)
-std dev              3.440 ms   (1.800 ms .. 5.203 ms, ci 0.990)
+time                 7.060 ms   (6.470 ms .. 7.583 ms, ci 0.990)
+                     0.972 R²   (0.952 R² .. 0.984 R², ci 0.990)
+mean                 7.507 ms   (6.778 ms .. 8.931 ms, ci 0.990)
+std dev              4.414 ms   (2.149 ms .. 7.396 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 22.41 ms   (20.68 ms .. 23.93 ms, ci 0.990)
-                     0.975 R²   (0.962 R² .. 0.987 R², ci 0.990)
-mean                 22.06 ms   (19.83 ms .. 26.79 ms, ci 0.990)
-std dev              10.21 ms   (6.246 ms .. 16.69 ms, ci 0.990)
+time                 18.24 ms   (16.71 ms .. 20.11 ms, ci 0.990)
+                     0.962 R²   (0.937 R² .. 0.982 R², ci 0.990)
+mean                 18.30 ms   (15.55 ms .. 22.12 ms, ci 0.990)
+std dev              11.67 ms   (7.717 ms .. 19.50 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 52.78 ms   (48.30 ms .. 57.61 ms, ci 0.990)
-                     0.965 R²   (0.944 R² .. 0.982 R², ci 0.990)
-mean                 53.27 ms   (48.85 ms .. 62.43 ms, ci 0.990)
-std dev              18.55 ms   (12.96 ms .. 28.51 ms, ci 0.990)
-variance introduced by outliers: 97% (severely inflated)
+time                 39.95 ms   (37.88 ms .. 42.44 ms, ci 0.990)
+                     0.967 R²   (0.945 R² .. 0.982 R², ci 0.990)
+mean                 43.74 ms   (38.11 ms .. 51.26 ms, ci 0.990)
+std dev              18.48 ms   (13.21 ms .. 26.51 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/8192
-time                 116.7 ms   (107.3 ms .. 124.9 ms, ci 0.990)
-                     0.967 R²   (0.938 R² .. 0.985 R², ci 0.990)
-mean                 113.7 ms   (103.6 ms .. 125.7 ms, ci 0.990)
-std dev              26.88 ms   (19.49 ms .. 33.65 ms, ci 0.990)
-variance introduced by outliers: 91% (severely inflated)
+time                 96.89 ms   (89.53 ms .. 104.5 ms, ci 0.990)
+                     0.972 R²   (0.956 R² .. 0.987 R², ci 0.990)
+mean                 90.61 ms   (79.69 ms .. 101.4 ms, ci 0.990)
+std dev              28.58 ms   (21.22 ms .. 38.86 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
 
 benchmarking par/16384
-time                 253.9 ms   (230.5 ms .. 277.4 ms, ci 0.990)
-                     0.971 R²   (0.946 R² .. 0.988 R², ci 0.990)
-mean                 267.0 ms   (243.2 ms .. 288.6 ms, ci 0.990)
-std dev              53.84 ms   (37.68 ms .. 72.81 ms, ci 0.990)
-variance introduced by outliers: 85% (severely inflated)
+time                 201.2 ms   (188.0 ms .. 221.5 ms, ci 0.990)
+                     0.958 R²   (0.927 R² .. 0.979 R², ci 0.990)
+mean                 206.8 ms   (186.2 ms .. 230.1 ms, ci 0.990)
+std dev              53.88 ms   (36.74 ms .. 78.44 ms, ci 0.990)
+variance introduced by outliers: 92% (severely inflated)
 
 benchmarking par/32768
-time                 579.4 ms   (541.6 ms .. 627.9 ms, ci 0.990)
-                     0.983 R²   (0.967 R² .. 0.995 R², ci 0.990)
-mean                 590.1 ms   (540.2 ms .. 619.2 ms, ci 0.990)
-std dev              79.67 ms   (45.54 ms .. 123.0 ms, ci 0.990)
-variance introduced by outliers: 65% (severely inflated)
+time                 461.1 ms   (433.7 ms .. 482.1 ms, ci 0.990)
+                     0.986 R²   (0.967 R² .. 0.994 R², ci 0.990)
+mean                 487.7 ms   (439.1 ms .. 518.3 ms, ci 0.990)
+std dev              78.07 ms   (42.52 ms .. 128.0 ms, ci 0.990)
+variance introduced by outliers: 72% (severely inflated)
 
 benchmarking par/65536
-time                 1.248 s    (1.146 s .. 1.337 s, ci 0.990)
-                     0.991 R²   (0.974 R² .. 0.998 R², ci 0.990)
-mean                 1.255 s    (1.152 s .. 1.331 s, ci 0.990)
-std dev              178.4 ms   (61.75 ms .. 300.7 ms, ci 0.990)
-variance introduced by outliers: 55% (severely inflated)
+time                 1.030 s    (950.2 ms .. 1.094 s, ci 0.990)
+                     0.985 R²   (0.955 R² .. 0.994 R², ci 0.990)
+mean                 1.015 s    (895.4 ms .. 1.076 s, ci 0.990)
+std dev              164.7 ms   (82.16 ms .. 264.4 ms, ci 0.990)
+variance introduced by outliers: 65% (severely inflated)
 
 benchmarking par/131072
-time                 2.692 s    (2.491 s .. 2.806 s, ci 0.990)
-                     0.995 R²   (0.983 R² .. 1.000 R², ci 0.990)
-mean                 2.647 s    (2.474 s .. 2.787 s, ci 0.990)
-std dev              193.9 ms   (71.86 ms .. 314.4 ms, ci 0.990)
-variance introduced by outliers: 25% (moderately inflated)
+time                 2.078 s    (1.839 s .. 2.474 s, ci 0.990)
+                     0.980 R²   (0.925 R² .. 0.999 R², ci 0.990)
+mean                 2.062 s    (1.910 s .. 2.195 s, ci 0.990)
+std dev              198.9 ms   (112.2 ms .. 296.0 ms, ci 0.990)
+variance introduced by outliers: 32% (moderately inflated)
 
 benchmarking par/262144
-time                 4.855 s    (3.838 s .. 6.090 s, ci 0.990)
-                     0.980 R²   (0.944 R² .. 1.000 R², ci 0.990)
-mean                 5.298 s    (4.833 s .. 5.771 s, ci 0.990)
-std dev              527.7 ms   (308.5 ms .. 712.5 ms, ci 0.990)
-variance introduced by outliers: 27% (moderately inflated)
+time                 4.006 s    (3.574 s .. 4.241 s, ci 0.990)
+                     0.998 R²   (0.990 R² .. 1.000 R², ci 0.990)
+mean                 4.014 s    (3.860 s .. 4.172 s, ci 0.990)
+std dev              199.8 ms   (96.38 ms .. 301.5 ms, ci 0.990)
+variance introduced by outliers: 11% (moderately inflated)
 
 benchmarking par/524288
-time                 10.26 s    (9.330 s .. 11.57 s, ci 0.990)
-                     0.999 R²   (0.993 R² .. 1.000 R², ci 0.990)
-mean                 10.41 s    (10.26 s .. 10.88 s, ci 0.990)
-std dev              271.9 ms   (44.87 ms .. 379.1 ms, ci 0.990)
-variance introduced by outliers: 16% (moderately inflated)
+time                 7.905 s    (7.241 s .. 8.725 s, ci 0.990)
+                     0.998 R²   (0.994 R² .. 1.000 R², ci 0.990)
+mean                 8.402 s    (8.133 s .. 8.678 s, ci 0.990)
+std dev              294.4 ms   (238.0 ms .. 326.9 ms, ci 0.990)
+variance introduced by outliers: 14% (moderately inflated)
 
 benchmarking par/1048576
-time                 18.62 s    (13.88 s .. 24.47 s, ci 0.990)
-                     0.984 R²   (0.980 R² .. 1.000 R², ci 0.990)
-mean                 20.34 s    (18.96 s .. 21.72 s, ci 0.990)
-std dev              1.347 s    (0.0 s .. 1.800 s, ci 0.990)
+time                 15.74 s    (13.59 s .. 19.02 s, ci 0.990)
+                     0.994 R²   (0.992 R² .. 1.000 R², ci 0.990)
+mean                 15.62 s    (15.00 s .. 16.35 s, ci 0.990)
+std dev              733.3 ms   (239.0 ms .. 858.1 ms, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 9 CORES --------------
 
+benchmarking par/1024
+time                 7.183 ms   (6.870 ms .. 7.567 ms, ci 0.990)
+                     0.978 R²   (0.959 R² .. 0.989 R², ci 0.990)
+mean                 7.354 ms   (6.472 ms .. 8.683 ms, ci 0.990)
+std dev              4.350 ms   (2.728 ms .. 6.221 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 22.54 ms   (21.20 ms .. 23.83 ms, ci 0.990)
+                     0.970 R²   (0.950 R² .. 0.983 R², ci 0.990)
+mean                 22.38 ms   (19.60 ms .. 26.14 ms, ci 0.990)
+std dev              11.51 ms   (7.465 ms .. 17.25 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 55.74 ms   (52.49 ms .. 59.23 ms, ci 0.990)
+                     0.971 R²   (0.953 R² .. 0.987 R², ci 0.990)
+mean                 54.87 ms   (48.76 ms .. 66.28 ms, ci 0.990)
+std dev              23.85 ms   (16.17 ms .. 40.46 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 116.2 ms   (105.0 ms .. 126.9 ms, ci 0.990)
+                     0.955 R²   (0.915 R² .. 0.978 R², ci 0.990)
+mean                 124.2 ms   (111.1 ms .. 140.1 ms, ci 0.990)
+std dev              37.60 ms   (29.64 ms .. 50.13 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
+
+benchmarking par/16384
+time                 280.0 ms   (265.3 ms .. 298.1 ms, ci 0.990)
+                     0.983 R²   (0.964 R² .. 0.995 R², ci 0.990)
+mean                 259.2 ms   (230.2 ms .. 279.4 ms, ci 0.990)
+std dev              52.79 ms   (29.71 ms .. 72.50 ms, ci 0.990)
+variance introduced by outliers: 84% (severely inflated)
+
+benchmarking par/32768
+time                 577.6 ms   (536.5 ms .. 613.1 ms, ci 0.990)
+                     0.984 R²   (0.961 R² .. 0.995 R², ci 0.990)
+mean                 571.5 ms   (514.5 ms .. 619.5 ms, ci 0.990)
+std dev              98.62 ms   (51.29 ms .. 157.1 ms, ci 0.990)
+variance introduced by outliers: 74% (severely inflated)
+
+benchmarking par/65536
+time                 1.356 s    (1.172 s .. 1.494 s, ci 0.990)
+                     0.974 R²   (0.924 R² .. 0.994 R², ci 0.990)
+mean                 1.298 s    (1.098 s .. 1.386 s, ci 0.990)
+std dev              217.9 ms   (89.98 ms .. 386.4 ms, ci 0.990)
+variance introduced by outliers: 65% (severely inflated)
+
+benchmarking par/131072
+time                 2.934 s    (2.581 s .. 3.198 s, ci 0.990)
+                     0.989 R²   (0.947 R² .. 0.999 R², ci 0.990)
+mean                 2.902 s    (2.616 s .. 3.043 s, ci 0.990)
+std dev              267.7 ms   (111.0 ms .. 417.8 ms, ci 0.990)
+variance introduced by outliers: 28% (moderately inflated)
+
+benchmarking par/262144
+time                 6.017 s    (5.494 s .. 6.547 s, ci 0.990)
+                     0.996 R²   (0.972 R² .. 1.000 R², ci 0.990)
+mean                 5.600 s    (5.024 s .. 5.886 s, ci 0.990)
+std dev              527.6 ms   (163.6 ms .. 802.5 ms, ci 0.990)
+variance introduced by outliers: 27% (moderately inflated)
+
+benchmarking par/524288
+time                 11.30 s    (10.23 s .. 12.74 s, ci 0.990)
+                     0.998 R²   (0.996 R² .. 1.000 R², ci 0.990)
+mean                 10.31 s    (9.899 s .. 10.84 s, ci 0.990)
+std dev              494.8 ms   (181.0 ms .. 683.5 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/1048576
+time                 21.03 s    (17.98 s .. 23.53 s, ci 0.990)
+                     0.998 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 21.17 s    (20.86 s .. 21.79 s, ci 0.990)
+std dev              431.7 ms   (0.0 s .. 550.1 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 10 CORES --------------
+
+benchmarking par/1024
+time                 7.167 ms   (6.829 ms .. 7.604 ms, ci 0.990)
+                     0.975 R²   (0.957 R² .. 0.986 R², ci 0.990)
+mean                 7.603 ms   (6.710 ms .. 9.576 ms, ci 0.990)
+std dev              5.669 ms   (2.999 ms .. 10.48 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 21.80 ms   (20.46 ms .. 23.04 ms, ci 0.990)
+                     0.974 R²   (0.956 R² .. 0.986 R², ci 0.990)
+mean                 21.05 ms   (18.82 ms .. 25.69 ms, ci 0.990)
+std dev              11.28 ms   (6.542 ms .. 18.97 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 51.45 ms   (48.24 ms .. 55.34 ms, ci 0.990)
+                     0.976 R²   (0.961 R² .. 0.988 R², ci 0.990)
+mean                 50.00 ms   (45.52 ms .. 56.87 ms, ci 0.990)
+std dev              17.96 ms   (12.77 ms .. 24.93 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 106.8 ms   (96.72 ms .. 118.0 ms, ci 0.990)
+                     0.965 R²   (0.947 R² .. 0.987 R², ci 0.990)
+mean                 109.8 ms   (100.7 ms .. 123.5 ms, ci 0.990)
+std dev              33.29 ms   (23.48 ms .. 48.39 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
+
+benchmarking par/16384
+time                 250.3 ms   (234.1 ms .. 265.0 ms, ci 0.990)
+                     0.978 R²   (0.960 R² .. 0.990 R², ci 0.990)
+mean                 250.9 ms   (225.1 ms .. 272.0 ms, ci 0.990)
+std dev              55.27 ms   (32.94 ms .. 76.79 ms, ci 0.990)
+variance introduced by outliers: 88% (severely inflated)
+
+benchmarking par/32768
+time                 596.1 ms   (575.0 ms .. 626.5 ms, ci 0.990)
+                     0.992 R²   (0.985 R² .. 0.997 R², ci 0.990)
+mean                 562.0 ms   (511.7 ms .. 587.8 ms, ci 0.990)
+std dev              74.31 ms   (37.72 ms .. 121.7 ms, ci 0.990)
+variance introduced by outliers: 61% (severely inflated)
+
+benchmarking par/65536
+time                 1.282 s    (1.209 s .. 1.370 s, ci 0.990)
+                     0.993 R²   (0.981 R² .. 0.998 R², ci 0.990)
+mean                 1.241 s    (1.107 s .. 1.305 s, ci 0.990)
+std dev              186.6 ms   (51.74 ms .. 323.1 ms, ci 0.990)
+variance introduced by outliers: 61% (severely inflated)
+
+benchmarking par/131072
+time                 2.674 s    (2.494 s .. 2.915 s, ci 0.990)
+                     0.992 R²   (0.973 R² .. 0.999 R², ci 0.990)
+mean                 2.601 s    (2.430 s .. 2.704 s, ci 0.990)
+std dev              181.0 ms   (93.12 ms .. 265.5 ms, ci 0.990)
+variance introduced by outliers: 17% (moderately inflated)
+
+benchmarking par/262144
+time                 5.374 s    (4.814 s .. 5.903 s, ci 0.990)
+                     0.992 R²   (0.951 R² .. 1.000 R², ci 0.990)
+mean                 5.584 s    (5.220 s .. 5.948 s, ci 0.990)
+std dev              433.1 ms   (216.6 ms .. 697.2 ms, ci 0.990)
+variance introduced by outliers: 14% (moderately inflated)
+
+benchmarking par/524288
+time                 11.70 s    (8.365 s .. 17.12 s, ci 0.990)
+                     0.989 R²   (0.949 R² .. 1.000 R², ci 0.990)
+mean                 11.49 s    (10.75 s .. 11.84 s, ci 0.990)
+std dev              469.1 ms   (143.1 ms .. 697.8 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/1048576
+time                 19.78 s    (18.60 s .. 22.52 s, ci 0.990)
+                     0.998 R²   (0.995 R² .. 1.000 R², ci 0.990)
+mean                 21.69 s    (20.55 s .. 24.06 s, ci 0.990)
+std dev              1.625 s    (192.2 ms .. 2.102 s, ci 0.990)
+variance introduced by outliers: 21% (moderately inflated)
 
 
 
 ------------ 11 CORES --------------
 
+benchmarking par/1024
+time                 7.437 ms   (7.024 ms .. 7.829 ms, ci 0.990)
+                     0.970 R²   (0.940 R² .. 0.983 R², ci 0.990)
+mean                 7.943 ms   (7.101 ms .. 10.11 ms, ci 0.990)
+std dev              5.955 ms   (2.768 ms .. 11.37 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 22.98 ms   (21.41 ms .. 24.35 ms, ci 0.990)
+                     0.971 R²   (0.950 R² .. 0.983 R², ci 0.990)
+mean                 22.48 ms   (20.20 ms .. 27.71 ms, ci 0.990)
+std dev              13.70 ms   (7.875 ms .. 22.87 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 58.30 ms   (54.71 ms .. 61.57 ms, ci 0.990)
+                     0.967 R²   (0.945 R² .. 0.982 R², ci 0.990)
+mean                 55.90 ms   (50.23 ms .. 62.30 ms, ci 0.990)
+std dev              20.57 ms   (16.28 ms .. 27.30 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 112.2 ms   (102.7 ms .. 125.0 ms, ci 0.990)
+                     0.959 R²   (0.926 R² .. 0.981 R², ci 0.990)
+mean                 122.0 ms   (108.6 ms .. 139.1 ms, ci 0.990)
+std dev              42.18 ms   (29.25 ms .. 59.45 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
+
+benchmarking par/16384
+time                 279.0 ms   (257.5 ms .. 293.5 ms, ci 0.990)
+                     0.980 R²   (0.960 R² .. 0.991 R², ci 0.990)
+mean                 264.3 ms   (235.6 ms .. 289.7 ms, ci 0.990)
+std dev              60.25 ms   (34.74 ms .. 96.66 ms, ci 0.990)
+variance introduced by outliers: 88% (severely inflated)
+
+benchmarking par/32768
+time                 598.3 ms   (561.0 ms .. 629.4 ms, ci 0.990)
+                     0.984 R²   (0.962 R² .. 0.994 R², ci 0.990)
+mean                 594.4 ms   (546.0 ms .. 627.4 ms, ci 0.990)
+std dev              85.55 ms   (42.14 ms .. 139.5 ms, ci 0.990)
+variance introduced by outliers: 64% (severely inflated)
+
+benchmarking par/65536
+time                 1.277 s    (1.192 s .. 1.345 s, ci 0.990)
+                     0.993 R²   (0.975 R² .. 0.997 R², ci 0.990)
+mean                 1.297 s    (1.137 s .. 1.396 s, ci 0.990)
+std dev              208.6 ms   (75.15 ms .. 372.7 ms, ci 0.990)
+variance introduced by outliers: 61% (severely inflated)
+
+benchmarking par/131072
+time                 2.804 s    (2.486 s .. 3.045 s, ci 0.990)
+                     0.990 R²   (0.971 R² .. 0.999 R², ci 0.990)
+mean                 2.800 s    (2.595 s .. 2.921 s, ci 0.990)
+std dev              223.5 ms   (102.6 ms .. 364.9 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/262144
+time                 5.562 s    (4.747 s .. 6.859 s, ci 0.990)
+                     0.994 R²   (0.981 R² .. 1.000 R², ci 0.990)
+mean                 5.931 s    (5.620 s .. 6.405 s, ci 0.990)
+std dev              426.0 ms   (159.5 ms .. 588.7 ms, ci 0.990)
+variance introduced by outliers: 13% (moderately inflated)
+
+benchmarking par/524288
+time                 11.58 s    (9.959 s .. 12.80 s, ci 0.990)
+                     0.999 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 11.67 s    (11.54 s .. 11.84 s, ci 0.990)
+std dev              149.3 ms   (60.19 ms .. 211.6 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/1048576
+time                 22.46 s    (18.53 s .. 25.38 s, ci 0.990)
+                     0.995 R²   (0.994 R² .. 1.000 R², ci 0.990)
+mean                 22.73 s    (21.85 s .. 23.50 s, ci 0.990)
+std dev              904.3 ms   (613.8 ms .. 1.054 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 12 CORES --------------
+
+benchmarking par/1024
+time                 8.172 ms   (7.611 ms .. 8.707 ms, ci 0.990)
+                     0.974 R²   (0.960 R² .. 0.983 R², ci 0.990)
+mean                 7.080 ms   (6.214 ms .. 8.673 ms, ci 0.990)
+std dev              3.862 ms   (2.605 ms .. 5.717 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 21.18 ms   (19.48 ms .. 23.00 ms, ci 0.990)
+                     0.958 R²   (0.927 R² .. 0.978 R², ci 0.990)
+mean                 21.57 ms   (18.97 ms .. 26.49 ms, ci 0.990)
+std dev              12.72 ms   (8.258 ms .. 21.20 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 51.08 ms   (47.40 ms .. 54.30 ms, ci 0.990)
+                     0.957 R²   (0.924 R² .. 0.980 R², ci 0.990)
+mean                 54.41 ms   (47.69 ms .. 63.83 ms, ci 0.990)
+std dev              25.75 ms   (16.89 ms .. 37.04 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 106.3 ms   (98.72 ms .. 115.9 ms, ci 0.990)
+                     0.963 R²   (0.943 R² .. 0.977 R², ci 0.990)
+mean                 112.0 ms   (101.5 ms .. 125.1 ms, ci 0.990)
+std dev              36.80 ms   (25.34 ms .. 59.81 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
+
+benchmarking par/16384
+time                 264.8 ms   (240.9 ms .. 283.7 ms, ci 0.990)
+                     0.976 R²   (0.959 R² .. 0.988 R², ci 0.990)
+mean                 257.3 ms   (233.0 ms .. 278.1 ms, ci 0.990)
+std dev              60.15 ms   (35.78 ms .. 92.22 ms, ci 0.990)
+variance introduced by outliers: 88% (severely inflated)
+
+benchmarking par/32768
+time                 603.8 ms   (558.6 ms .. 641.2 ms, ci 0.990)
+                     0.985 R²   (0.969 R² .. 0.995 R², ci 0.990)
+mean                 590.1 ms   (493.6 ms .. 628.0 ms, ci 0.990)
+std dev              106.0 ms   (47.76 ms .. 185.5 ms, ci 0.990)
+variance introduced by outliers: 77% (severely inflated)
+
+benchmarking par/65536
+time                 1.171 s    (984.9 ms .. 1.393 s, ci 0.990)
+                     0.965 R²   (0.892 R² .. 0.991 R², ci 0.990)
+mean                 1.266 s    (1.048 s .. 1.372 s, ci 0.990)
+std dev              237.4 ms   (119.7 ms .. 383.4 ms, ci 0.990)
+variance introduced by outliers: 73% (severely inflated)
+
+benchmarking par/131072
+time                 2.664 s    (2.426 s .. 3.001 s, ci 0.990)
+                     0.990 R²   (0.948 R² .. 0.999 R², ci 0.990)
+mean                 2.700 s    (2.462 s .. 2.824 s, ci 0.990)
+std dev              256.1 ms   (104.1 ms .. 406.7 ms, ci 0.990)
+variance introduced by outliers: 34% (moderately inflated)
+
+benchmarking par/262144
+time                 5.405 s    (4.864 s .. 5.832 s, ci 0.990)
+                     0.995 R²   (0.977 R² .. 1.000 R², ci 0.990)
+mean                 5.352 s    (4.962 s .. 5.545 s, ci 0.990)
+std dev              335.2 ms   (109.6 ms .. 499.8 ms, ci 0.990)
+variance introduced by outliers: 13% (moderately inflated)
+
+benchmarking par/524288
+time                 11.06 s    (9.534 s .. 12.60 s, ci 0.990)
+                     0.997 R²   (0.995 R² .. 1.000 R², ci 0.990)
+mean                 10.75 s    (9.858 s .. 11.14 s, ci 0.990)
+std dev              667.0 ms   (107.8 ms .. 937.6 ms, ci 0.990)
+variance introduced by outliers: 17% (moderately inflated)
+
+benchmarking par/1048576
+time                 21.24 s    (NaN s .. 23.15 s, ci 0.990)
+                     0.999 R²   (0.998 R² .. 1.000 R², ci 0.990)
+mean                 21.00 s    (20.74 s .. 21.30 s, ci 0.990)
+std dev              264.2 ms   (91.63 ms .. 357.7 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 13 CORES --------------
 
+benchmarking par/1024
+time                 7.985 ms   (7.394 ms .. 8.525 ms, ci 0.990)
+                     0.961 R²   (0.931 R² .. 0.981 R², ci 0.990)
+mean                 8.692 ms   (7.467 ms .. 10.99 ms, ci 0.990)
+std dev              6.594 ms   (4.313 ms .. 9.748 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 24.81 ms   (23.20 ms .. 26.54 ms, ci 0.990)
+                     0.960 R²   (0.931 R² .. 0.979 R², ci 0.990)
+mean                 23.98 ms   (20.86 ms .. 29.18 ms, ci 0.990)
+std dev              14.03 ms   (8.391 ms .. 22.92 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 56.14 ms   (51.54 ms .. 60.39 ms, ci 0.990)
+                     0.961 R²   (0.934 R² .. 0.976 R², ci 0.990)
+mean                 58.88 ms   (52.15 ms .. 66.80 ms, ci 0.990)
+std dev              26.71 ms   (18.58 ms .. 39.60 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 124.4 ms   (113.0 ms .. 139.0 ms, ci 0.990)
+                     0.953 R²   (0.914 R² .. 0.978 R², ci 0.990)
+mean                 122.7 ms   (111.6 ms .. 135.4 ms, ci 0.990)
+std dev              38.50 ms   (28.10 ms .. 54.94 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 290.6 ms   (275.9 ms .. 306.4 ms, ci 0.990)
+                     0.983 R²   (0.959 R² .. 0.993 R², ci 0.990)
+mean                 277.4 ms   (241.1 ms .. 305.7 ms, ci 0.990)
+std dev              63.81 ms   (38.65 ms .. 95.81 ms, ci 0.990)
+variance introduced by outliers: 88% (severely inflated)
+
+benchmarking par/32768
+time                 621.3 ms   (574.4 ms .. 662.0 ms, ci 0.990)
+                     0.981 R²   (0.956 R² .. 0.993 R², ci 0.990)
+mean                 603.9 ms   (536.9 ms .. 656.7 ms, ci 0.990)
+std dev              103.4 ms   (59.35 ms .. 157.9 ms, ci 0.990)
+variance introduced by outliers: 73% (severely inflated)
+
+benchmarking par/65536
+time                 1.282 s    (1.179 s .. 1.423 s, ci 0.990)
+                     0.985 R²   (0.957 R² .. 0.998 R², ci 0.990)
+mean                 1.362 s    (1.156 s .. 1.478 s, ci 0.990)
+std dev              241.7 ms   (93.23 ms .. 402.2 ms, ci 0.990)
+variance introduced by outliers: 65% (severely inflated)
+
+benchmarking par/131072
+time                 2.949 s    (2.698 s .. 3.169 s, ci 0.990)
+                     0.994 R²   (0.980 R² .. 0.999 R², ci 0.990)
+mean                 2.926 s    (2.648 s .. 3.049 s, ci 0.990)
+std dev              250.3 ms   (93.10 ms .. 407.3 ms, ci 0.990)
+variance introduced by outliers: 28% (moderately inflated)
+
+benchmarking par/262144
+time                 6.135 s    (5.621 s .. 6.683 s, ci 0.990)
+                     0.995 R²   (0.955 R² .. 1.000 R², ci 0.990)
+mean                 6.067 s    (5.645 s .. 6.334 s, ci 0.990)
+std dev              379.9 ms   (193.0 ms .. 535.5 ms, ci 0.990)
+variance introduced by outliers: 13% (moderately inflated)
+
+benchmarking par/524288
+time                 12.38 s    (9.621 s .. 14.18 s, ci 0.990)
+                     0.995 R²   (0.982 R² .. 1.000 R², ci 0.990)
+mean                 11.85 s    (11.01 s .. 12.45 s, ci 0.990)
+std dev              665.7 ms   (7.020 ms .. 940.5 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 21.93 s    (17.74 s .. 23.87 s, ci 0.990)
+                     0.996 R²   (0.989 R² .. 1.000 R², ci 0.990)
+mean                 23.19 s    (22.15 s .. 23.56 s, ci 0.990)
+std dev              693.6 ms   (10.50 ms .. 849.7 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 14 CORES --------------
 
+benchmarking par/1024
+time                 7.724 ms   (7.142 ms .. 8.445 ms, ci 0.990)
+                     0.965 R²   (0.942 R² .. 0.985 R², ci 0.990)
+mean                 7.642 ms   (6.585 ms .. 9.264 ms, ci 0.990)
+std dev              5.093 ms   (2.846 ms .. 7.973 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 20.78 ms   (19.95 ms .. 21.87 ms, ci 0.990)
+                     0.976 R²   (0.959 R² .. 0.986 R², ci 0.990)
+mean                 21.57 ms   (18.88 ms .. 28.43 ms, ci 0.990)
+std dev              13.49 ms   (6.782 ms .. 25.81 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 53.34 ms   (50.56 ms .. 56.54 ms, ci 0.990)
+                     0.974 R²   (0.957 R² .. 0.983 R², ci 0.990)
+mean                 54.37 ms   (47.68 ms .. 62.85 ms, ci 0.990)
+std dev              25.71 ms   (17.06 ms .. 38.63 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 108.0 ms   (100.3 ms .. 113.9 ms, ci 0.990)
+                     0.969 R²   (0.941 R² .. 0.986 R², ci 0.990)
+mean                 110.0 ms   (100.1 ms .. 120.9 ms, ci 0.990)
+std dev              31.08 ms   (23.21 ms .. 43.11 ms, ci 0.990)
+variance introduced by outliers: 96% (severely inflated)
+
+benchmarking par/16384
+time                 312.5 ms   (286.3 ms .. 344.6 ms, ci 0.990)
+                     0.962 R²   (0.932 R² .. 0.987 R², ci 0.990)
+mean                 290.5 ms   (254.1 ms .. 320.5 ms, ci 0.990)
+std dev              72.96 ms   (44.89 ms .. 101.4 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 542.5 ms   (487.7 ms .. 606.7 ms, ci 0.990)
+                     0.964 R²   (0.928 R² .. 0.986 R², ci 0.990)
+mean                 578.4 ms   (517.1 ms .. 635.0 ms, ci 0.990)
+std dev              108.1 ms   (68.89 ms .. 168.6 ms, ci 0.990)
+variance introduced by outliers: 78% (severely inflated)
+
+benchmarking par/65536
+time                 1.260 s    (1.169 s .. 1.324 s, ci 0.990)
+                     0.990 R²   (0.974 R² .. 0.999 R², ci 0.990)
+mean                 1.244 s    (1.111 s .. 1.343 s, ci 0.990)
+std dev              202.2 ms   (77.35 ms .. 368.7 ms, ci 0.990)
+variance introduced by outliers: 61% (severely inflated)
+
+benchmarking par/131072
+time                 2.732 s    (2.411 s .. 2.967 s, ci 0.990)
+                     0.995 R²   (0.981 R² .. 0.999 R², ci 0.990)
+mean                 2.749 s    (2.509 s .. 2.867 s, ci 0.990)
+std dev              227.7 ms   (83.77 ms .. 377.8 ms, ci 0.990)
+variance introduced by outliers: 28% (moderately inflated)
+
+benchmarking par/262144
+time                 5.786 s    (5.443 s .. 6.150 s, ci 0.990)
+                     0.998 R²   (0.989 R² .. 1.000 R², ci 0.990)
+mean                 5.411 s    (4.726 s .. 5.637 s, ci 0.990)
+std dev              489.6 ms   (90.72 ms .. 740.8 ms, ci 0.990)
+variance introduced by outliers: 26% (moderately inflated)
+
+benchmarking par/524288
+time                 11.71 s    (10.43 s .. 13.28 s, ci 0.990)
+                     0.999 R²   (0.991 R² .. 1.000 R², ci 0.990)
+mean                 11.38 s    (10.70 s .. 11.73 s, ci 0.990)
+std dev              516.3 ms   (90.16 ms .. 754.6 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/1048576
+time                 22.15 s    (19.89 s .. 23.88 s, ci 0.990)
+                     0.999 R²   (0.996 R² .. 1.000 R², ci 0.990)
+mean                 22.14 s    (21.95 s .. 22.64 s, ci 0.990)
+std dev              335.1 ms   (2.213 ms .. 400.0 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 15 CORES --------------
+
+benchmarking par/1024
+time                 8.320 ms   (7.809 ms .. 8.840 ms, ci 0.990)
+                     0.957 R²   (0.926 R² .. 0.977 R², ci 0.990)
+mean                 7.998 ms   (6.757 ms .. 10.13 ms, ci 0.990)
+std dev              6.031 ms   (3.519 ms .. 9.577 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 23.87 ms   (22.28 ms .. 25.04 ms, ci 0.990)
+                     0.967 R²   (0.932 R² .. 0.983 R², ci 0.990)
+mean                 22.46 ms   (19.74 ms .. 27.47 ms, ci 0.990)
+std dev              13.26 ms   (8.844 ms .. 18.25 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 58.13 ms   (53.59 ms .. 62.97 ms, ci 0.990)
+                     0.955 R²   (0.922 R² .. 0.977 R², ci 0.990)
+mean                 59.78 ms   (52.29 ms .. 69.47 ms, ci 0.990)
+std dev              31.09 ms   (21.56 ms .. 44.93 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 131.0 ms   (118.4 ms .. 145.3 ms, ci 0.990)
+                     0.946 R²   (0.907 R² .. 0.974 R², ci 0.990)
+mean                 127.1 ms   (104.7 ms .. 140.8 ms, ci 0.990)
+std dev              44.12 ms   (31.80 ms .. 58.96 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/16384
+time                 277.4 ms   (256.1 ms .. 303.1 ms, ci 0.990)
+                     0.966 R²   (0.939 R² .. 0.984 R², ci 0.990)
+mean                 276.5 ms   (253.6 ms .. 317.5 ms, ci 0.990)
+std dev              71.06 ms   (42.41 ms .. 107.8 ms, ci 0.990)
+variance introduced by outliers: 91% (severely inflated)
+
+benchmarking par/32768
+time                 661.3 ms   (608.5 ms .. 713.4 ms, ci 0.990)
+                     0.968 R²   (0.914 R² .. 0.991 R², ci 0.990)
+mean                 648.8 ms   (563.7 ms .. 697.3 ms, ci 0.990)
+std dev              118.9 ms   (69.17 ms .. 206.1 ms, ci 0.990)
+variance introduced by outliers: 76% (severely inflated)
+
+benchmarking par/65536
+time                 1.413 s    (1.261 s .. 1.604 s, ci 0.990)
+                     0.980 R²   (0.947 R² .. 0.993 R², ci 0.990)
+mean                 1.440 s    (1.255 s .. 1.593 s, ci 0.990)
+std dev              285.5 ms   (132.5 ms .. 488.6 ms, ci 0.990)
+variance introduced by outliers: 72% (severely inflated)
+
+benchmarking par/131072
+time                 3.113 s    (2.803 s .. 3.433 s, ci 0.990)
+                     0.990 R²   (0.962 R² .. 0.999 R², ci 0.990)
+mean                 3.019 s    (2.590 s .. 3.194 s, ci 0.990)
+std dev              368.7 ms   (109.5 ms .. 600.3 ms, ci 0.990)
+variance introduced by outliers: 38% (moderately inflated)
+
+benchmarking par/262144
+time                 6.332 s    (5.339 s .. 7.349 s, ci 0.990)
+                     0.991 R²   (0.957 R² .. 1.000 R², ci 0.990)
+mean                 6.142 s    (4.748 s .. 6.616 s, ci 0.990)
+std dev              775.0 ms   (227.5 ms .. 1.174 s, ci 0.990)
+variance introduced by outliers: 40% (moderately inflated)
+
+benchmarking par/524288
+time                 11.36 s    (8.001 s .. 14.34 s, ci 0.990)
+                     0.985 R²   (0.983 R² .. 1.000 R², ci 0.990)
+mean                 12.35 s    (11.51 s .. 13.06 s, ci 0.990)
+std dev              734.4 ms   (257.1 ms .. 971.3 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 21.02 s    (18.75 s .. 23.66 s, ci 0.990)
+                     0.998 R²   (0.993 R² .. 1.000 R², ci 0.990)
+mean                 22.11 s    (21.28 s .. 23.00 s, ci 0.990)
+std dev              892.8 ms   (276.2 ms .. 1.216 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 16 CORES --------------
 
 benchmarking par/1024
-time                 8.036 ms   (7.390 ms .. 8.658 ms, ci 0.990)
-                     0.959 R²   (0.929 R² .. 0.979 R², ci 0.990)
-mean                 8.299 ms   (7.244 ms .. 10.60 ms, ci 0.990)
-std dev              7.220 ms   (3.615 ms .. 12.39 ms, ci 0.990)
+time                 8.578 ms   (8.129 ms .. 9.220 ms, ci 0.990)
+                     0.966 R²   (0.947 R² .. 0.981 R², ci 0.990)
+mean                 8.308 ms   (7.439 ms .. 9.877 ms, ci 0.990)
+std dev              4.920 ms   (3.173 ms .. 7.153 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 21.38 ms   (19.79 ms .. 23.06 ms, ci 0.990)
-                     0.936 R²   (0.859 R² .. 0.972 R², ci 0.990)
-mean                 23.29 ms   (18.73 ms .. 29.95 ms, ci 0.990)
-std dev              20.14 ms   (11.10 ms .. 30.64 ms, ci 0.990)
+time                 26.22 ms   (24.84 ms .. 27.85 ms, ci 0.990)
+                     0.971 R²   (0.951 R² .. 0.983 R², ci 0.990)
+mean                 24.17 ms   (21.60 ms .. 28.68 ms, ci 0.990)
+std dev              11.47 ms   (8.896 ms .. 14.82 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 52.01 ms   (47.75 ms .. 58.45 ms, ci 0.990)
-                     0.926 R²   (0.871 R² .. 0.955 R², ci 0.990)
-mean                 56.91 ms   (48.43 ms .. 70.48 ms, ci 0.990)
-std dev              34.74 ms   (23.36 ms .. 53.56 ms, ci 0.990)
+time                 61.90 ms   (57.05 ms .. 66.33 ms, ci 0.990)
+                     0.958 R²   (0.914 R² .. 0.979 R², ci 0.990)
+mean                 62.46 ms   (55.84 ms .. 73.95 ms, ci 0.990)
+std dev              30.68 ms   (18.50 ms .. 48.20 ms, ci 0.990)
 variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/8192
-time                 118.9 ms   (106.1 ms .. 131.0 ms, ci 0.990)
-                     0.940 R²   (0.882 R² .. 0.969 R², ci 0.990)
-mean                 121.2 ms   (99.91 ms .. 141.8 ms, ci 0.990)
-std dev              48.84 ms   (35.98 ms .. 70.98 ms, ci 0.990)
-variance introduced by outliers: 98% (severely inflated)
+time                 125.3 ms   (113.8 ms .. 140.0 ms, ci 0.990)
+                     0.946 R²   (0.919 R² .. 0.972 R², ci 0.990)
+mean                 126.4 ms   (111.9 ms .. 142.0 ms, ci 0.990)
+std dev              39.83 ms   (27.72 ms .. 61.48 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
 
 benchmarking par/16384
-time                 270.5 ms   (240.5 ms .. 305.5 ms, ci 0.990)
-                     0.936 R²   (0.875 R² .. 0.976 R², ci 0.990)
-mean                 281.7 ms   (237.6 ms .. 319.5 ms, ci 0.990)
-std dev              89.33 ms   (58.30 ms .. 131.7 ms, ci 0.990)
-variance introduced by outliers: 94% (severely inflated)
+time                 319.2 ms   (297.5 ms .. 343.2 ms, ci 0.990)
+                     0.975 R²   (0.955 R² .. 0.989 R², ci 0.990)
+mean                 301.4 ms   (274.7 ms .. 326.9 ms, ci 0.990)
+std dev              67.79 ms   (39.73 ms .. 97.86 ms, ci 0.990)
+variance introduced by outliers: 87% (severely inflated)
 
 benchmarking par/32768
-time                 666.5 ms   (609.3 ms .. 717.5 ms, ci 0.990)
-                     0.978 R²   (0.942 R² .. 0.995 R², ci 0.990)
-mean                 659.5 ms   (550.7 ms .. 711.0 ms, ci 0.990)
-std dev              130.3 ms   (65.27 ms .. 227.4 ms, ci 0.990)
-variance introduced by outliers: 76% (severely inflated)
+time                 675.3 ms   (611.2 ms .. 726.5 ms, ci 0.990)
+                     0.981 R²   (0.963 R² .. 0.994 R², ci 0.990)
+mean                 661.9 ms   (594.0 ms .. 708.7 ms, ci 0.990)
+std dev              99.83 ms   (49.77 ms .. 169.6 ms, ci 0.990)
+variance introduced by outliers: 67% (severely inflated)
 
 benchmarking par/65536
-time                 1.293 s    (1.152 s .. 1.459 s, ci 0.990)
-                     0.978 R²   (0.956 R² .. 0.996 R², ci 0.990)
-mean                 1.344 s    (1.099 s .. 1.456 s, ci 0.990)
-std dev              288.5 ms   (80.55 ms .. 536.5 ms, ci 0.990)
-variance introduced by outliers: 72% (severely inflated)
+time                 1.519 s    (1.384 s .. 1.621 s, ci 0.990)
+                     0.987 R²   (0.956 R² .. 0.996 R², ci 0.990)
+mean                 1.499 s    (1.197 s .. 1.606 s, ci 0.990)
+std dev              263.8 ms   (99.26 ms .. 461.0 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
 
 benchmarking par/131072
-time                 2.908 s    (2.601 s .. 3.239 s, ci 0.990)
-                     0.990 R²   (0.975 R² .. 1.000 R², ci 0.990)
-mean                 2.924 s    (2.529 s .. 3.056 s, ci 0.990)
-std dev              290.9 ms   (102.6 ms .. 482.0 ms, ci 0.990)
-variance introduced by outliers: 29% (moderately inflated)
+time                 3.142 s    (2.785 s .. 3.537 s, ci 0.990)
+                     0.991 R²   (0.981 R² .. 0.998 R², ci 0.990)
+mean                 3.068 s    (2.596 s .. 3.256 s, ci 0.990)
+std dev              397.2 ms   (126.9 ms .. 666.7 ms, ci 0.990)
+variance introduced by outliers: 39% (moderately inflated)
 
 benchmarking par/262144
-time                 5.552 s    (4.910 s .. 6.275 s, ci 0.990)
-                     0.988 R²   (0.964 R² .. 1.000 R², ci 0.990)
-mean                 5.763 s    (5.227 s .. 6.291 s, ci 0.990)
-std dev              688.0 ms   (165.4 ms .. 1.066 s, ci 0.990)
-variance introduced by outliers: 27% (moderately inflated)
+time                 6.596 s    (5.626 s .. 7.731 s, ci 0.990)
+                     0.996 R²   (0.976 R² .. 1.000 R², ci 0.990)
+mean                 6.507 s    (5.977 s .. 6.802 s, ci 0.990)
+std dev              455.8 ms   (159.4 ms .. 693.9 ms, ci 0.990)
+variance introduced by outliers: 15% (moderately inflated)
 
 benchmarking par/524288
-time                 11.21 s    (8.630 s .. 13.80 s, ci 0.990)
-                     0.996 R²   (0.969 R² .. 1.000 R², ci 0.990)
-mean                 10.79 s    (10.12 s .. 11.20 s, ci 0.990)
-std dev              529.7 ms   (196.3 ms .. 776.9 ms, ci 0.990)
-variance introduced by outliers: 16% (moderately inflated)
+time                 13.89 s    (8.586 s .. 19.07 s, ci 0.990)
+                     0.981 R²   (0.933 R² .. 1.000 R², ci 0.990)
+mean                 12.58 s    (11.51 s .. 14.25 s, ci 0.990)
+std dev              1.264 s    (217.6 ms .. 1.645 s, ci 0.990)
+variance introduced by outliers: 23% (moderately inflated)
 
 benchmarking par/1048576
-time                 21.10 s    (19.86 s .. 21.72 s, ci 0.990)
-                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
-mean                 20.52 s    (19.74 s .. 20.90 s, ci 0.990)
-std dev              540.2 ms   (45.58 ms .. 721.5 ms, ci 0.990)
+time                 23.37 s    (18.98 s .. 28.16 s, ci 0.990)
+                     0.995 R²   (0.981 R² .. 1.000 R², ci 0.990)
+mean                 23.75 s    (22.86 s .. 24.55 s, ci 0.990)
+std dev              852.5 ms   (622.1 ms .. 1.020 s, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 17 CORES --------------
 
+benchmarking par/1024
+time                 9.043 ms   (8.454 ms .. 9.726 ms, ci 0.990)
+                     0.971 R²   (0.952 R² .. 0.984 R², ci 0.990)
+mean                 8.925 ms   (7.771 ms .. 11.06 ms, ci 0.990)
+std dev              6.259 ms   (2.920 ms .. 10.12 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 24.22 ms   (22.55 ms .. 26.45 ms, ci 0.990)
+                     0.953 R²   (0.929 R² .. 0.976 R², ci 0.990)
+mean                 25.74 ms   (21.47 ms .. 33.94 ms, ci 0.990)
+std dev              18.35 ms   (8.231 ms .. 32.49 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 61.89 ms   (56.74 ms .. 66.25 ms, ci 0.990)
+                     0.957 R²   (0.929 R² .. 0.977 R², ci 0.990)
+mean                 62.42 ms   (54.39 ms .. 72.98 ms, ci 0.990)
+std dev              30.41 ms   (19.54 ms .. 46.73 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 134.1 ms   (122.3 ms .. 145.1 ms, ci 0.990)
+                     0.953 R²   (0.912 R² .. 0.976 R², ci 0.990)
+mean                 136.4 ms   (122.0 ms .. 152.5 ms, ci 0.990)
+std dev              44.73 ms   (32.73 ms .. 63.83 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 307.4 ms   (285.6 ms .. 355.0 ms, ci 0.990)
+                     0.966 R²   (0.943 R² .. 0.985 R², ci 0.990)
+mean                 301.0 ms   (269.7 ms .. 333.4 ms, ci 0.990)
+std dev              73.82 ms   (47.65 ms .. 113.3 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 685.6 ms   (625.9 ms .. 735.8 ms, ci 0.990)
+                     0.983 R²   (0.957 R² .. 0.995 R², ci 0.990)
+mean                 717.6 ms   (637.5 ms .. 754.9 ms, ci 0.990)
+std dev              113.6 ms   (57.76 ms .. 187.1 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/65536
+time                 1.488 s    (1.259 s .. 1.689 s, ci 0.990)
+                     0.976 R²   (0.926 R² .. 0.994 R², ci 0.990)
+mean                 1.527 s    (1.282 s .. 1.644 s, ci 0.990)
+std dev              283.0 ms   (113.8 ms .. 487.2 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/131072
+time                 3.430 s    (3.120 s .. 3.704 s, ci 0.990)
+                     0.996 R²   (0.977 R² .. 1.000 R², ci 0.990)
+mean                 3.343 s    (3.236 s .. 3.469 s, ci 0.990)
+std dev              162.8 ms   (73.08 ms .. 247.9 ms, ci 0.990)
+variance introduced by outliers: 10% (moderately inflated)
+
+benchmarking par/262144
+time                 7.159 s    (5.113 s .. 9.000 s, ci 0.990)
+                     0.989 R²   (0.958 R² .. 1.000 R², ci 0.990)
+mean                 6.746 s    (5.945 s .. 7.219 s, ci 0.990)
+std dev              691.9 ms   (208.3 ms .. 976.1 ms, ci 0.990)
+variance introduced by outliers: 31% (moderately inflated)
+
+benchmarking par/524288
+time                 14.46 s    (13.21 s .. 15.49 s, ci 0.990)
+                     0.999 R²   (0.997 R² .. 1.000 R², ci 0.990)
+mean                 13.40 s    (12.31 s .. 13.87 s, ci 0.990)
+std dev              753.8 ms   (83.91 ms .. 993.4 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 25.34 s    (22.19 s .. 26.89 s, ci 0.990)
+                     0.998 R²   (0.995 R² .. 1.000 R², ci 0.990)
+mean                 25.07 s    (24.28 s .. 25.76 s, ci 0.990)
+std dev              778.3 ms   (179.9 ms .. 1.068 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 18 CORES --------------
+
+benchmarking par/1024
+time                 8.858 ms   (8.429 ms .. 9.420 ms, ci 0.990)
+                     0.960 R²   (0.930 R² .. 0.979 R², ci 0.990)
+mean                 9.072 ms   (8.042 ms .. 10.90 ms, ci 0.990)
+std dev              5.860 ms   (3.521 ms .. 9.142 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 26.80 ms   (23.48 ms .. 29.84 ms, ci 0.990)
+                     0.946 R²   (0.918 R² .. 0.971 R², ci 0.990)
+mean                 25.66 ms   (22.56 ms .. 29.79 ms, ci 0.990)
+std dev              14.84 ms   (10.54 ms .. 21.01 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 65.85 ms   (60.78 ms .. 72.65 ms, ci 0.990)
+                     0.951 R²   (0.921 R² .. 0.976 R², ci 0.990)
+mean                 68.93 ms   (59.63 ms .. 81.62 ms, ci 0.990)
+std dev              32.93 ms   (23.04 ms .. 48.42 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 151.9 ms   (139.2 ms .. 162.5 ms, ci 0.990)
+                     0.965 R²   (0.937 R² .. 0.984 R², ci 0.990)
+mean                 145.1 ms   (126.5 ms .. 160.8 ms, ci 0.990)
+std dev              46.30 ms   (32.12 ms .. 64.31 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 326.2 ms   (303.8 ms .. 350.1 ms, ci 0.990)
+                     0.978 R²   (0.960 R² .. 0.991 R², ci 0.990)
+mean                 313.3 ms   (274.7 ms .. 342.5 ms, ci 0.990)
+std dev              80.18 ms   (47.46 ms .. 118.9 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 736.4 ms   (697.3 ms .. 777.0 ms, ci 0.990)
+                     0.988 R²   (0.971 R² .. 0.996 R², ci 0.990)
+mean                 719.2 ms   (609.2 ms .. 762.5 ms, ci 0.990)
+std dev              118.9 ms   (56.10 ms .. 196.7 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/65536
+time                 1.534 s    (1.406 s .. 1.657 s, ci 0.990)
+                     0.991 R²   (0.973 R² .. 0.999 R², ci 0.990)
+mean                 1.522 s    (1.296 s .. 1.619 s, ci 0.990)
+std dev              256.7 ms   (63.42 ms .. 449.8 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
+
+benchmarking par/131072
+time                 3.494 s    (2.985 s .. 3.701 s, ci 0.990)
+                     0.994 R²   (0.972 R² .. 1.000 R², ci 0.990)
+mean                 3.349 s    (3.055 s .. 3.478 s, ci 0.990)
+std dev              256.0 ms   (94.32 ms .. 400.1 ms, ci 0.990)
+variance introduced by outliers: 21% (moderately inflated)
+
+benchmarking par/262144
+time                 6.578 s    (5.273 s .. 7.631 s, ci 0.990)
+                     0.985 R²   (0.872 R² .. 1.000 R², ci 0.990)
+mean                 6.624 s    (5.874 s .. 7.107 s, ci 0.990)
+std dev              643.1 ms   (243.3 ms .. 954.8 ms, ci 0.990)
+variance introduced by outliers: 30% (moderately inflated)
+
+benchmarking par/524288
+time                 12.22 s    (11.62 s .. 12.86 s, ci 0.990)
+                     1.000 R²   (0.999 R² .. 1.000 R², ci 0.990)
+mean                 13.09 s    (12.66 s .. 13.61 s, ci 0.990)
+std dev              504.1 ms   (46.20 ms .. 621.5 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 24.38 s    (21.05 s .. 29.99 s, ci 0.990)
+                     0.994 R²   (0.985 R² .. 1.000 R², ci 0.990)
+mean                 25.15 s    (23.66 s .. 26.35 s, ci 0.990)
+std dev              1.258 s    (0.0 s .. 1.771 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 19 CORES --------------
 
+benchmarking par/1024
+time                 8.888 ms   (8.029 ms .. 9.522 ms, ci 0.990)
+                     0.957 R²   (0.928 R² .. 0.978 R², ci 0.990)
+mean                 9.094 ms   (7.983 ms .. 10.75 ms, ci 0.990)
+std dev              5.376 ms   (3.300 ms .. 8.048 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 26.96 ms   (24.57 ms .. 29.56 ms, ci 0.990)
+                     0.946 R²   (0.915 R² .. 0.967 R², ci 0.990)
+mean                 27.36 ms   (23.55 ms .. 36.26 ms, ci 0.990)
+std dev              18.79 ms   (10.55 ms .. 30.86 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 64.64 ms   (60.94 ms .. 68.47 ms, ci 0.990)
+                     0.966 R²   (0.938 R² .. 0.981 R², ci 0.990)
+mean                 64.59 ms   (57.74 ms .. 82.10 ms, ci 0.990)
+std dev              30.73 ms   (20.60 ms .. 55.94 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 140.4 ms   (126.6 ms .. 151.5 ms, ci 0.990)
+                     0.958 R²   (0.924 R² .. 0.977 R², ci 0.990)
+mean                 139.4 ms   (124.3 ms .. 158.1 ms, ci 0.990)
+std dev              46.54 ms   (34.25 ms .. 62.93 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 327.8 ms   (302.3 ms .. 351.4 ms, ci 0.990)
+                     0.972 R²   (0.950 R² .. 0.987 R², ci 0.990)
+mean                 314.7 ms   (284.7 ms .. 348.6 ms, ci 0.990)
+std dev              77.09 ms   (53.72 ms .. 104.2 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 693.4 ms   (610.8 ms .. 747.2 ms, ci 0.990)
+                     0.977 R²   (0.957 R² .. 0.992 R², ci 0.990)
+mean                 715.0 ms   (613.4 ms .. 764.5 ms, ci 0.990)
+std dev              122.8 ms   (64.65 ms .. 220.9 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/65536
+time                 1.563 s    (1.380 s .. 1.764 s, ci 0.990)
+                     0.980 R²   (0.943 R² .. 0.996 R², ci 0.990)
+mean                 1.569 s    (1.306 s .. 1.698 s, ci 0.990)
+std dev              276.3 ms   (113.6 ms .. 460.2 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
+
+benchmarking par/131072
+time                 3.662 s    (3.175 s .. 3.872 s, ci 0.990)
+                     0.992 R²   (0.959 R² .. 1.000 R², ci 0.990)
+mean                 3.369 s    (3.049 s .. 3.626 s, ci 0.990)
+std dev              380.1 ms   (194.7 ms .. 560.1 ms, ci 0.990)
+variance introduced by outliers: 32% (moderately inflated)
+
+benchmarking par/262144
+time                 6.524 s    (4.647 s .. 9.241 s, ci 0.990)
+                     0.988 R²   (0.928 R² .. 1.000 R², ci 0.990)
+mean                 6.796 s    (6.315 s .. 7.530 s, ci 0.990)
+std dev              598.4 ms   (289.9 ms .. 877.1 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/524288
+time                 11.93 s    (9.925 s .. 14.76 s, ci 0.990)
+                     0.994 R²   (0.981 R² .. 1.000 R², ci 0.990)
+mean                 13.10 s    (12.49 s .. 13.84 s, ci 0.990)
+std dev              714.9 ms   (129.3 ms .. 918.7 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 24.12 s    (23.50 s .. 24.63 s, ci 0.990)
+                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
+mean                 24.11 s    (23.99 s .. 24.30 s, ci 0.990)
+std dev              143.3 ms   (34.02 ms .. 188.8 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 20 CORES --------------
+
+benchmarking par/1024
+time                 9.836 ms   (9.174 ms .. 10.55 ms, ci 0.990)
+                     0.958 R²   (0.932 R² .. 0.975 R², ci 0.990)
+mean                 9.323 ms   (7.789 ms .. 12.18 ms, ci 0.990)
+std dev              6.109 ms   (3.115 ms .. 10.65 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 26.87 ms   (24.70 ms .. 28.76 ms, ci 0.990)
+                     0.958 R²   (0.915 R² .. 0.980 R², ci 0.990)
+mean                 26.96 ms   (23.84 ms .. 31.66 ms, ci 0.990)
+std dev              17.13 ms   (11.48 ms .. 26.45 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 66.54 ms   (61.02 ms .. 74.30 ms, ci 0.990)
+                     0.938 R²   (0.892 R² .. 0.968 R², ci 0.990)
+mean                 67.79 ms   (59.21 ms .. 81.23 ms, ci 0.990)
+std dev              31.89 ms   (20.65 ms .. 52.30 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 141.2 ms   (127.5 ms .. 153.8 ms, ci 0.990)
+                     0.951 R²   (0.918 R² .. 0.975 R², ci 0.990)
+mean                 145.2 ms   (129.2 ms .. 167.5 ms, ci 0.990)
+std dev              50.19 ms   (35.58 ms .. 75.85 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 338.8 ms   (311.5 ms .. 369.1 ms, ci 0.990)
+                     0.971 R²   (0.941 R² .. 0.986 R², ci 0.990)
+mean                 324.2 ms   (283.0 ms .. 355.8 ms, ci 0.990)
+std dev              77.27 ms   (52.99 ms .. 118.9 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 723.7 ms   (633.6 ms .. 797.9 ms, ci 0.990)
+                     0.968 R²   (0.913 R² .. 0.988 R², ci 0.990)
+mean                 727.0 ms   (606.4 ms .. 797.9 ms, ci 0.990)
+std dev              137.2 ms   (78.25 ms .. 233.5 ms, ci 0.990)
+variance introduced by outliers: 75% (severely inflated)
+
+benchmarking par/65536
+time                 1.621 s    (1.483 s .. 1.831 s, ci 0.990)
+                     0.981 R²   (0.952 R² .. 0.996 R², ci 0.990)
+mean                 1.583 s    (1.298 s .. 1.719 s, ci 0.990)
+std dev              272.3 ms   (131.0 ms .. 464.0 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
+
+benchmarking par/131072
+time                 3.583 s    (3.375 s .. 3.812 s, ci 0.990)
+                     0.998 R²   (0.992 R² .. 1.000 R², ci 0.990)
+mean                 3.366 s    (3.016 s .. 3.534 s, ci 0.990)
+std dev              315.1 ms   (62.07 ms .. 453.1 ms, ci 0.990)
+variance introduced by outliers: 31% (moderately inflated)
+
+benchmarking par/262144
+time                 7.106 s    (5.587 s .. 8.320 s, ci 0.990)
+                     0.993 R²   (0.956 R² .. 1.000 R², ci 0.990)
+mean                 6.871 s    (5.963 s .. 7.390 s, ci 0.990)
+std dev              762.3 ms   (184.5 ms .. 1.197 s, ci 0.990)
+variance introduced by outliers: 31% (moderately inflated)
+
+benchmarking par/524288
+time                 13.62 s    (10.76 s .. 16.85 s, ci 0.990)
+                     0.993 R²   (0.976 R² .. 1.000 R², ci 0.990)
+mean                 12.94 s    (12.43 s .. 13.50 s, ci 0.990)
+std dev              584.6 ms   (138.9 ms .. 658.0 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 24.23 s    (21.36 s .. 30.43 s, ci 0.990)
+                     0.992 R²   (0.985 R² .. 1.000 R², ci 0.990)
+mean                 25.19 s    (23.80 s .. 26.84 s, ci 0.990)
+std dev              1.616 s    (318.3 ms .. 2.216 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 21 CORES --------------
 
+benchmarking par/1024
+time                 9.238 ms   (8.700 ms .. 9.904 ms, ci 0.990)
+                     0.954 R²   (0.917 R² .. 0.979 R², ci 0.990)
+mean                 8.803 ms   (7.557 ms .. 10.78 ms, ci 0.990)
+std dev              7.001 ms   (4.197 ms .. 10.45 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 24.84 ms   (21.93 ms .. 29.24 ms, ci 0.990)
+                     0.931 R²   (0.905 R² .. 0.961 R², ci 0.990)
+mean                 24.80 ms   (20.95 ms .. 30.05 ms, ci 0.990)
+std dev              15.53 ms   (10.52 ms .. 25.74 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 60.01 ms   (51.84 ms .. 68.34 ms, ci 0.990)
+                     0.909 R²   (0.861 R² .. 0.948 R², ci 0.990)
+mean                 63.47 ms   (55.12 ms .. 77.38 ms, ci 0.990)
+std dev              34.57 ms   (24.81 ms .. 47.86 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 125.1 ms   (108.6 ms .. 147.3 ms, ci 0.990)
+                     0.928 R²   (0.875 R² .. 0.974 R², ci 0.990)
+mean                 133.1 ms   (115.6 ms .. 159.7 ms, ci 0.990)
+std dev              56.08 ms   (36.49 ms .. 88.35 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/16384
+time                 313.4 ms   (258.1 ms .. 341.9 ms, ci 0.990)
+                     0.939 R²   (0.878 R² .. 0.968 R², ci 0.990)
+mean                 307.6 ms   (271.8 ms .. 358.5 ms, ci 0.990)
+std dev              97.63 ms   (61.03 ms .. 148.6 ms, ci 0.990)
+variance introduced by outliers: 93% (severely inflated)
+
+benchmarking par/32768
+time                 674.3 ms   (624.6 ms .. 728.5 ms, ci 0.990)
+                     0.982 R²   (0.963 R² .. 0.994 R², ci 0.990)
+mean                 635.1 ms   (546.5 ms .. 699.1 ms, ci 0.990)
+std dev              131.4 ms   (72.05 ms .. 220.5 ms, ci 0.990)
+variance introduced by outliers: 82% (severely inflated)
+
+benchmarking par/65536
+time                 1.446 s    (1.258 s .. 1.615 s, ci 0.990)
+                     0.969 R²   (0.893 R² .. 0.995 R², ci 0.990)
+mean                 1.453 s    (1.183 s .. 1.561 s, ci 0.990)
+std dev              274.6 ms   (120.2 ms .. 454.1 ms, ci 0.990)
+variance introduced by outliers: 72% (severely inflated)
+
+benchmarking par/131072
+time                 3.312 s    (3.025 s .. 3.537 s, ci 0.990)
+                     0.994 R²   (0.977 R² .. 1.000 R², ci 0.990)
+mean                 3.165 s    (2.768 s .. 3.337 s, ci 0.990)
+std dev              365.1 ms   (109.5 ms .. 582.4 ms, ci 0.990)
+variance introduced by outliers: 38% (moderately inflated)
+
+benchmarking par/262144
+time                 6.367 s    (4.430 s .. 7.686 s, ci 0.990)
+                     0.985 R²   (0.930 R² .. 1.000 R², ci 0.990)
+mean                 6.559 s    (6.134 s .. 7.067 s, ci 0.990)
+std dev              518.9 ms   (231.1 ms .. 731.5 ms, ci 0.990)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking par/524288
+time                 11.61 s    (9.585 s .. 15.12 s, ci 0.990)
+                     0.990 R²   (0.975 R² .. 1.000 R², ci 0.990)
+mean                 12.30 s    (11.80 s .. 13.45 s, ci 0.990)
+std dev              784.1 ms   (22.13 ms .. 965.9 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 22.96 s    (15.53 s .. 28.87 s, ci 0.990)
+                     0.988 R²   (0.957 R² .. 1.000 R², ci 0.990)
+mean                 23.66 s    (22.03 s .. 24.89 s, ci 0.990)
+std dev              1.328 s    (86.21 ms .. 1.877 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 22 CORES --------------
 
+benchmarking par/1024
+time                 10.61 ms   (9.650 ms .. 11.27 ms, ci 0.990)
+                     0.953 R²   (0.904 R² .. 0.977 R², ci 0.990)
+mean                 10.08 ms   (8.496 ms .. 13.04 ms, ci 0.990)
+std dev              7.316 ms   (4.072 ms .. 12.09 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 27.08 ms   (24.97 ms .. 29.20 ms, ci 0.990)
+                     0.941 R²   (0.893 R² .. 0.971 R², ci 0.990)
+mean                 29.69 ms   (25.35 ms .. 36.83 ms, ci 0.990)
+std dev              21.50 ms   (11.34 ms .. 33.38 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 69.42 ms   (62.06 ms .. 76.02 ms, ci 0.990)
+                     0.949 R²   (0.892 R² .. 0.976 R², ci 0.990)
+mean                 66.63 ms   (58.96 ms .. 78.75 ms, ci 0.990)
+std dev              27.41 ms   (18.78 ms .. 39.56 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 149.9 ms   (134.8 ms .. 171.6 ms, ci 0.990)
+                     0.907 R²   (0.824 R² .. 0.954 R², ci 0.990)
+mean                 162.3 ms   (142.4 ms .. 187.4 ms, ci 0.990)
+std dev              59.91 ms   (43.86 ms .. 91.52 ms, ci 0.990)
+variance introduced by outliers: 97% (severely inflated)
+
+benchmarking par/16384
+time                 355.8 ms   (318.9 ms .. 389.2 ms, ci 0.990)
+                     0.961 R²   (0.918 R² .. 0.984 R², ci 0.990)
+mean                 330.2 ms   (292.0 ms .. 362.8 ms, ci 0.990)
+std dev              82.49 ms   (53.91 ms .. 115.6 ms, ci 0.990)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking par/32768
+time                 730.6 ms   (650.8 ms .. 829.0 ms, ci 0.990)
+                     0.966 R²   (0.906 R² .. 0.992 R², ci 0.990)
+mean                 762.0 ms   (667.7 ms .. 814.1 ms, ci 0.990)
+std dev              123.9 ms   (65.94 ms .. 192.3 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/65536
+time                 1.677 s    (1.547 s .. 1.796 s, ci 0.990)
+                     0.992 R²   (0.981 R² .. 0.998 R², ci 0.990)
+mean                 1.635 s    (1.406 s .. 1.750 s, ci 0.990)
+std dev              295.4 ms   (71.51 ms .. 539.8 ms, ci 0.990)
+variance introduced by outliers: 63% (severely inflated)
+
+benchmarking par/131072
+time                 3.635 s    (3.073 s .. 3.961 s, ci 0.990)
+                     0.984 R²   (0.932 R² .. 1.000 R², ci 0.990)
+mean                 3.534 s    (3.147 s .. 3.786 s, ci 0.990)
+std dev              411.2 ms   (138.1 ms .. 671.7 ms, ci 0.990)
+variance introduced by outliers: 32% (moderately inflated)
+
+benchmarking par/262144
+time                 7.232 s    (5.756 s .. 8.575 s, ci 0.990)
+                     0.994 R²   (0.977 R² .. 1.000 R², ci 0.990)
+mean                 6.998 s    (6.642 s .. 7.416 s, ci 0.990)
+std dev              406.4 ms   (217.0 ms .. 574.4 ms, ci 0.990)
+variance introduced by outliers: 15% (moderately inflated)
+
+benchmarking par/524288
+time                 15.09 s    (13.24 s .. 16.80 s, ci 0.990)
+                     0.998 R²   (0.993 R² .. 1.000 R², ci 0.990)
+mean                 13.93 s    (12.78 s .. 14.49 s, ci 0.990)
+std dev              819.1 ms   (179.1 ms .. 1.089 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 25.23 s    (21.32 s .. 29.63 s, ci 0.990)
+                     0.996 R²   (0.987 R² .. 1.000 R², ci 0.990)
+mean                 26.68 s    (25.90 s .. 28.18 s, ci 0.990)
+std dev              1.070 s    (18.22 ms .. 1.320 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
 
 
 ------------ 23 CORES --------------
+
+benchmarking par/1024
+time                 8.374 ms   (7.617 ms .. 8.884 ms, ci 0.990)
+                     0.959 R²   (0.923 R² .. 0.978 R², ci 0.990)
+mean                 8.448 ms   (7.302 ms .. 10.12 ms, ci 0.990)
+std dev              5.345 ms   (3.594 ms .. 8.331 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/2048
+time                 27.37 ms   (25.99 ms .. 29.12 ms, ci 0.990)
+                     0.963 R²   (0.925 R² .. 0.986 R², ci 0.990)
+mean                 25.53 ms   (21.53 ms .. 31.53 ms, ci 0.990)
+std dev              17.66 ms   (8.339 ms .. 29.17 ms, ci 0.990)
+variance introduced by outliers: 99% (severely inflated)
+
+benchmarking par/4096
+time                 65.62 ms   (60.00 ms .. 72.31 ms, ci 0.990)
+                     0.930 R²   (0.884 R² .. 0.962 R², ci 0.990)
+mean                 66.69 ms   (58.19 ms .. 81.75 ms, ci 0.990)
+std dev              37.85 ms   (20.67 ms .. 59.89 ms, ci 0.990)
+variance introduced by outliers: 98% (severely inflated)
+
+benchmarking par/8192
+time                 140.6 ms   (132.3 ms .. 151.7 ms, ci 0.990)
+                     0.947 R²   (0.902 R² .. 0.974 R², ci 0.990)
+mean                 139.0 ms   (120.4 ms .. 155.6 ms, ci 0.990)
+std dev              45.70 ms   (34.56 ms .. 56.02 ms, ci 0.990)
+variance introduced by outliers: 95% (severely inflated)
+
+benchmarking par/16384
+time                 322.4 ms   (283.5 ms .. 368.1 ms, ci 0.990)
+                     0.935 R²   (0.887 R² .. 0.968 R², ci 0.990)
+mean                 336.8 ms   (291.6 ms .. 400.2 ms, ci 0.990)
+std dev              104.8 ms   (60.80 ms .. 153.9 ms, ci 0.990)
+variance introduced by outliers: 93% (severely inflated)
+
+benchmarking par/32768
+time                 686.8 ms   (591.8 ms .. 767.3 ms, ci 0.990)
+                     0.958 R²   (0.920 R² .. 0.990 R², ci 0.990)
+mean                 715.9 ms   (637.6 ms .. 782.7 ms, ci 0.990)
+std dev              143.9 ms   (68.87 ms .. 224.5 ms, ci 0.990)
+variance introduced by outliers: 80% (severely inflated)
+
+benchmarking par/65536
+time                 1.457 s    (1.279 s .. 1.688 s, ci 0.990)
+                     0.980 R²   (0.963 R² .. 0.997 R², ci 0.990)
+mean                 1.601 s    (1.319 s .. 1.738 s, ci 0.990)
+std dev              305.8 ms   (124.1 ms .. 509.3 ms, ci 0.990)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking par/131072
+time                 3.468 s    (2.940 s .. 3.892 s, ci 0.990)
+                     0.985 R²   (0.933 R² .. 1.000 R², ci 0.990)
+mean                 3.348 s    (3.116 s .. 3.611 s, ci 0.990)
+std dev              297.3 ms   (157.5 ms .. 471.0 ms, ci 0.990)
+variance introduced by outliers: 21% (moderately inflated)
+
+benchmarking par/262144
+time                 6.787 s    (5.832 s .. 8.403 s, ci 0.990)
+                     0.992 R²   (0.979 R² .. 1.000 R², ci 0.990)
+mean                 6.706 s    (5.561 s .. 7.151 s, ci 0.990)
+std dev              739.6 ms   (239.7 ms .. 1.109 s, ci 0.990)
+variance introduced by outliers: 31% (moderately inflated)
+
+benchmarking par/524288
+time                 14.15 s    (13.79 s .. 14.69 s, ci 0.990)
+                     1.000 R²   (1.000 R² .. 1.000 R², ci 0.990)
+mean                 13.16 s    (12.08 s .. 13.59 s, ci 0.990)
+std dev              729.3 ms   (68.12 ms .. 912.3 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
+
+benchmarking par/1048576
+time                 26.17 s    (23.95 s .. 29.19 s, ci 0.990)
+                     0.999 R²   (0.995 R² .. 1.000 R², ci 0.990)
+mean                 25.22 s    (24.69 s .. 25.97 s, ci 0.990)
+std dev              590.4 ms   (137.6 ms .. 777.6 ms, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 
 
 ------------ 24 CORES --------------
 
 benchmarking par/1024
-time                 8.938 ms   (8.114 ms .. 9.797 ms, ci 0.990)
-                     0.926 R²   (0.876 R² .. 0.955 R², ci 0.990)
-mean                 8.928 ms   (7.092 ms .. 12.18 ms, ci 0.990)
-std dev              8.130 ms   (4.500 ms .. 13.42 ms, ci 0.990)
+time                 10.48 ms   (9.447 ms .. 11.54 ms, ci 0.990)
+                     0.963 R²   (0.944 R² .. 0.980 R², ci 0.990)
+mean                 9.770 ms   (8.210 ms .. 11.72 ms, ci 0.990)
+std dev              6.325 ms   (3.434 ms .. 9.697 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/2048
-time                 29.00 ms   (26.01 ms .. 33.59 ms, ci 0.990)
-                     0.914 R²   (0.867 R² .. 0.952 R², ci 0.990)
-mean                 29.24 ms   (23.25 ms .. 39.25 ms, ci 0.990)
-std dev              26.18 ms   (12.13 ms .. 44.84 ms, ci 0.990)
+time                 30.52 ms   (27.83 ms .. 33.80 ms, ci 0.990)
+                     0.946 R²   (0.913 R² .. 0.972 R², ci 0.990)
+mean                 29.43 ms   (24.45 ms .. 34.98 ms, ci 0.990)
+std dev              17.59 ms   (10.58 ms .. 28.84 ms, ci 0.990)
 variance introduced by outliers: 99% (severely inflated)
 
 benchmarking par/4096
-time                 62.74 ms   (57.38 ms .. 68.62 ms, ci 0.990)
-                     0.919 R²   (0.842 R² .. 0.960 R², ci 0.990)
-mean                 71.24 ms   (60.21 ms .. 87.83 ms, ci 0.990)
-std dev              44.67 ms   (30.47 ms .. 68.69 ms, ci 0.990)
+time                 74.41 ms   (69.14 ms .. 79.77 ms, ci 0.990)
+                     0.941 R²   (0.899 R² .. 0.969 R², ci 0.990)
+mean                 74.95 ms   (63.63 ms .. 89.88 ms, ci 0.990)
+std dev              37.95 ms   (26.30 ms .. 52.76 ms, ci 0.990)
 variance introduced by outliers: 98% (severely inflated)
 
 benchmarking par/8192
-time                 155.4 ms   (140.3 ms .. 168.2 ms, ci 0.990)
-                     0.943 R²   (0.894 R² .. 0.970 R², ci 0.990)
-mean                 145.3 ms   (122.4 ms .. 163.8 ms, ci 0.990)
-std dev              50.52 ms   (38.70 ms .. 66.34 ms, ci 0.990)
+time                 161.8 ms   (149.7 ms .. 178.4 ms, ci 0.990)
+                     0.940 R²   (0.904 R² .. 0.969 R², ci 0.990)
+mean                 160.9 ms   (136.1 ms .. 189.2 ms, ci 0.990)
+std dev              62.63 ms   (42.81 ms .. 101.5 ms, ci 0.990)
 variance introduced by outliers: 97% (severely inflated)
 
 benchmarking par/16384
-time                 341.6 ms   (293.3 ms .. 378.5 ms, ci 0.990)
-                     0.928 R²   (0.838 R² .. 0.968 R², ci 0.990)
-mean                 334.1 ms   (297.2 ms .. 378.6 ms, ci 0.990)
-std dev              99.18 ms   (65.82 ms .. 136.2 ms, ci 0.990)
+time                 363.5 ms   (314.8 ms .. 425.6 ms, ci 0.990)
+                     0.924 R²   (0.857 R² .. 0.976 R², ci 0.990)
+mean                 382.5 ms   (320.4 ms .. 435.7 ms, ci 0.990)
+std dev              111.1 ms   (70.21 ms .. 165.2 ms, ci 0.990)
 variance introduced by outliers: 93% (severely inflated)
 
 benchmarking par/32768
-time                 853.1 ms   (731.2 ms .. 943.9 ms, ci 0.990)
-                     0.955 R²   (0.888 R² .. 0.992 R², ci 0.990)
-mean                 802.0 ms   (686.1 ms .. 884.6 ms, ci 0.990)
-std dev              178.7 ms   (105.5 ms .. 276.6 ms, ci 0.990)
-variance introduced by outliers: 79% (severely inflated)
+time                 848.3 ms   (752.0 ms .. 924.8 ms, ci 0.990)
+                     0.973 R²   (0.926 R² .. 0.994 R², ci 0.990)
+mean                 856.1 ms   (754.2 ms .. 939.2 ms, ci 0.990)
+std dev              157.0 ms   (70.03 ms .. 266.2 ms, ci 0.990)
+variance introduced by outliers: 72% (severely inflated)
 
 benchmarking par/65536
-time                 1.517 s    (1.237 s .. 1.738 s, ci 0.990)
-                     0.960 R²   (0.907 R² .. 0.989 R², ci 0.990)
-mean                 1.686 s    (1.391 s .. 1.870 s, ci 0.990)
-std dev              363.2 ms   (184.7 ms .. 612.4 ms, ci 0.990)
-variance introduced by outliers: 77% (severely inflated)
+time                 1.917 s    (1.628 s .. 2.278 s, ci 0.990)
+                     0.954 R²   (0.800 R² .. 0.996 R², ci 0.990)
+mean                 1.846 s    (1.515 s .. 2.018 s, ci 0.990)
+std dev              364.6 ms   (149.9 ms .. 612.9 ms, ci 0.990)
+variance introduced by outliers: 68% (severely inflated)
 
 benchmarking par/131072
-time                 3.656 s    (3.338 s .. 3.919 s, ci 0.990)
-                     0.995 R²   (0.979 R² .. 1.000 R², ci 0.990)
-mean                 3.664 s    (3.440 s .. 3.850 s, ci 0.990)
-std dev              235.7 ms   (129.1 ms .. 353.0 ms, ci 0.990)
-variance introduced by outliers: 20% (moderately inflated)
+time                 4.111 s    (3.336 s .. 4.688 s, ci 0.990)
+                     0.990 R²   (0.965 R² .. 1.000 R², ci 0.990)
+mean                 3.891 s    (3.434 s .. 4.238 s, ci 0.990)
+std dev              509.8 ms   (224.4 ms .. 806.1 ms, ci 0.990)
+variance introduced by outliers: 36% (moderately inflated)
 
 benchmarking par/262144
-time                 6.871 s    (5.875 s .. 7.753 s, ci 0.990)
-                     0.994 R²   (0.985 R² .. 1.000 R², ci 0.990)
-mean                 6.517 s    (5.452 s .. 6.856 s, ci 0.990)
-std dev              673.6 ms   (41.84 ms .. 942.8 ms, ci 0.990)
-variance introduced by outliers: 31% (moderately inflated)
+time                 7.843 s    (6.901 s .. 8.539 s, ci 0.990)
+                     0.994 R²   (0.951 R² .. 1.000 R², ci 0.990)
+mean                 7.648 s    (6.992 s .. 7.957 s, ci 0.990)
+std dev              529.0 ms   (106.4 ms .. 759.2 ms, ci 0.990)
+variance introduced by outliers: 15% (moderately inflated)
 
 benchmarking par/524288
-time                 14.65 s    (11.94 s .. 17.53 s, ci 0.990)
-                     0.995 R²   (0.982 R² .. 1.000 R², ci 0.990)
-mean                 13.72 s    (13.05 s .. 14.50 s, ci 0.990)
-std dev              764.3 ms   (132.8 ms .. 977.2 ms, ci 0.990)
+time                 15.43 s    (13.06 s .. 17.40 s, ci 0.990)
+                     0.997 R²   (0.990 R² .. 1.000 R², ci 0.990)
+mean                 14.44 s    (13.34 s .. 15.01 s, ci 0.990)
+std dev              808.1 ms   (62.17 ms .. 1.020 s, ci 0.990)
 variance introduced by outliers: 19% (moderately inflated)
 
 benchmarking par/1048576
-time                 26.48 s    (23.40 s .. 28.55 s, ci 0.990)
-                     0.998 R²   (0.997 R² .. 1.000 R², ci 0.990)
-mean                 24.58 s    (21.90 s .. 25.59 s, ci 0.990)
-std dev              1.807 s    (23.40 ms .. 2.306 s, ci 0.990)
-variance introduced by outliers: 20% (moderately inflated)
+time                 26.71 s    (25.22 s .. 28.29 s, ci 0.990)
+                     1.000 R²   (0.998 R² .. 1.000 R², ci 0.990)
+mean                 28.79 s    (27.79 s .. 30.75 s, ci 0.990)
+std dev              1.364 s    (22.64 ms .. 1.825 s, ci 0.990)
+variance introduced by outliers: 19% (moderately inflated)
 
 

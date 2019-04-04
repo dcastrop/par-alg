@@ -40,7 +40,7 @@ do
 
   echo "#!/bin/bash"                                                            >> ${TMP}
   echo "#PBS -lwalltime=2:00:00"                                                >> ${TMP}
-  echo "#PBS -lselect=1:ncpus=32:mem=8gb"                                       >> ${TMP}
+  echo "#PBS -lselect=1:ncpus=32:mpiprocs=1:ompthreads=32:mem=8gb"              >> ${TMP}
   echo "#PBS -lplace=pack:excl"                                                 >> ${TMP}
   echo "#PBS -J 1-${NUMDIRS}"                                                   >> ${TMP}
   echo                                                                          >> ${TMP}
