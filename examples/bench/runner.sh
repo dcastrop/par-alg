@@ -40,8 +40,8 @@ do
 
   echo "#!/bin/bash"                                                            >> ${TMP}
   echo "#PBS -lwalltime=2:00:00"                                                >> ${TMP}
-  echo "#PBS -lselect=1:ncpus=32:mpiprocs=1:ompthreads=32:mem=8gb"              >> ${TMP}
-  echo "#PBS -lplace=pack:excl"                                                 >> ${TMP}
+  echo "#PBS -lselect=1:ncpus=32:mpiprocs=1:ompthreads=32:mem=32gb"             >> ${TMP}
+  # echo "#PBS -lplace=pack:excl"                                               >> ${TMP}
   echo "#PBS -J 1-${NUMDIRS}"                                                   >> ${TMP}
   echo                                                                          >> ${TMP}
   echo "BENCH_DIR=${BENCH_DIR}"                                                 >> ${TMP}
@@ -56,11 +56,9 @@ do
   echo 'BENCHNAME=par/'                                                         >> ${TMP}
   echo '[ "${DIR}" = "Base" ] && BENCHNAME=seq/'                                >> ${TMP}
   echo 'pushd ./${DIR}'                                                         >> ${TMP}
-  echo './Main ${BENCHNAME} \
-  -L 180 \
-  --csv ./Measurements/Time_${N}.csv \
-  +RTS \
-  -N${N} > ./Measurements/Time_${N}.time'                                       >> ${TMP}
+  echo './Main ${BENCHNAME} -L 180 --csv ./Measurements/Time_${N}.csv \
+               +RTS -N${N} -qn1 -A1G -n32m \
+               > ./Measurements/Time_${N}.time'                                 >> ${TMP}
   echo 'popd'                                                                   >> ${TMP}
   echo 'cp -r ${DIR}/Measurements ${PBS_O_WORKDIR}/${BENCH_DIR}/${DIR}'         >> ${TMP}
 
